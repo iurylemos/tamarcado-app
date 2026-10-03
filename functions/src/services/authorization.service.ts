@@ -7,6 +7,19 @@ export interface AuthorizedActor extends UserDocument {
   uid: string;
 }
 
+function isUserDocument(value: unknown): value is UserDocument {
+  if (typeof value !== 'object' || value === null) return false;
+  const user = value as Record<string, unknown>;
+  return (
+    typeof user.tenantId === 'string' &&
+    (user.role === 'collaborator' || user.role === 'backoffice') &&
+    typeof user.name === 'string' &&
+    typeof user.phoneE164 === 'string' &&
+    typeof user.active === 'boolean' &&
+    (user.professionalId === undefined || typeof user.professionalId === 'string')
+  );
+}
+
 export async function authorizeActor(
   request: CallableRequest<unknown>,
   allowedRoles?: readonly UserDocument['role'][],
@@ -15,12 +28,17 @@ export async function authorizeActor(
   if (!auth) throw new HttpsError('unauthenticated', 'Entre na sua conta para continuar.');
 
   const snapshot = await firestore.collection(collections.users).doc(auth.uid).get();
-  const user = snapshot.data() as UserDocument | undefined;
+  const user: unknown = snapshot.data();
 
-  if (!user?.active)
+  if (!isUserDocument(user) || user.active !== true)
     throw new HttpsError('permission-denied', 'Esta conta está inativa ou sem acesso.');
 
-  if (auth.token.tenantId !== user.tenantId || auth.token.role !== user.role) {
+  if (
+    auth.token.active !== true ||
+    auth.token.tenantId !== user.tenantId ||
+    auth.token.role !== user.role ||
+    (auth.token.professionalId ?? null) !== (user.professionalId ?? null)
+  ) {
     throw new HttpsError('permission-denied', 'Sua sessão não corresponde ao acesso atual.');
   }
 

@@ -1,6 +1,68 @@
 @import 'tailwindcss';
 @import './design-tokens.css';
 
+.auth-login {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1rem;
+  background: var(--color-background);
+}
+
+.auth-login__card {
+  display: grid;
+  width: min(100%, 28rem);
+  gap: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  background: var(--color-surface);
+  box-shadow: 0 1rem 3rem rgb(15 23 42 / 8%);
+}
+
+.auth-login__card h1,
+.auth-login__card p {
+  margin: 0;
+}
+
+.auth-login__eyebrow {
+  color: var(--color-brand);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+}
+
+.auth-login__card form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.auth-login__card label {
+  font-weight: 650;
+}
+
+.auth-login__card input {
+  width: 100%;
+  min-height: 2.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.auth-login__secondary {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.auth-login__secondary:hover {
+  background: var(--color-background);
+}
+
+.auth-login__error {
+  color: var(--color-danger);
+}
+
 body {
   margin: 0;
   background: var(--color-background);

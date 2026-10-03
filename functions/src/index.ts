@@ -1,4 +1,5 @@
 import './config/region';
+export { startPhoneVerification, verifyPhone } from './functions/authentication';
 export { listPublicBusinesses } from './functions/catalog/list-public-businesses';
 export { getPublicCatalog } from './functions/catalog/get-public-catalog';
 export { listAvailability } from './functions/appointments/list-availability';

@@ -84,17 +84,17 @@ are rejected without returning protected data.
 
 ### Tests for User Story 5
 
-- [ ] T021 [P] [US5] Test invalid, expired, replayed, and rate-limited WhatsApp verification challenges in `functions/src/functions/authentication/verify-phone.spec.ts`.
-- [ ] T022 [P] [US5] Test role, tenant, professional-scope, inactive-user, and logout authorization outcomes in `functions/src/services/authorization.service.spec.ts`.
-- [ ] T023 [P] [US5] Test protected-route login, authorization failure, and logout states in `collaborator/src/pages/LoginPage.spec.tsx` and `backoffice/src/pages/LoginPage.spec.tsx`.
+- [X] T021 [P] [US5] Test invalid, expired, replayed, and rate-limited WhatsApp verification challenges in `functions/src/functions/authentication/verify-phone.spec.ts`.
+- [X] T022 [P] [US5] Test role, tenant, professional-scope, inactive-user, and logout authorization outcomes in `functions/src/services/authorization.service.spec.ts`.
+- [X] T023 [P] [US5] Test protected-route login, authorization failure, and logout states in `collaborator/src/pages/LoginPage.spec.tsx` and `backoffice/src/pages/LoginPage.spec.tsx`.
 
 ### Implementation for User Story 5
 
-- [ ] T024 Implement provider-neutral start/verify challenge contracts and one-time challenge lifecycle in `functions/src/services/phone-verification.service.ts`, enforcing normalized phone input and rejecting invalid, expired, replayed, or rate-limited codes.
-- [ ] T025 Implement Firebase custom-token issuance only after trusted WhatsApp verification and active user/tenant/role resolution in `functions/src/functions/authentication/start-phone-verification.ts`, `functions/src/functions/authentication/verify-phone.ts`, and `functions/src/functions/authentication/index.ts`.
-- [ ] T026 [P] Implement typed frontend authentication services and session contexts in `collaborator/src/services/auth.service.ts`, `collaborator/src/contexts/auth/auth.context.ts`, `collaborator/src/contexts/auth/auth.provider.ts`, `backoffice/src/services/auth.service.ts`, `backoffice/src/contexts/auth/auth.context.ts`, and `backoffice/src/contexts/auth/auth.provider.ts`; keep interfaces in each app's `src/interfaces/`.
-- [ ] T027 Implement protected collaborator/backoffice routes, role-aware navigation, and logout handling in `collaborator/src/router/ProtectedRoute.tsx`, `collaborator/src/router/index.tsx`, `backoffice/src/router/ProtectedRoute.tsx`, and `backoffice/src/router/index.tsx`.
-- [ ] T028 Implement callable/HTTP authorization guards that revalidate active user, tenant claim, role, and professional scope for every protected operation in `functions/src/services/authorization.service.ts` and `functions/src/functions/index.ts`.
+- [X] T024 Implement provider-neutral start/verify challenge contracts and one-time challenge lifecycle in `functions/src/services/phone-verification.service.ts`, enforcing normalized phone input and rejecting invalid, expired, replayed, or rate-limited codes.
+- [X] T025 Implement Firebase custom-token issuance only after trusted WhatsApp verification and active user/tenant/role resolution in `functions/src/functions/authentication/start-phone-verification.ts`, `functions/src/functions/authentication/verify-phone.ts`, and `functions/src/functions/authentication/index.ts`.
+- [X] T026 [P] Implement typed frontend authentication services and session contexts in `collaborator/src/services/auth.service.ts`, `collaborator/src/contexts/auth/auth.context.ts`, `collaborator/src/contexts/auth/auth.provider.ts`, `backoffice/src/services/auth.service.ts`, `backoffice/src/contexts/auth/auth.context.ts`, and `backoffice/src/contexts/auth/auth.provider.ts`; keep interfaces in each app's `src/interfaces/`.
+- [X] T027 Implement protected collaborator/backoffice routes, role-aware navigation, and logout handling in `collaborator/src/router/ProtectedRoute.tsx`, `collaborator/src/router/index.tsx`, `backoffice/src/router/ProtectedRoute.tsx`, and `backoffice/src/router/index.tsx`.
+- [X] T028 Implement callable/HTTP authorization guards that revalidate active user, tenant claim, role, and professional scope for every protected operation in `functions/src/services/authorization.service.ts` and `functions/src/functions/index.ts`.
 
 **Checkpoint**: Staff sign-in and route access are independently testable against emulator
 users from separate tenants.

@@ -14,6 +14,8 @@ export const collections = {
   messages: 'messages',
   publicBusinesses: 'public_businesses',
   publicProducts: 'public_products',
+  phoneVerificationChallenges: 'phone_verification_challenges',
+  phoneVerificationRateLimits: 'phone_verification_rate_limits',
 } as const;
 
 export type CollectionName = (typeof collections)[keyof typeof collections];
