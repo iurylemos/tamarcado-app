@@ -4,9 +4,13 @@ import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 
 const useEmulators = import.meta.env.VITE_USE_EMULATORS === 'true';
+
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-tamarcado';
+
 if (!useEmulators && !import.meta.env.VITE_FIREBASE_API_KEY) {
-  throw new Error('Configure Firebase credentials or set VITE_USE_EMULATORS=true for local development.');
+  throw new Error(
+    'Configure Firebase credentials or set VITE_USE_EMULATORS=true for local development.',
+  );
 }
 
 const app = getApps().length
@@ -17,9 +21,11 @@ const app = getApps().length
       projectId,
       appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789:web:emulator',
     });
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app, 'southamerica-east1');
+
 if (useEmulators) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
   connectFirestoreEmulator(db, '127.0.0.1', 8080);

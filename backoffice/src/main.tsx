@@ -4,6 +4,7 @@ import './styles/index.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found.');
+
 createRoot(root).render(
   <StrictMode>
     <main style={{ maxWidth: 720, margin: '4rem auto', padding: '1rem' }}>
