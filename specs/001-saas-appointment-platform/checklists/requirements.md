@@ -1,4 +1,4 @@
-# Specification Quality Checklist: SaaS Appointment Commerce Platform
+# Specification Quality Checklist: SaaS Multi-Tenant Appointment Platform
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-03
@@ -24,7 +24,7 @@
 
 ## Feature Readiness
 
-- [x] All functional requirements have clear acceptance criteria
+- [x] All functional requirements have clear acceptance criteria across the user scenarios
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification

@@ -19,7 +19,8 @@ scope. Every query uses the business's configured timezone.
 - The selected period and timezone.
 - Sales and commission totals.
 - Optional breakdown by service and collaborator.
-- A ranking only if at least two collaborators have eligible transactions in the period.
+- A top-three ranking only if at least three collaborators have eligible transactions in
+  the period.
 - An optional UTF-8 CSV export using the same filters and calculations.
 
 ## Calculation Rules

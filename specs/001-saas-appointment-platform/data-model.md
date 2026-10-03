@@ -30,6 +30,8 @@ Represents a SaaS business.
 | `id` | string | Document identifier |
 | `name` | string | Required, customer-facing business name |
 | `slug` | string | Required, unique public identifier |
+| `segment` | string | Required, from the configured company segment values |
+| `description` | string | Optional, customer-facing business description |
 | `phoneE164` | string | Optional, sensitive |
 | `logoUrl` | string | Optional public asset reference |
 | `timezone` | IANA timezone string | Required; default `America/Sao_Paulo` |
@@ -144,6 +146,7 @@ Transactional source of truth for requests, delivered services, sales, and commi
 | `customerName` | string | Optional |
 | `productId` | string | Must reference a product in the same tenant |
 | `professionalId` | string | Required after eligibility resolution |
+| `professionalNameSnapshot` | string | Required historical display value |
 | `scheduledAt`, `endsAt` | timestamp | UTC instants; half-open occupied interval |
 | `durationMinutes` | integer | Snapshotted at request creation |
 | `status` | enum | `pending`, `confirmed`, `cancelled`, `completed` |
@@ -157,10 +160,12 @@ Transactional source of truth for requests, delivered services, sales, and commi
 | `updatedBy` | string | Optional actor UID for auditability |
 
 The service, professional, tenant, and appointment must have consistent ownership.
-The customer phone, service, professional, duration, and commercial snapshots are immutable
-after booking creation in this release. Appointment edits change the schedule only. To change
-the service or commercial terms, staff must cancel the original request and create a new one;
-completed transactions are never rewritten.
+The customer phone, service, duration, and commercial snapshots are immutable after booking
+creation in this release. Authorized edits to pending or confirmed appointments may change
+the schedule and professional after revalidating eligibility and availability. A completed
+appointment's professional and commercial values are immutable. To change the service or
+commercial terms, staff must cancel the original request and create a new one; completed
+transactions are never rewritten.
 
 ### `booking_reservations`
 
@@ -201,8 +206,8 @@ Business-scoped customer contact and messaging preference.
 | Field | Type | Rules |
 |---|---|---|
 | `id`, `tenantId` | string | Required |
-| `connectionId` | string | Optional; if present, must reference a connection in the same tenant |
-| `phoneE164` | string | Required, sensitive; unique per tenant |
+| `connectionId` | string | Required; must reference a connection in the same tenant |
+| `phoneE164` | string | Required, sensitive; unique per tenant/connection |
 | `name` | string | Optional |
 | `whatsappOptIn` | boolean | Required; defaults to false |
 | `optInAt`, `optOutAt` | timestamp | Required when the corresponding consent change occurs |
@@ -285,13 +290,15 @@ use the same eligibility and timezone logic as the rendered report.
 | `pending` | `confirmed` | Authorized collaborator/backoffice in tenant scope |
 | `pending` | `cancelled` | Authorized collaborator/backoffice in tenant scope |
 | `confirmed` | `completed` | Authorized collaborator/backoffice after service delivery |
-| `confirmed` | `cancelled` | Authorized collaborator/backoffice in tenant scope |
 | `cancelled` | none | Terminal |
 | `completed` | none | Terminal; corrections require an auditable adjustment process |
 
 Rescheduling is limited to pending or confirmed appointments, preserves the current state,
 and is permitted only after current availability and all new reservation keys are verified
 atomically. Release reservation keys when an appointment is cancelled or completed.
+Customer attendance count and latest attendance are derived from completed appointments in
+the collaborator's authorized scope. Public business projections include the configured
+segment so discovery filters can be applied.
 
 ## Validation and Query Requirements
 

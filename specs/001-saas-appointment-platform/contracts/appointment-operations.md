@@ -38,23 +38,23 @@ historical commercial values.
 - `pending → confirmed`
 - `pending → cancelled`
 - `confirmed → completed`
-- `confirmed → cancelled`
 
-Canceled and completed appointments are terminal. A status update outside the transition
-table or caller's authority is rejected.
+Canceled and completed appointments are terminal. Other administrative corrections require
+a separately approved business rule. A status update outside the transition table or caller's
+authority is rejected.
 
 ### Edit or reschedule appointment
 
-**Input**: Appointment reference and an allowed changed schedule.
+**Input**: Appointment reference and an allowed changed schedule and/or eligible professional.
 
 **Success**: The operation revalidates the current resource, service eligibility, business
 timezone, working hours, blocked periods, and conflicts; the appointment and reservations
 are updated atomically.
 
-Only pending and confirmed appointments may be rescheduled. The request cannot change the
-service, customer, tenant, ownership, commercial snapshots, or status. A rejected reschedule
-leaves the existing appointment and reservation unchanged. Release reservation keys when an
-appointment is cancelled or completed.
+Only pending and confirmed appointments may be rescheduled or reassigned. The request cannot
+change the service, customer, tenant, ownership, commercial snapshots, or status. A rejected
+change leaves the existing appointment and reservation unchanged. Release reservation keys
+when an appointment is cancelled or completed.
 
 ## Authorization and Error Outcomes
 

@@ -115,8 +115,8 @@ documentation reviewed during planning.
   delivered appointments; manually maintained totals are not reproducible.
 - **Reporting model**: Reports and exports derive from appointments. A monthly read model may
   optimize common views but MUST be rebuildable and MUST NOT replace the transaction source
-  of truth. Show a collaborator ranking only when at least two collaborators have eligible
-  transactions in the selected period.
+  of truth. Show the top-three collaborator ranking only when at least three collaborators
+  have eligible transactions in the selected period.
 
 ### 7. Use business-local calendar rules and UTC appointment instants
 

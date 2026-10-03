@@ -186,11 +186,11 @@ sites in the selected Firebase project.
    be multiples of five minutes (15-minute default). Create appointment plus reservations
    atomically; validate active business/service, professional-service association, working
    hours, blocked periods, and reservation availability inside the trusted operation.
-5. **Appointment lifecycle**: Allow `pending → confirmed` and `pending → cancelled`;
-   allow `confirmed → completed` and `confirmed → cancelled`. Only authorized staff may
-   cancel; `cancelled` and `completed` are terminal. Only pending/confirmed appointments may
-   be rescheduled. Rescheduling preserves status and must claim the new interval before
-   releasing the old one within the same atomic operation.
+5. **Appointment lifecycle**: Allow `pending → confirmed`, `pending → cancelled`, and
+   `confirmed → completed`. Treat `cancelled` and `completed` as terminal. Only pending and
+   confirmed appointments may be rescheduled; rescheduling preserves status and must claim
+   the new interval before releasing the old one within the same atomic operation. Other
+   administrative corrections require a separately approved business rule.
 6. **WhatsApp side effects**: Send messages only after persistence commits and only according
    to the business-specific customer opt-in and applicable template rules. Store provider
    identifiers and map provider callbacks to visible delivery states; message failure never
@@ -202,7 +202,7 @@ sites in the selected Firebase project.
 8. **Reports**: Use appointment transactions as the authoritative source. Derived monthly
    aggregates are rebuildable projections. Apply business-local month boundaries and identical
    filters/calculations to on-screen results and UTF-8 CSV exports. Rank only collaborators
-   with eligible transactions when at least two are present.
+   with eligible transactions when at least three collaborators are present.
 9. **Realtime**: Use scoped realtime subscriptions for operational appointments and messages
    where live updates materially improve collaborator workflows. Keep catalog, reports, and
    administrative forms request-driven unless realtime is needed; always scope subscriptions
@@ -261,8 +261,9 @@ The implementation tasks should follow the dependency order in the source docume
   Node.js runtime, billing plan, Hosting targets, and a launch load target before production
   deployment.
 - **Business policy**: Completed-only reporting, 15-minute default booking intervals,
-  percentage rounding, and the ranking threshold are explicit planning decisions based on
-  gaps in the supplied document. Confirm them with the product owner before implementation.
+  percentage rounding, and the minimum of three eligible collaborators for the top-three
+  ranking are explicit planning decisions based on gaps in the supplied document. Confirm
+  them with the product owner before implementation.
 
 ## Complexity Tracking
 

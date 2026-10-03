@@ -64,7 +64,7 @@ each time.
 | `startsAt` | Yes | Selected UTC instant |
 | `customerName` | No | Customer display name |
 | `customerPhone` | Yes | Brazilian phone with DDD, normalized before persistence |
-| `whatsappOptIn` | Yes | Explicit, business-specific choice for appointment messages |
+| `whatsappOptIn` | No | Explicit, business-specific choice for appointment messages; defaults to false |
 
 **Success**: An appointment in `pending` state with a public-safe request reference. A
 WhatsApp confirmation message is queued only when valid opt-in exists and provider rules

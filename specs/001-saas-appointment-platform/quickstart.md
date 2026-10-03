@@ -91,8 +91,8 @@ operation. Responses do not disclose whether an out-of-scope record exists.
 ### 4. Appointment lifecycle and messaging
 
 1. Confirm and cancel a pending appointment through permitted actors.
-2. Complete or cancel a confirmed appointment; try invalid transitions and edits into blocked
-   or occupied times.
+2. Complete a confirmed appointment; try invalid transitions, reassignment to an ineligible
+   professional, and edits into blocked or occupied times.
 3. Exercise WhatsApp verification success, invalid code, expiration, rate limit, opt-out,
    provider outage, and message delivery callback cases.
 
@@ -106,7 +106,7 @@ appointment.
    both sides of a local month boundary.
 2. Change current service price/commission after creating earlier appointments.
 3. Compare collaborator totals, backoffice totals and breakdowns, and the CSV export.
-4. Test a period with zero eligible transactions and a period with fewer than two ranked
+4. Test a period with zero eligible transactions and a period with fewer than three ranked
    collaborators.
 
 **Expected**: Only completed transactions count; historical snapshots remain unchanged;

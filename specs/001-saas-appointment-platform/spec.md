@@ -1,4 +1,4 @@
-# Feature Specification: SaaS Appointment Commerce Platform
+# Feature Specification: SaaS Multi-Tenant Appointment Platform
 
 **Feature Branch**: `001-saas-appointment-platform`
 
@@ -6,307 +6,376 @@
 
 **Status**: Ready for Planning
 
-**Input**: User-provided platform document, “Plan — SaaS Multi-Tenant Appointment Platform”
+**Input**: User-provided “Feature Specification — SaaS Multi-Tenant Appointment Platform”
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Discover a business and book a service (Priority: P1)
+### User Story 1 - Discover a company and request an appointment (Priority: P1)
 
-A customer can find a business, explore its services, choose an eligible professional when
-needed, select an available time, and submit an appointment request with a Brazilian phone
-number including DDD. The customer can complete this flow without a collaborator or backoffice
-account.
+An unauthenticated customer can discover companies, filter by business segment, browse a
+company's products or services, select an eligible professional when necessary, choose an
+available appointment time, and submit a Brazilian phone number with DDD to request an
+appointment.
 
-**Why this priority**: Customer discovery and appointment requests are the platform's primary
-public value.
+**Why this priority**: Public discovery and appointment requests are the platform's primary
+customer value.
 
-**Independent Test**: Starting with a published business catalog and available working hours,
-complete a booking as a customer and verify the requested service, time, contact details, and
-pending status.
+**Independent Test**: Using published companies, products, professionals, and availability,
+complete the flow as an unauthenticated customer and verify a valid pending appointment is
+created without exposing private tenant data.
 
 **Acceptance Scenarios**:
 
-1. **Given** a published business with active services, **When** a customer opens its public
-   page, **Then** the customer can browse that business's services and the minimum public
-   information needed to book.
-2. **Given** an active service with one eligible professional, **When** the customer selects
-   an available time, **Then** the system selects that professional without requiring an
-   unnecessary choice.
-3. **Given** an active service with multiple eligible professionals, **When** the customer
-   proceeds to choose a time, **Then** the customer can select only professionals eligible
-   for that service and time.
-4. **Given** a valid available time and contact phone with DDD, **When** the customer submits
-   the request, **Then** an appointment is created as pending; a WhatsApp confirmation is
-   sent only when the customer has opted in to that business's messages.
+1. **Given** published companies in multiple segments, **When** a customer opens the public
+   landing page and selects a segment, **Then** only matching companies are shown; no matches
+   produce a clear empty state.
+2. **Given** a selected company, **When** a customer opens its catalog, **Then** only that
+   company's active products/services are shown with public image, name, description when
+   available, and price.
+3. **Given** a selected product with one eligible professional, **When** the customer
+   proceeds to scheduling, **Then** that professional is selected automatically.
+4. **Given** a selected product with multiple eligible professionals, **When** the customer
+   opens professional selection, **Then** only active professionals associated with that
+   product and company are selectable.
+5. **Given** a selected professional and date, **When** the customer reviews appointment
+   times, **Then** only times when that professional can provide the selected product are
+   offered.
+6. **Given** an invalid or unavailable appointment time or malformed phone number, **When**
+   the customer submits the request, **Then** the request is rejected with an actionable
+   message and no appointment is created.
+7. **Given** a valid appointment request and Brazilian phone number with DDD, **When** the
+   customer submits it, **Then** a pending appointment is created, the customer sees a success
+   state, and any WhatsApp confirmation is sent only when the customer has opted in.
 
 ---
 
-### User Story 2 - Configure a business and its availability (Priority: P1)
+### User Story 2 - Manage appointments and customer history (Priority: P1)
 
-A backoffice user can manage a business catalog, professionals, service assignments, working
-hours, and blocked periods so that customers can book only services and times the business
-actually offers.
+An authenticated collaborator can view appointments within their authorized scope, filter
+them by date, perform permitted appointment actions, contact customers through WhatsApp when
+allowed, and review customer attendance history.
 
-**Why this priority**: A usable catalog and trustworthy availability are prerequisites for
-customer booking and daily operations.
+**Why this priority**: Collaborators need an accurate operational workspace to manage booked
+services and customer follow-up.
 
-**Independent Test**: Configure a business, service, professional, service assignment, and
-working hours; verify the public catalog and offered appointment times reflect those choices.
+**Independent Test**: Sign in as a collaborator, review and filter appointments, confirm or
+cancel a pending appointment, and verify customer history and access restrictions.
 
 **Acceptance Scenarios**:
 
-1. **Given** an authorized backoffice user, **When** they create or update a service, **Then**
-   they can manage its description, image, price, duration, commission rule, and active state.
-2. **Given** an authorized backoffice user, **When** they associate a professional with one
-   or more services or assign collaborator access, **Then** booking eligibility and workspace
-   permissions reflect only those active business-owned associations.
-3. **Given** configured working hours and blocked periods, **When** a customer checks
-   availability, **Then** times outside working hours, during blocks, or conflicting with
-   appointments are not offered.
-4. **Given** a business with multiple locations or timezone needs, **When** its operating
-   timezone is configured, **Then** appointment times and monthly reporting use that
-   business-local timezone consistently.
+1. **Given** an authenticated collaborator, **When** they view appointments, **Then** only
+   appointments in their authorized business and professional scope appear, with customer,
+   date, time, status, product image, product name, price, and status-appropriate actions.
+2. **Given** appointments on different dates, **When** the collaborator filters by date,
+   **Then** only appointments for that date in the configured timezone appear; clearing the
+   filter restores the default view.
+3. **Given** a pending appointment, **When** an authorized collaborator confirms or cancels
+   it, **Then** only the corresponding permitted transition is persisted.
+4. **Given** a confirmed appointment whose service was delivered, **When** an authorized
+   collaborator marks it completed, **Then** it becomes eligible for attendance and sales
+   reporting.
+5. **Given** an appointment that may be edited, **When** the collaborator changes its date,
+   time, or eligible professional, **Then** current tenant ownership, status, association,
+   working hours, and availability are revalidated before the change is saved.
+6. **Given** customers associated with the collaborator's authorized appointments, **When**
+   the collaborator opens customer history, **Then** completed attendance count and the month
+   and year of the latest completed attendance are shown.
+7. **Given** a customer contact action, **When** the collaborator opens WhatsApp, **Then**
+   the action uses that customer's phone only when access and applicable messaging consent
+   permit it.
 
 ---
 
-### User Story 3 - Manage appointments and customers (Priority: P1)
+### User Story 3 - Administer a company and its services (Priority: P1)
 
-A collaborator can review appointments for their authorized business and professional scope,
-contact customers, manage permitted appointment changes, and maintain the operational
-appointment lifecycle.
+An authenticated backoffice user can manage company products/services, collaborators,
+professional assignments, working hours, and business availability.
 
-**Why this priority**: Collaborators need a reliable operational workflow to deliver booked
-services and maintain accurate customer history.
+**Why this priority**: The public catalog and valid availability depend on accurate
+administrative data.
 
-**Independent Test**: Sign in as an authorized collaborator, inspect appointments in scope,
-perform allowed status actions, and verify unauthorized appointments remain inaccessible.
+**Independent Test**: Create or update a company service, collaborator, service assignment,
+and working hours; verify the public catalog and eligible appointment times reflect the
+saved configuration.
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated collaborator, **When** they open the appointment list, **Then**
-   they see the customer, service, professional, date, time, status, and relevant commercial
-   details for appointments in their authorized scope.
-2. **Given** a pending appointment, **When** an authorized collaborator confirms or cancels
-   it, **Then** the appointment moves only to a permitted status and the outcome is visible.
-3. **Given** an appointment that is edited or rescheduled, **When** the collaborator saves
-   the change, **Then** availability and authorization are revalidated before it is accepted.
-4. **Given** an appointment, **When** the collaborator uses its contact action, **Then** the
-   customer's phone is available only to the authorized user and any WhatsApp contact action
-   follows the customer's consent and applicable messaging rules.
+1. **Given** an authorized backoffice user, **When** they create or edit a product/service,
+   **Then** they can set its name, image, price, commission, and active state.
+2. **Given** an authorized backoffice user, **When** they create or edit a collaborator,
+   **Then** they can manage the collaborator's name, Brazilian phone number with DDD, photo,
+   active state, working hours, and associated products.
+3. **Given** a collaborator and product association, **When** the association is activated
+   or removed, **Then** it applies only within the same company and does not change historical
+   appointments.
+4. **Given** an inactive product or collaborator, **When** a customer requests availability,
+   **Then** that product or collaborator cannot be selected for a new appointment.
+5. **Given** invalid working hours, **When** a backoffice user attempts to save them,
+   **Then** the configuration is rejected with a clear explanation.
 
 ---
 
-### User Story 4 - Review business performance and commissions (Priority: P2)
+### User Story 4 - Review sales and commission reports (Priority: P2)
 
-Collaborators can review their own monthly sales and commission, while backoffice users can
-review business sales, performance by service and collaborator, and exportable report data.
+Collaborators can review their monthly sales and commission. Backoffice users can review
+company sales, sales by collaborator, meaningful top-collaborator rankings, filter sales,
+and export the filtered results.
 
-**Why this priority**: Accurate reporting supports business and professional decisions after
-the booking and operational records exist.
+**Why this priority**: Reliable financial reporting supports business decisions after
+appointment operations are available.
 
-**Independent Test**: Create representative appointments with different statuses and
-commercial terms, then compare each role's report and export with the eligible source
-transactions for the selected period.
+**Independent Test**: Prepare appointments in different states and with different historical
+prices/commission values; compare role-appropriate reports and exports against eligible
+source transactions.
 
 **Acceptance Scenarios**:
 
-1. **Given** a collaborator with eligible completed transactions, **When** they view a month,
-   **Then** the report shows sales and commission calculated using the commercial terms
-   recorded for each transaction.
-2. **Given** a backoffice user and a reporting period, **When** they filter sales by service
-   or collaborator, **Then** the report reflects the same eligible transactions and rules as
-   the overall business report.
-3. **Given** a report with export capability, **When** the user exports it, **Then** the
-   exported records and totals match the report's filters and business rules.
-4. **Given** a business with fewer eligible collaborators than required for a meaningful
-   ranking, **When** the monthly overview is opened, **Then** it does not present a
-   misleading ranking.
+1. **Given** a collaborator with eligible transactions in the current month, **When** they
+   open their report, **Then** monthly sales and commission use the commercial values
+   recorded for those transactions.
+2. **Given** a backoffice user, **When** they open the dashboard, **Then** they see current
+   month company sales and sales grouped by collaborator.
+3. **Given** at least three eligible collaborators, **When** the business dashboard displays
+   its ranking, **Then** it shows the top three based on authoritative sales data; with fewer
+   than three eligible collaborators, it does not fabricate entries.
+4. **Given** a selected report period and product filter, **When** the backoffice user
+   filters and exports sales, **Then** the displayed and exported results apply the same
+   filters and financial rules.
+5. **Given** a period with no eligible sales, **When** an authorized user opens the report,
+   **Then** a clear empty state appears rather than invented totals.
 
 ---
 
-### User Story 5 - Access the right business workspace securely (Priority: P1)
+### User Story 5 - Authenticate and access the correct company (Priority: P1)
 
-Collaborators and backoffice users can authenticate using a verified phone number through
-the supported WhatsApp authentication flow. Each user can access only capabilities and
-business data allowed by their role and ownership scope.
+Collaborators and backoffice users authenticate using a verified phone number through the
+supported WhatsApp verification flow. Their role and company determine which application
+capabilities and records they can access.
 
-**Why this priority**: Operational and administrative data must remain isolated by role and
-business, independently of how a user enters the application.
+**Why this priority**: Sensitive customer, appointment, and financial information must be
+isolated by company and role.
 
-**Independent Test**: Authenticate representative roles from two businesses and attempt
-authorized and unauthorized reads and actions across their respective scopes.
+**Independent Test**: Authenticate users with different roles in two companies and attempt
+allowed and disallowed operations through public, collaborator, and backoffice experiences.
 
 **Acceptance Scenarios**:
 
-1. **Given** an unverified phone number, **When** a user attempts protected access, **Then**
-   the user is not authenticated.
-2. **Given** an authenticated collaborator, **When** they request a backoffice-only action or
-   another business's data, **Then** access is denied.
-3. **Given** a public customer browsing a business, **When** they inspect the public catalog,
-   **Then** they cannot access private customer, appointment, collaborator, or administrative
-   information.
+1. **Given** an unauthenticated or unverified user, **When** they access a protected
+   collaborator or backoffice function, **Then** access is denied.
+2. **Given** an authenticated user without collaborator or backoffice authorization,
+   **When** they request that workspace, **Then** access is denied.
+3. **Given** a collaborator for company A, **When** they request company B's records or a
+   backoffice-only operation, **Then** no protected data is returned and the operation is
+   rejected.
+4. **Given** an expired or invalid verification attempt, **When** a user attempts sign-in,
+   **Then** authentication fails and the user receives an actionable error state.
+5. **Given** an authenticated user who logs out, **When** they revisit a protected resource,
+   **Then** access requires authentication again.
 
 ---
 
-### User Story 6 - Exchange and track business messages (Priority: P3)
+### User Story 6 - Track operational contacts and messages (Priority: P3)
 
-Authorized operational users can review relevant business contacts and message activity,
-including whether messages are pending, sent, delivered, read, or failed.
+Authorized company users can access their company's connections, contacts, and messages and
+see message delivery state where operationally relevant.
 
-**Why this priority**: Message visibility supports customer communication and operational
-follow-up, but does not replace the booking and appointment lifecycle.
+**Why this priority**: Communication history supports customer operations while remaining
+secondary to booking, appointment management, and reporting.
 
-**Independent Test**: Review a business-scoped conversation with messages in each supported
-delivery state and verify access boundaries and failure visibility.
+**Independent Test**: Review messages in multiple delivery states for one company and attempt
+to access another company's connections, contacts, and messages.
 
 **Acceptance Scenarios**:
 
-1. **Given** an authorized user, **When** they open a business conversation, **Then** they
-   see only contacts and messages within their authorized business scope.
-2. **Given** a message delivery failure, **When** the conversation is refreshed, **Then** the
-   failed status is visible and the appointment is not incorrectly marked confirmed.
+1. **Given** a company user, **When** they view connections, contacts, and messages, **Then**
+   all displayed records belong to the authorized company.
+2. **Given** an incoming message or delivery-state change, **When** the relevant operational
+   view is open, **Then** it reflects the update without an unnecessary full-page refresh
+   where realtime behavior is supported.
+3. **Given** a message delivery failure, **When** the user views the message, **Then** the
+   failure is visible and the related appointment is not incorrectly confirmed.
 
 ### Edge Cases
 
-- A customer submits a phone number that is malformed or lacks a Brazilian DDD.
-- A customer does not opt in to WhatsApp messages or later withdraws that consent.
-- Two customers request overlapping appointment times for the same professional at nearly
-  the same time.
-- A professional's service assignment, working hours, or blocked period changes while a
-  customer is selecting a time.
-- An appointment is edited into a period that is no longer available.
-- A service, professional, or business becomes inactive while it is present in a customer's
-  booking flow.
-- A message provider is unavailable or reports a failed delivery after an appointment
-  request is created.
-- A monthly reporting period crosses a month boundary in the business's configured timezone.
-- An appointment's service price or commission changes after the appointment was created.
-- A user is authenticated but attempts to access another role's workspace or another
-  business's data.
-- A report has no eligible transactions or too few eligible professionals for a meaningful
-  ranking.
+- No companies match a selected segment, or a company has no active products.
+- A product has zero, one, or multiple active professionals; none are available at the
+  selected date and time.
+- A professional, product, association, or company becomes inactive after availability was
+  displayed but before the booking request is submitted.
+- Two customers attempt to book overlapping time for the same professional concurrently.
+- A time becomes unavailable between selection and final booking confirmation.
+- A collaborator edits an appointment into blocked hours or a slot already reserved by
+  another appointment.
+- The phone number is missing, malformed, or does not include a valid Brazilian DDD.
+- A WhatsApp verification code is invalid or expired, or the messaging provider fails.
+- A customer has not opted in to WhatsApp messages or withdraws consent.
+- An appointment's current product price or commission changes after the appointment was
+  created.
+- A reporting period crosses a month boundary in the configured timezone.
+- Fewer than three collaborators have eligible sales for a top-three ranking.
+- An authorized user requests another tenant's data using a client-supplied identifier.
+- A required message or report operation returns no data or an actionable error.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST allow customers to discover published businesses and browse
-  each business's active service catalog without collaborator or backoffice access.
-- **FR-002**: The system MUST keep each service associated with exactly one business.
-- **FR-003**: The system MUST allow customers to choose a service, select an eligible
-  professional when a choice is applicable, review available times, and submit contact
-  information.
-- **FR-004**: The system MUST require a valid Brazilian customer phone number including DDD
-  before accepting an appointment request.
-- **FR-005**: The system MUST show appointment times according to service duration,
-  the business's configured booking interval, professional eligibility, working hours,
-  existing appointments, blocked periods, and the business's timezone.
-- **FR-006**: The system MUST prevent conflicting appointments for the same professional,
-  including simultaneous requests and appointments whose service durations overlap.
-- **FR-007**: The system MUST revalidate authorization, service and professional eligibility,
-  and current availability when creating or editing an appointment.
-- **FR-008**: Customer-submitted appointments MUST begin in a pending state and MUST NOT be
-  confirmed solely because a WhatsApp message was sent or delivered.
-- **FR-009**: The system MUST define and enforce valid appointment status transitions;
-  unauthorized or invalid transitions MUST be rejected.
-- **FR-010**: Authorized collaborators MUST be able to review and perform permitted
-  appointment operations within their role and business scope.
-- **FR-011**: Authorized collaborators MUST be able to view relevant customer history and
-  initiate a WhatsApp contact action when consent and applicable messaging rules permit,
-  without exposing customer phone numbers to unauthorized users.
-- **FR-012**: Authorized backoffice users MUST be able to manage business details, services,
-  service prices and durations, commission rules, professional profiles, collaborator
-  profiles and access, service assignments, working hours, and blocked periods.
-- **FR-013**: Collaborator and backoffice authentication MUST use verified phone numbers
-  through the supported WhatsApp authentication flow.
-- **FR-014**: Authentication MUST be separate from authorization; every protected operation
-  MUST enforce the user's role, business ownership, and resource scope.
-- **FR-015**: Public business discovery MUST expose only the information necessary for the
-  customer-facing catalog and booking journey.
-- **FR-016**: Appointment records MUST retain the service name, price, and commission terms
-  needed to explain historical sales and commission after current catalog settings change.
-- **FR-017**: Collaborator and backoffice reports MUST calculate sales and commissions from
-  authoritative appointment transactions and apply explicit appointment-status eligibility
-  rules.
-- **FR-018**: Monthly reports MUST use a clearly defined month and the business's configured
-  timezone.
-- **FR-019**: Backoffice reporting MUST support monthly sales, sales by service, sales by
-  collaborator, and data export using the same filters and calculation rules as the displayed
-  report.
-- **FR-020**: The system MUST display collaborator rankings only when the configured business
-  rule makes the comparison meaningful.
-- **FR-021**: Authorized operational users MUST be able to inspect business-scoped contacts
-  and message delivery states; messaging failures MUST remain visible.
-- **FR-022**: The system MUST capture and honor customer consent for WhatsApp messages
-  separately from authentication verification and MUST stop non-essential messages when
-  consent is withdrawn.
-- **FR-023**: Critical asynchronous operations MUST provide loading, empty, success, and
-  actionable error states.
-- **FR-024**: Customer-facing forms MUST provide clear validation messages, and interactive
-  experiences MUST be usable with accessible labels, keyboard navigation where applicable,
-  and responsive layouts.
-- **FR-025**: Critical business behavior MUST be verifiable through tests of booking,
-  availability, appointment transitions and edits, authorization, commission, reports, and
-  core customer-facing journeys.
+- **FR-001**: The system MUST provide a public landing page that lists companies available
+  for discovery and allows filtering by business segment.
+- **FR-002**: The system MUST show an empty state when company discovery or a selected
+  segment has no matching companies.
+- **FR-003**: The system MUST show a selected company's catalog with only products/services
+  belonging to that company and intended for public display.
+- **FR-004**: Public catalog entries MUST support a product image, name, optional
+  description, and price; each bookable product/service MUST have a defined duration, and
+  inactive products MUST NOT be bookable.
+- **FR-005**: Each product/service MUST belong to exactly one company.
+- **FR-006**: A professional MUST be eligible for booking a product only when an active
+  association exists between them in the same company.
+- **FR-007**: The booking flow MUST automatically select the professional when exactly one
+  eligible professional is available, require customer selection when multiple are
+  available, and prevent continuation when none are available.
+- **FR-008**: The system MUST calculate availability using professional working hours,
+  service duration, existing pending or confirmed appointments, active product associations,
+  blocked periods, company ownership, selected date, and the company's configured timezone.
+  Cancelled and completed appointments MUST NOT continue to reserve future availability.
+- **FR-009**: The system MUST reject invalid or unavailable booking times and revalidate
+  availability at appointment creation and edit.
+- **FR-010**: The system MUST prevent two active appointments from occupying overlapping time
+  for the same professional, including simultaneous booking requests.
+- **FR-011**: Customers MUST provide a valid Brazilian phone number including DDD before an
+  appointment request can be accepted; invalid values MUST produce clear validation.
+- **FR-012**: An appointment record MUST contain the company, product, applicable
+  professional, customer phone, scheduled time, initial status, and commercial values
+  determined from the company's current product configuration when the request is accepted.
+- **FR-013**: New appointments MUST start as `pending`. Authorized collaborators MUST be
+  able to confirm or cancel pending appointments, and authorized collaborators MUST be able
+  to mark confirmed appointments completed. Invalid status transitions MUST be rejected.
+- **FR-014**: Appointment edits MUST revalidate company ownership, product, professional,
+  active association, working hours, availability, and appointment status before saving.
+- **FR-015**: Appointment records MUST preserve product/service identity, price, and
+  commission information needed to explain historical results after current configuration
+  changes.
+- **FR-016**: The client application MUST provide a clear success state after a valid
+  appointment request and MUST NOT expose private company data.
+- **FR-017**: Collaborator and backoffice authentication MUST use verified phone numbers
+  through the supported WhatsApp verification flow. Invalid or expired verification MUST NOT
+  grant access.
+- **FR-018**: Authentication MUST be separate from authorization. Every protected operation
+  MUST enforce the user's role, company ownership, and applicable professional scope
+  independently of frontend filtering.
+- **FR-019**: Logging out MUST end access to protected collaborator and backoffice resources.
+- **FR-020**: The collaborator experience MUST display authorized appointments with the
+  customer, date, time, status, product image, product name, price, and status-appropriate
+  actions.
+- **FR-021**: Collaborators MUST be able to filter appointments by date using the configured
+  timezone; no matches MUST produce an empty state.
+- **FR-022**: Authorized collaborators MUST be able to view customer contact details,
+  completed appointment/attendance count, and the month and year of the latest completed
+  attendance.
+- **FR-023**: A WhatsApp customer-contact action MUST be available only to an authorized
+  collaborator and MUST respect applicable customer consent and messaging rules.
+- **FR-024**: Collaborators MUST be able to view their monthly sales and commission.
+- **FR-025**: Authorized backoffice users MUST be able to view current-month company sales
+  and sales grouped by collaborator.
+- **FR-026**: The backoffice MUST show a top-three collaborator ranking only when at least
+  three collaborators have eligible sales; ranking values MUST derive from authoritative
+  transactions and MUST NOT be fabricated.
+- **FR-027**: Authorized backoffice users MUST be able to create and edit products/services,
+  including image, valid price, commission, and active/inactive state.
+- **FR-028**: Authorized backoffice users MUST be able to create and edit collaborators,
+  including name, validated Brazilian phone with DDD, photo, active state, working hours,
+  and product associations.
+- **FR-029**: The system MUST reject product/professional associations that cross company
+  ownership and MUST preserve historical appointments when an association is removed.
+- **FR-030**: The system MUST reject invalid working-hour intervals, including an end time
+  less than or equal to the start time unless an explicitly approved business rule permits
+  an overnight interval.
+- **FR-031**: The backoffice MUST support sales reports filterable at minimum by reporting
+  period and product, and MUST allow users to export the filtered results.
+- **FR-032**: Sales and commission reports MUST derive from authoritative transactional
+  appointment data and use the commercial values applicable to each transaction.
+- **FR-033**: Displayed report results and exports MUST apply identical filters, status
+  eligibility, timezone boundaries, and financial calculations.
+- **FR-034**: Connections, contacts, and messages MUST retain explicit company and parent
+  references, support multiple connections per company and multiple contacts/messages per
+  parent, and remain isolated by company.
+- **FR-035**: Operational message updates SHOULD appear in realtime when timely updates
+  materially improve the user flow; messaging failure MUST NOT change appointment status.
+- **FR-036**: Critical asynchronous operations MUST provide loading, empty, success, and
+  actionable error states as applicable.
+- **FR-037**: Customer-facing and operational flows MUST be responsive and provide
+  accessible labels, semantic information, keyboard navigation where applicable, and
+  appropriate focus behavior.
+- **FR-038**: Critical booking, tenant isolation, authorization, appointment lifecycle and
+  editing, customer history, commission, report, and export behavior MUST be validated
+  against observable business outcomes.
 
 ### Key Entities
 
-- **Business**: A company using the platform, with its public identity, operating timezone,
-  catalog, staff, and business reporting scope.
-- **User**: A person with a verified phone number and an authorized collaborator or
-  backoffice role for a business.
-- **Service**: An offering belonging to one business, with customer-facing details, price,
-  duration, commission terms, and active state.
-- **Professional**: A service provider associated with a business and eligible for assigned
-  services according to their availability.
-- **Service Assignment**: The association that determines which professionals may provide
-  which services.
-- **Availability Rule**: A business or professional's working hours and blocked periods
-  governing bookable times.
-- **Customer**: A person requesting or receiving a service, identified for contact and
-  appointment history by their phone number and any supplied name.
-- **Appointment**: A requested or agreed service at a scheduled time, with a professional
-  where applicable, a lifecycle status, customer contact, and historical commercial values.
-- **Contact and Message**: Business-scoped communication information and a message's
-  direction, content, and delivery state.
-- **Report**: A period-based presentation or export of sales and commission derived from
-  eligible appointments.
+- **Company/Tenant**: A business on the platform, with its own public identity and isolated
+  users, catalog, appointments, contacts, and reports.
+- **User**: An authenticated person associated with a company and an authorized role.
+- **Product/Service**: A company-owned offering with public information, image, price,
+  commission terms, active state, and any booking duration required by the availability
+  rules.
+- **Professional/Collaborator**: A company-associated service provider with a profile,
+  working hours, active state, and permitted product associations.
+- **Product/Professional Association**: A company-owned relationship that determines which
+  professionals may provide which products/services.
+- **Working Hours and Blocked Period**: Availability rules that determine bookable dates and
+  times for a professional or company.
+- **Customer**: A person identified by a validated Brazilian phone number and associated
+  appointment/attendance history.
+- **Appointment**: A pending or managed request for a company product/service at a date and
+  time, associated with a customer and applicable professional, preserving historical
+  commercial values.
+- **Connection, Contact, and Message**: Company-owned communication records linked to
+  contacts and messages, with message direction and delivery status.
+- **Report**: A role-appropriate, period-based view/export of sales and commissions derived
+  from eligible appointments.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: In usability validation, at least 90% of first-time customers complete the
-  public discovery-to-pending-appointment flow without assistance.
-- **SC-002**: For all verified booking attempts in acceptance and concurrency tests, no
-  professional has overlapping active appointments.
-- **SC-003**: In authorization validation, 100% of tested cross-business and out-of-role
-  access attempts are denied.
-- **SC-004**: For all tested appointment and report records, historical prices, commissions,
-  monthly totals, filtered results, and exports agree with their defined source transactions.
-- **SC-005**: Every tested critical asynchronous customer and operational flow presents
-  observable loading, empty, success, or actionable error feedback as applicable.
-- **SC-006**: Every supported appointment transition, including invalid transition attempts,
-  produces the specified state change or rejection.
-- **SC-007**: Customer, collaborator, and backoffice primary workflows remain usable at
-  common mobile and desktop viewport sizes and by keyboard where applicable.
+- **SC-001**: At least 90% of first-time customers in usability validation can discover a
+  company and submit a valid pending appointment without assistance.
+- **SC-002**: In all booking acceptance and concurrency tests, no professional has two
+  overlapping active appointments.
+- **SC-003**: In all tested cross-company and out-of-role access attempts, 100% are rejected
+  without returning protected data.
+- **SC-004**: In all tested report cases, displayed and exported sales and commission totals
+  reconcile exactly to eligible source appointments and their historical commercial values.
+- **SC-005**: All tested invalid phone numbers, unavailable slots, invalid working hours,
+  invalid status transitions, and unauthorized operations are rejected with an actionable
+  user-facing outcome.
+- **SC-006**: Every tested critical asynchronous flow presents the appropriate loading,
+  empty, success, or error state.
+- **SC-007**: The top-three ranking appears only when at least three collaborators have
+  eligible sales and contains no fabricated values.
+- **SC-008**: Customer, collaborator, and backoffice primary flows remain usable at 360 x 640
+  mobile and 1280×720 desktop viewport sizes, including keyboard navigation where applicable.
 
 ## Assumptions
 
-- The initial product supports one business timezone per business; `America/Sao_Paulo` is the
-  default when no business-specific timezone has been configured.
-- A service has a defined duration so that its bookable times and conflicts can be
-  calculated.
-- Bookable start times use a business-configured interval in five-minute multiples,
-  defaulting to 15 minutes.
-- The initial scope covers booking and operational sales/commission reporting, not customer
-  payment processing or SaaS subscription billing.
-- Business creation and initial backoffice access are provisioned through an authorized
-  administrative process; public self-service SaaS signup is not included.
-- The platform uses an external, supported WhatsApp-capable provider for phone verification
-  and messaging; selecting and configuring that provider is a planning decision.
-- Appointment messages are sent only under the customer's explicit, business-specific
-  WhatsApp opt-in; authentication verification does not grant appointment-message consent.
-- Report status eligibility and commission formulas will be explicitly defined in design
-  before implementation; historical transaction terms remain authoritative.
-- Customers may submit appointment requests without creating an account.
+- The platform supports a configurable business timezone and defaults to `America/Sao_Paulo`
+  for Brazilian businesses.
+- A product/service has a defined duration, and businesses have a configurable booking
+  interval in five-minute multiples with a 15-minute default.
+- Only completed appointments count as sales and commission in the initial reports; the
+  product owner must confirm this policy before implementation.
+- Historical appointment price, commission terms, and product identity are captured when
+  the appointment is created and are not silently changed by later catalog edits.
+- A customer may request an appointment without creating an account.
+- Appointment WhatsApp messages require explicit business-specific customer opt-in; phone
+  verification for staff authentication does not imply messaging consent.
+- The exact company segment values are managed as product configuration or seed data and
+  are not fixed by this specification.
+- Initial company setup and backoffice authorization are provisioned by an authorized
+  process; public self-service SaaS registration is outside this feature.
+- Customer phone ownership is declared by the customer and validated for Brazilian format;
+  customer account creation or phone verification is not required for the initial booking
+  flow.
+- Detailed retention periods, legal compliance requirements, and message fallback policy
+  require review before production launch.
