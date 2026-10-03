@@ -10,8 +10,9 @@ export function calculateCommissionCents(
     throw new RangeError('Commission must be a non-negative integer.');
   }
   if (commissionType === 'fixed') return commissionValue;
+  if (commissionType !== 'percentage') throw new RangeError('Commission type is not supported.');
   if (commissionValue > 10_000) throw new RangeError('Percentage commission cannot exceed 100%.');
-  return Math.floor((priceCents * commissionValue + 5_000) / 10_000);
+  return Number((BigInt(priceCents) * BigInt(commissionValue) + 5_000n) / 10_000n);
 }
 
 export function formatBrl(cents: number): string {

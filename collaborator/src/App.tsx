@@ -5,6 +5,7 @@ import { auth } from './config/firebase.config';
 import AppointmentDetailsPage from './pages/AppointmentDetailsPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import CustomersPage from './pages/CustomersPage';
+import ReportsPage from './pages/ReportsPage';
 
 interface Session {
   user: User | null;
@@ -84,6 +85,7 @@ export default function App(): JSX.Element {
           <nav aria-label="Navegação principal">
             <Link to="/appointments">Agendamentos</Link>
             <Link to="/customers">Clientes</Link>
+            <Link to="/reports">Relatórios</Link>
           </nav>
         </header>
         <main>
@@ -91,6 +93,7 @@ export default function App(): JSX.Element {
             <Route path="/appointments" element={<AppointmentsPage />} />
             <Route path="/appointments/:appointmentId" element={<AppointmentDetailsPage />} />
             <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="*" element={<Navigate to="/appointments" replace />} />
           </Routes>
         </main>
