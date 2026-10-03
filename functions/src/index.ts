@@ -3,6 +3,13 @@ export { listPublicBusinesses } from './functions/catalog/list-public-businesses
 export { getPublicCatalog } from './functions/catalog/get-public-catalog';
 export { listAvailability } from './functions/appointments/list-availability';
 export { createPublicAppointmentCallable as createPublicAppointment } from './functions/appointments/create-public-appointment';
+export { listAppointmentsCallable as listAppointments } from './functions/appointments/list-appointments';
+export { updateAppointmentStatusCallable as updateAppointmentStatus } from './functions/appointments/update-appointment-status';
+export {
+  listEligibleAppointmentProfessionalsCallable as listEligibleAppointmentProfessionals,
+  updateAppointmentCallable as updateAppointment,
+} from './functions/appointments/update-appointment';
+export { listCustomersCallable as listCustomers } from './functions/customers/list-customers';
 export {
   getBackofficeWorkspaceCallable as getBackofficeWorkspace,
   saveProductCallable as saveProduct,

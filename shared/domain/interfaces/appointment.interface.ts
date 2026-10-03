@@ -14,6 +14,7 @@ export interface Appointment {
   durationMinutes: number;
   status: AppointmentStatus;
   productNameSnapshot: string;
+  productImageUrlSnapshot?: string;
   productPriceCentsSnapshot: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;

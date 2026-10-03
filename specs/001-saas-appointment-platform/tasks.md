@@ -179,21 +179,21 @@ and invalid changes are denied.
 
 ### Tests for User Story 2
 
-- [ ] T054 [P] [US2] Test appointment listing by authorized tenant/professional/date, UI status actions, and empty states in `collaborator/src/pages/AppointmentsPage.spec.tsx`.
-- [ ] T055 [P] [US2] Test allowed and invalid status transitions, reschedule overlap, professional reassignment, and reservation release in `functions/src/functions/appointments/update-appointment.spec.ts`.
-- [ ] T056 [P] [US2] Test customer attendance count and latest completed attendance month/year, scoped to authorized appointments, in `functions/src/functions/customers/list-customers.spec.ts`.
-- [ ] T057 [P] [US2] Test collaborator customer list/history, consent-aware contact action, and protected phone display in `collaborator/src/pages/CustomersPage.spec.tsx`.
+- [x] T054 [P] [US2] Test appointment listing by authorized tenant/professional/date, UI status actions, and empty states in `collaborator/src/pages/AppointmentsPage.spec.tsx`.
+- [x] T055 [P] [US2] Test allowed and invalid status transitions, reschedule overlap, professional reassignment, and reservation release in `functions/src/functions/appointments/update-appointment.spec.ts`.
+- [x] T056 [P] [US2] Test customer attendance count and latest completed attendance month/year, scoped to authorized appointments, in `functions/src/functions/customers/list-customers.spec.ts`.
+- [x] T057 [P] [US2] Test collaborator customer list/history, consent-aware contact action, and protected phone display in `collaborator/src/pages/CustomersPage.spec.tsx`.
 
 ### Implementation for User Story 2
 
-- [ ] T058 Implement tenant-, professional-, status-, and business-local date-scoped appointment listing in `functions/src/functions/appointments/list-appointments.ts` and `collaborator/src/services/appointment.service.ts`.
-- [ ] T059 Implement appointment cards with customer, date, time, status, historical product image/name/price, and status-appropriate actions in `collaborator/src/components/organisms/AppointmentCard/AppointmentCard.tsx` and `collaborator/src/pages/AppointmentsPage.tsx`.
-- [ ] T060 Implement business-timezone date filters, realtime appointment refresh where applicable, and subscription cleanup in `collaborator/src/pages/AppointmentsPage.tsx` and `collaborator/src/services/appointment.service.ts`.
-- [ ] T061 Implement authorized appointment status transition operations in `functions/src/functions/appointments/update-appointment-status.ts`; allow `pending → confirmed`, `pending → cancelled`, and `confirmed → completed`, and reject every other transition.
-- [ ] T062 Implement pending/confirmed schedule edits and eligible professional reassignment in `functions/src/functions/appointments/update-appointment.ts`; revalidate tenant, status, association, hours, blocks, and availability atomically while preserving immutable commercial snapshots.
-- [ ] T063 Implement collaborator reschedule/edit interaction and conflict feedback in `collaborator/src/components/organisms/AppointmentEditor/AppointmentEditor.tsx` and `collaborator/src/pages/AppointmentDetailsPage.tsx`.
-- [ ] T064 Implement customer aggregation from completed appointments, including authorized contact, completed attendance count, and latest attendance month/year in `functions/src/functions/customers/list-customers.ts` and `functions/src/services/customer-history.service.ts`.
-- [ ] T065 Implement collaborator customer history and consent-aware WhatsApp contact actions in `collaborator/src/pages/CustomersPage.tsx`, `collaborator/src/components/organisms/CustomerHistory/CustomerHistory.tsx`, and `collaborator/src/services/customer.service.ts`.
+- [x] T058 Implement tenant-, professional-, status-, and business-local date-scoped appointment listing in `functions/src/functions/appointments/list-appointments.ts` and `collaborator/src/services/appointment.service.ts`.
+- [x] T059 Implement appointment cards with customer, date, time, status, historical product image/name/price, and status-appropriate actions in `collaborator/src/components/organisms/AppointmentCard/AppointmentCard.tsx` and `collaborator/src/pages/AppointmentsPage.tsx`.
+- [x] T060 Implement business-timezone date filters, realtime appointment refresh where applicable, and subscription cleanup in `collaborator/src/pages/AppointmentsPage.tsx` and `collaborator/src/services/appointment.service.ts`.
+- [x] T061 Implement authorized appointment status transition operations in `functions/src/functions/appointments/update-appointment-status.ts`; allow `pending → confirmed`, `pending → cancelled`, and `confirmed → completed`, and reject every other transition.
+- [x] T062 Implement pending/confirmed schedule edits and eligible professional reassignment in `functions/src/functions/appointments/update-appointment.ts`; revalidate tenant, status, association, hours, blocks, and availability atomically while preserving immutable commercial snapshots.
+- [x] T063 Implement collaborator reschedule/edit interaction and conflict feedback in `collaborator/src/components/organisms/AppointmentEditor/AppointmentEditor.tsx` and `collaborator/src/pages/AppointmentDetailsPage.tsx`.
+- [x] T064 Implement customer aggregation from completed appointments, including authorized contact, completed attendance count, and latest attendance month/year in `functions/src/functions/customers/list-customers.ts` and `functions/src/services/customer-history.service.ts`.
+- [x] T065 Implement collaborator customer history and consent-aware WhatsApp contact actions in `collaborator/src/pages/CustomersPage.tsx`, `collaborator/src/components/organisms/CustomerHistory/CustomerHistory.tsx`, and `collaborator/src/services/customer.service.ts`.
 
 **Checkpoint**: Collaborators can independently manage authorized bookings and customer
 history; invalid transitions or reschedules leave existing appointments/reservations intact.

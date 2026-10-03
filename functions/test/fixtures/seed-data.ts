@@ -264,6 +264,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         durationMinutes: 60,
         status,
         productNameSnapshot: 'Corte e finalização',
+        productImageUrlSnapshot:
+          'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=85',
         productPriceCentsSnapshot: 12000,
         commissionTypeSnapshot: 'percentage',
         commissionValueSnapshot: 3500,
