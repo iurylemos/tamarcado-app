@@ -169,6 +169,10 @@ presentation-specific interfaces and components in each application; do not shar
 behavior across role boundaries. Deploy the three frontends to separate Firebase Hosting
 sites in the selected Firebase project.
 
+**Utility convention (T020)**: Date and time utilities are named, pure functions in
+`src/utils/date.util.ts`; do not add static-only utility classes. Shared timezone rules belong in
+`shared/domain/timezone.ts` so the browser and trusted backend use the same business-local rules.
+
 ## Design Decisions
 
 1. **Public catalog boundary**: Maintain a minimal public projection of business and service

@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "demo-tamarcado"
+  },
+  "targets": {
+    "demo-tamarcado": {
+      "hosting": {
+        "client": ["demo-tamarcado-client"],
+        "collaborator": ["demo-tamarcado-collaborator"],
+        "backoffice": ["demo-tamarcado-backoffice"]
+      }
+    }
+  }
+}

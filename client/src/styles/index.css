@@ -1,0 +1,19 @@
+@import './design-tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { margin: 0; background: var(--color-background); color: var(--color-text); font-family: var(--font-family); }
+button, input, select { font: inherit; }
+:focus-visible { outline: 3px solid #818cf8; outline-offset: 2px; }
+.page { width: min(100% - 2rem, 68rem); margin: 0 auto; padding: 2rem 0 4rem; }
+.stack { display: grid; gap: 1rem; }
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+.card { border: 1px solid var(--color-border); border-radius: 0.75rem; background: white; padding: 1.25rem; }
+.button { display: inline-flex; justify-content: center; border: 0; border-radius: 0.375rem; padding: 0.7rem 1rem; background: var(--color-brand); color: white; text-decoration: none; cursor: pointer; }
+.button:hover { background: var(--color-brand-hover); }
+.field { display: grid; gap: 0.35rem; }
+.field input, .field select { border: 1px solid var(--color-border); border-radius: 0.375rem; padding: 0.65rem; }
+.error { color: var(--color-danger); }
+.muted { color: var(--color-muted); }

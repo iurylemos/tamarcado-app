@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function activeTenantMember(tenantId) {
+      return signedIn()
+        && request.auth.token.tenantId == tenantId
+        && request.auth.token.active == true;
+    }
+
+    match /public_businesses/{businessId} {
+      allow read: if resource.data.published == true;
+      allow write: if false;
+    }
+
+    match /public_products/{productId} {
+      allow read: if resource.data.published == true && resource.data.active == true;
+      allow write: if false;
+    }
+
+    match /tenants/{tenantId} {
+      allow read, write: if false;
+    }
+
+    match /{collection}/{documentId} {
+      allow read, write: if false;
+    }
+  }
+}
