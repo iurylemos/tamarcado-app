@@ -5,9 +5,9 @@ import {
   subscribeToAppointments,
   updateAppointmentStatus,
 } from '../services/appointment.service';
+import { ErrorUtil } from '../utils/error.util';
 import type { CollaboratorAppointment } from '../interfaces/appointment.interface';
 import type { AppointmentStatus } from '@shared/appointment-status';
-import { ErrorUtil } from '../utils/error.util';
 import AppointmentCard from '../components/organisms/AppointmentCard/AppointmentCard';
 
 export default function AppointmentsPage(): JSX.Element {
@@ -15,7 +15,7 @@ export default function AppointmentsPage(): JSX.Element {
   const [timezone, setTimezone] = useState<string>('America/Sao_Paulo');
   const [date, setDate] = useState<string>('');
   const [busyId, setBusyId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
@@ -53,15 +53,15 @@ export default function AppointmentsPage(): JSX.Element {
     };
   }, []);
 
-  const visibleAppointments = useMemo(
-    () =>
-      date
-        ? appointments.filter(
-            (appointment) => appointmentLocalDate(appointment.startsAt, timezone) === date,
-          )
-        : appointments,
-    [appointments, date, timezone],
-  );
+  const visibleAppointments = useMemo<CollaboratorAppointment[]>(() => {
+    if (date) {
+      return appointments.filter(
+        (appointment) => appointmentLocalDate(appointment.startsAt, timezone) === date,
+      );
+    }
+
+    return appointments;
+  }, [appointments, date, timezone]);
 
   const changeStatus = async (appointmentId: string, status: AppointmentStatus): Promise<void> => {
     setBusyId(appointmentId);

@@ -242,17 +242,17 @@ webhooks, realtime message updates, and denial of cross-tenant reads.
 
 ### Tests for User Story 6
 
-- [ ] T076 [P] [US6] Test tenant-owned connection/contact creation, phone uniqueness, explicit opt-in, and opt-out behavior in `functions/src/functions/messages/manage-contact.spec.ts`.
-- [ ] T077 [P] [US6] Test WhatsApp provider adapter success/failure, approved-template requirement, callback authentication, idempotency, and appointment-state non-interference in `functions/src/functions/messages/process-provider-webhook.spec.ts`.
-- [ ] T078 [P] [US6] Test scoped realtime connection/contact/message views and delivery-state feedback in `collaborator/src/pages/MessagesPage.spec.tsx`.
+- [x] T076 [P] [US6] Test tenant-owned connection/contact creation, phone uniqueness, explicit opt-in, and opt-out behavior in `functions/src/functions/messages/manage-contact.spec.ts`.
+- [x] T077 [P] [US6] Test WhatsApp provider adapter success/failure, approved-template requirement, callback authentication, idempotency, and appointment-state non-interference in `functions/src/functions/messages/process-provider-webhook.spec.ts`.
+- [x] T078 [P] [US6] Test scoped realtime connection/contact/message views and delivery-state feedback in `collaborator/src/pages/MessagesPage.spec.tsx`.
 
 ### Implementation for User Story 6
 
-- [ ] T079 Implement typed provider-neutral WhatsApp verification and messaging adapters in `functions/src/services/whatsapp-provider.service.ts` and `functions/src/services/whatsapp-provider.interface.ts`; keep all credentials server-side and document provider selection as deployment configuration.
-- [ ] T080 Implement business-owned connection and tenant/connection-scoped contact operations in `functions/src/functions/messages/manage-connection.ts`, `functions/src/functions/messages/manage-contact.ts`, and `functions/src/services/contact.service.ts`; enforce unique phone per tenant/connection and default `whatsappOptIn` to false.
-- [ ] T081 Implement appointment-message sending after transaction commit, immediately checking business-specific opt-in and provider template/window rules in `functions/src/functions/messages/send-appointment-message.ts` and `functions/src/services/message.service.ts`.
-- [ ] T082 Implement authenticated, idempotent provider webhooks mapping message statuses to `pending`, `sent`, `delivered`, `read`, or `failed` in `functions/src/functions/messages/process-provider-webhook.ts`; message events must never mutate appointment status.
-- [ ] T083 Implement tenant-scoped contact/message subscriptions, delivery states, and cleanup in `collaborator/src/services/message.service.ts` and `collaborator/src/pages/MessagesPage.tsx`.
+- [x] T079 Implement typed provider-neutral WhatsApp verification and messaging adapters in `functions/src/services/whatsapp-provider.service.ts` and `functions/src/services/whatsapp-provider.interface.ts`; keep all credentials server-side and document provider selection as deployment configuration.
+- [x] T080 Implement business-owned connection and tenant/connection-scoped contact operations in `functions/src/functions/messages/manage-connection.ts`, `functions/src/functions/messages/manage-contact.ts`, and `functions/src/services/contact.service.ts`; enforce unique phone per tenant/connection and default `whatsappOptIn` to false.
+- [x] T081 Implement appointment-message sending after transaction commit, immediately checking business-specific opt-in and provider template/window rules in `functions/src/functions/messages/send-appointment-message.ts` and `functions/src/services/message.service.ts`.
+- [x] T082 Implement authenticated, idempotent provider webhooks mapping message statuses to `pending`, `sent`, `delivered`, `read`, or `failed` in `functions/src/functions/messages/process-provider-webhook.ts`; message events must never mutate appointment status.
+- [x] T083 Implement tenant-scoped contact/message subscriptions, delivery states, and cleanup in `collaborator/src/services/message.service.ts` and `collaborator/src/pages/MessagesPage.tsx`.
 
 **Checkpoint**: Messaging is consent-gated and observable; provider failures do not silently
 alter appointment status or expose provider secrets.

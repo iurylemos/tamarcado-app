@@ -24,3 +24,10 @@ export { calculateCollaboratorReportCallable as calculateCollaboratorReport } fr
 export { calculateSalesReportCallable as calculateSalesReport } from './functions/reports/calculate-sales-report';
 export { exportSalesReportCallable as exportSalesReport } from './functions/reports/export-sales-report';
 export { rebuildMonthlyReportCallable as rebuildMonthlyReport } from './functions/reports/rebuild-monthly-report';
+export { saveConnectionCallable as saveConnection } from './functions/messages/manage-connection';
+export {
+  createContactCallable as createContact,
+  setContactConsentCallable as setContactConsent,
+} from './functions/messages/manage-contact';
+export { sendAppointmentMessageCallable as sendAppointmentMessage } from './functions/messages/send-appointment-message';
+export { providerWebhook } from './functions/messages/process-provider-webhook';

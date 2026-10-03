@@ -16,6 +16,8 @@ export const collections = {
   publicProducts: 'public_products',
   phoneVerificationChallenges: 'phone_verification_challenges',
   phoneVerificationRateLimits: 'phone_verification_rate_limits',
+  providerWebhookEvents: 'provider_webhook_events',
+  providerOutbox: 'provider_outbox',
 } as const;
 
 export type CollectionName = (typeof collections)[keyof typeof collections];

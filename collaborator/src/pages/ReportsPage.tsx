@@ -1,37 +1,19 @@
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useState, type JSX, type SubmitEvent } from 'react';
 import type { SalesReport } from '@shared/reporting';
 import { getCollaboratorReport, errorMessage } from '../services/report.service';
 import MonthlyCommissionReport from '../components/organisms/MonthlyCommissionReport/MonthlyCommissionReport';
+import type { ReportPeriod } from '../interfaces/report.interface';
+import { ReportUtil } from '../utils/report.util';
 
-export interface ReportPeriod {
-  year: number;
-  month: number;
-}
-
-interface ReportsPageProps {
+type ReportsPageProps = {
   initialPeriod?: ReportPeriod;
-}
-
-function currentPeriod(): ReportPeriod {
-  const now = new Date();
-  return { year: now.getFullYear(), month: now.getMonth() + 1 };
-}
-
-function periodInput(period: ReportPeriod): string {
-  return `${period.year}-${String(period.month).padStart(2, '0')}`;
-}
-
-function parsePeriod(value: string): ReportPeriod {
-  const [year, month] = value.split('-').map(Number);
-  if (!year || !month) throw new RangeError('Selecione um mês válido.');
-  return { year, month };
-}
+};
 
 export default function ReportsPage({ initialPeriod }: ReportsPageProps): JSX.Element {
   const initialYear = initialPeriod?.year;
   const initialMonth = initialPeriod?.month;
   const [periodValue, setPeriodValue] = useState<string>(
-    periodInput(initialPeriod ?? currentPeriod()),
+    ReportUtil.periodInput(initialPeriod ?? ReportUtil.currentPeriod()),
   );
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -41,15 +23,17 @@ export default function ReportsPage({ initialPeriod }: ReportsPageProps): JSX.El
     let active = true;
     setLoading(true);
     setError('');
+
     const requestedPeriod =
       initialYear !== undefined && initialMonth !== undefined
         ? { year: initialYear, month: initialMonth }
         : {};
+
     void getCollaboratorReport(requestedPeriod)
       .then((result) => {
         if (!active) return;
         setReport(result);
-        setPeriodValue(periodInput({ year: result.year, month: result.month }));
+        setPeriodValue(ReportUtil.periodInput({ year: result.year, month: result.month }));
       })
       .catch((reason: unknown) => {
         if (active) setError(errorMessage(reason));
@@ -57,20 +41,22 @@ export default function ReportsPage({ initialPeriod }: ReportsPageProps): JSX.El
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };
   }, [initialYear, initialMonth]);
 
-  const loadPeriod = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const loadPeriod = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setLoading(true);
     setError('');
+
     try {
-      const period = parsePeriod(periodValue);
+      const period = ReportUtil.parsePeriod(periodValue);
       const result = await getCollaboratorReport(period);
       setReport(result);
-      setPeriodValue(periodInput({ year: result.year, month: result.month }));
+      setPeriodValue(ReportUtil.periodInput({ year: result.year, month: result.month }));
     } catch (reason: unknown) {
       setError(errorMessage(reason));
     } finally {
