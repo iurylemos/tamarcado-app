@@ -44,6 +44,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /connections/{id} {
+      allow read: if activeCollaborator(resource.data.tenantId);
+      allow write: if false;
+    }
+
+    match /contacts/{id} {
+      allow read: if activeCollaborator(resource.data.tenantId);
+      allow write: if false;
+    }
+
+    match /messages/{id} {
+      allow read: if activeCollaborator(resource.data.tenantId);
+      allow write: if false;
+    }
+
     match /{collection}/{documentId} {
       allow read, write: if false;
     }

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/auth/auth.context';
 import AppointmentDetailsPage from '../pages/AppointmentDetailsPage';
 import AppointmentsPage from '../pages/AppointmentsPage';
 import CustomersPage from '../pages/CustomersPage';
+import MessagesPage from '../pages/MessagesPage';
 import LoginPage from '../pages/LoginPage';
 import ReportsPage from '../pages/ReportsPage';
 import ProtectedRoute from './ProtectedRoute';
@@ -17,10 +18,11 @@ export function WorkspaceLayout(): JSX.Element {
         <Link className="app-brand" to="/appointments">
           Tamarcado
         </Link>
-        <nav aria-label="Navegação principal">
+        <nav aria-label="NavegaÃ§Ã£o principal">
           <Link to="/appointments">Agendamentos</Link>
           <Link to="/customers">Clientes</Link>
-          <Link to="/reports">Relatórios</Link>
+          <Link to="/messages">Mensagens</Link>
+          <Link to="/reports">RelatÃ³rios</Link>
         </nav>
         <button type="button" onClick={() => void logout()}>
           Sair
@@ -31,6 +33,7 @@ export function WorkspaceLayout(): JSX.Element {
           <Route path="/appointments" element={<AppointmentsPage />} />
           <Route path="/appointments/:appointmentId" element={<AppointmentDetailsPage />} />
           <Route path="/customers" element={<CustomersPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="*" element={<Navigate to="/appointments" replace />} />
         </Routes>
