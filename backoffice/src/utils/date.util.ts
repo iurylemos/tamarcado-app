@@ -1,6 +1,6 @@
 import { getZonedDateTimeParts, localDateTimeToUtc } from '@shared/timezone';
 import type { DateWeekday } from '../interfaces/date.interface';
-import type { ReportFilters } from '../services/report.service';
+import type { ReportFilters } from '../interfaces/report.interface';
 
 export class DateUtil {
   public static readonly weekdays: DateWeekday[] = [
