@@ -1,47 +1,53 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import type { ProductRecord } from '../../../interfaces/admin.interface';
 import { errorMessage, saveProduct } from '../../../services/admin.service';
 
-interface ProductEditorProps {
+type ProductEditorProps = {
   product?: ProductRecord;
   onClose: () => void;
   onSaved: () => Promise<void>;
-}
+};
 
-export function ProductEditor({ product, onClose, onSaved }: ProductEditorProps) {
-  const [name, setName] = useState(product?.name ?? '');
-  const [description, setDescription] = useState(product?.description ?? '');
-  const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? '');
-  const [price, setPrice] = useState(product ? (product.priceCents / 100).toFixed(2) : '');
-  const [duration, setDuration] = useState(String(product?.durationMinutes ?? 30));
+export default function ProductEditor({
+  product,
+  onClose,
+  onSaved,
+}: ProductEditorProps): JSX.Element {
+  const [name, setName] = useState<string>(product?.name ?? '');
+  const [description, setDescription] = useState<string>(product?.description ?? '');
+  const [imageUrl, setImageUrl] = useState<string>(product?.imageUrl ?? '');
+  const [price, setPrice] = useState<string>(product ? (product.priceCents / 100).toFixed(2) : '');
+  const [duration, setDuration] = useState<string>(String(product?.durationMinutes ?? 30));
   const [commissionType, setCommissionType] = useState<'percentage' | 'fixed'>(
     product?.commissionType ?? 'percentage',
   );
-  const [commission, setCommission] = useState(
+  const [commission, setCommission] = useState<string>(
     product
       ? commissionType === 'percentage'
         ? String(product.commissionValue / 100)
         : (product.commissionValue / 100).toFixed(2)
       : '35',
   );
-  const [active, setActive] = useState(product?.active ?? true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [active, setActive] = useState<boolean>(product?.active ?? true);
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  const submit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');
     const parsedPrice = Number(price.replace(',', '.'));
     const parsedCommission = Number(commission.replace(',', '.'));
+
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedCommission)) {
       setError('Informe valores numéricos válidos para preço e comissão.');
       setBusy(false);
       return;
     }
+
     try {
       await saveProduct({
-        ...(product ? { id: product.id } : {}),
+        ...(product ? { id: product.id } : { id: '' }),
         name,
         description,
         imageUrl,
@@ -56,12 +62,12 @@ export function ProductEditor({ product, onClose, onSaved }: ProductEditorProps)
       });
       await onSaved();
       onClose();
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <div

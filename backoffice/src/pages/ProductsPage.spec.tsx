@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ProductsPage } from './ProductsPage';
+import ProductsPage from './ProductsPage';
 import type { ProductRecord } from '../interfaces/admin.interface';
 import { saveProduct } from '../services/admin.service';
 

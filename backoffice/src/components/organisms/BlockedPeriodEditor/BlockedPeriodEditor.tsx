@@ -1,80 +1,64 @@
-import { useState } from 'react';
-import { getZonedDateTimeParts, localDateTimeToUtc } from '@shared/timezone';
+import { useState, type JSX, type SubmitEvent } from 'react';
 import type { BlockedPeriodRecord, ProfessionalRecord } from '../../../interfaces/admin.interface';
 import {
   deleteBlockedPeriod,
   errorMessage,
   saveBlockedPeriod,
 } from '../../../services/admin.service';
+import { DateUtil } from '../../../utils/date.util';
 
-interface BlockedPeriodEditorProps {
+type BlockedPeriodEditorProps = {
   professionals: ProfessionalRecord[];
   blockedPeriods: BlockedPeriodRecord[];
   timezone: string;
   onSaved: () => Promise<void>;
-}
+};
 
-function formatDateTimeInput(date: Date, timezone: string): string {
-  const parts = getZonedDateTimeParts(date, timezone);
-  return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
-}
-
-function initialLocalDateTime(offsetDays: number, hour: number, timezone: string): string {
-  const now = getZonedDateTimeParts(new Date(), timezone);
-  const date = new Date(Date.UTC(now.year, now.month - 1, now.day + offsetDays, hour));
-  const localDate = `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-  const localTime = `${String(hour).padStart(2, '0')}:00`;
-  return formatDateTimeInput(localDateTimeToUtc(localDate, localTime, timezone), timezone);
-}
-
-function toUtc(value: string, timezone: string): string {
-  const [date, time] = value.split('T');
-  if (!date || !time) throw new Error('Informe uma data e hora completas.');
-  return localDateTimeToUtc(date, time, timezone).toISOString();
-}
-
-export function BlockedPeriodEditor({
+export default function BlockedPeriodEditor({
   professionals,
   blockedPeriods,
   timezone,
   onSaved,
-}: BlockedPeriodEditorProps) {
-  const [professionalId, setProfessionalId] = useState('');
-  const [startsAt, setStartsAt] = useState(() => initialLocalDateTime(1, 13, timezone));
-  const [endsAt, setEndsAt] = useState(() => initialLocalDateTime(1, 14, timezone));
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+}: BlockedPeriodEditorProps): JSX.Element {
+  const [professionalId, setProfessionalId] = useState<string>('');
+  const [startsAt, setStartsAt] = useState(() => DateUtil.initialLocalDateTime(1, 13, timezone));
+  const [endsAt, setEndsAt] = useState(() => DateUtil.initialLocalDateTime(1, 14, timezone));
+  const [reason, setReason] = useState<string>('');
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');
+
     try {
       await saveBlockedPeriod({
         ...(professionalId ? { professionalId } : {}),
         reason,
-        startsAt: toUtc(startsAt, timezone),
-        endsAt: toUtc(endsAt, timezone),
+        startsAt: DateUtil.toUtc(startsAt, timezone),
+        endsAt: DateUtil.toUtc(endsAt, timezone),
       });
+
       await onSaved();
+
       setReason('');
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
-  async function remove(id: string) {
+  const remove = async (id: string): Promise<void> => {
     setError('');
     try {
       await deleteBlockedPeriod(id);
       await onSaved();
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     }
-  }
+  };
 
   return (
     <section className="content-card">

@@ -5,7 +5,7 @@ import type {
   ProductRecord,
   ProfessionalRecord,
 } from '../interfaces/admin.interface';
-import { ProfessionalsPage } from './ProfessionalsPage';
+import ProfessionalsPage from './ProfessionalsPage';
 import { saveProfessional } from '../services/admin.service';
 
 vi.mock('../services/admin.service', () => ({

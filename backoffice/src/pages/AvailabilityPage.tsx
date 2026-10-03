@@ -1,49 +1,42 @@
-import { useState } from 'react';
+import { useState, type JSX, type SubmitEvent } from 'react';
 import type {
   ProfessionalRecord,
   WorkingHoursRecord,
   BlockedPeriodRecord,
 } from '../interfaces/admin.interface';
 import { errorMessage, saveWorkingHours } from '../services/admin.service';
-import { BlockedPeriodEditor } from '../components/organisms/BlockedPeriodEditor/BlockedPeriodEditor';
+import BlockedPeriodEditor from '../components/organisms/BlockedPeriodEditor/BlockedPeriodEditor';
+import { DateUtil } from '../utils/date.util';
 
-interface AvailabilityPageProps {
+type AvailabilityPageProps = {
   professionals: ProfessionalRecord[];
   workingHours: WorkingHoursRecord[];
   blockedPeriods: BlockedPeriodRecord[];
   bookingIntervalMinutes: number;
   timezone: string;
   onSaved: () => Promise<void>;
-}
+};
 
-const weekdays = [
-  { value: 1, label: 'Segunda-feira', short: 'Seg' },
-  { value: 2, label: 'Terça-feira', short: 'Ter' },
-  { value: 3, label: 'Quarta-feira', short: 'Qua' },
-  { value: 4, label: 'Quinta-feira', short: 'Qui' },
-  { value: 5, label: 'Sexta-feira', short: 'Sex' },
-  { value: 6, label: 'Sábado', short: 'Sáb' },
-  { value: 7, label: 'Domingo', short: 'Dom' },
-];
-
-export function AvailabilityPage({
+export default function AvailabilityPage({
   professionals,
   workingHours,
   blockedPeriods,
   bookingIntervalMinutes,
   timezone,
   onSaved,
-}: AvailabilityPageProps) {
+}: AvailabilityPageProps): JSX.Element {
   const [professionalId, setProfessionalId] = useState(professionals[0]?.id ?? '');
   const [editing, setEditing] = useState<WorkingHoursRecord | undefined>();
-  const [dayOfWeek, setDayOfWeek] = useState('1');
-  const [startLocalTime, setStartLocalTime] = useState('09:00');
-  const [endLocalTime, setEndLocalTime] = useState('18:00');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [dayOfWeek, setDayOfWeek] = useState<string>('1');
+  const [startLocalTime, setStartLocalTime] = useState<string>('09:00');
+  const [endLocalTime, setEndLocalTime] = useState<string>('18:00');
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+
   const selectedProfessional = professionals.find(
     (professional) => professional.id === professionalId,
   );
+
   const selectedHours = workingHours
     .filter((hours) => hours.professionalId === professionalId)
     .sort(
@@ -52,30 +45,33 @@ export function AvailabilityPage({
         first.startLocalTime.localeCompare(second.startLocalTime),
     );
 
-  function startEdit(hours: WorkingHoursRecord) {
+  const startEdit = (hours: WorkingHoursRecord): void => {
     setEditing(hours);
     setProfessionalId(hours.professionalId);
     setDayOfWeek(String(hours.dayOfWeek));
     setStartLocalTime(hours.startLocalTime);
     setEndLocalTime(hours.endLocalTime);
-  }
+  };
 
-  function clearEditor() {
+  const clearEditor = (): void => {
     setEditing(undefined);
     setDayOfWeek('1');
     setStartLocalTime('09:00');
     setEndLocalTime('18:00');
     setError('');
-  }
+  };
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+
     if (!professionalId) {
       setError('Cadastre um colaborador antes de configurar a agenda.');
       return;
     }
+
     setBusy(true);
     setError('');
+
     try {
       await saveWorkingHours({
         ...(editing ? { id: editing.id } : {}),
@@ -87,22 +83,22 @@ export function AvailabilityPage({
       });
       await onSaved();
       clearEditor();
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
-  async function toggleActive(hours: WorkingHoursRecord) {
+  const toggleActive = async (hours: WorkingHoursRecord): Promise<void> => {
     setError('');
     try {
       await saveWorkingHours({ ...hours, active: !hours.active });
       await onSaved();
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     }
-  }
+  };
 
   return (
     <section>
@@ -151,7 +147,9 @@ export function AvailabilityPage({
                     className={`hours-row ${hours.active ? '' : 'inactive-row'}`}
                     key={hours.id}
                   >
-                    <span className="day-badge">{weekdays[hours.dayOfWeek - 1]?.short}</span>
+                    <span className="day-badge">
+                      {DateUtil.weekdays[hours.dayOfWeek - 1]?.short}
+                    </span>
                     <span className="hours-time">
                       {hours.startLocalTime} <span>até</span> {hours.endLocalTime}
                     </span>
@@ -178,7 +176,7 @@ export function AvailabilityPage({
                 <label>
                   Dia da semana
                   <select value={dayOfWeek} onChange={(event) => setDayOfWeek(event.target.value)}>
-                    {weekdays.map((day) => (
+                    {DateUtil.weekdays.map((day) => (
                       <option value={day.value} key={day.value}>
                         {day.label}
                       </option>

@@ -5,7 +5,7 @@ import type {
   ProfessionalRecord,
   WorkingHoursRecord,
 } from '../interfaces/admin.interface';
-import { AvailabilityPage } from './AvailabilityPage';
+import AvailabilityPage from './AvailabilityPage';
 import { saveBlockedPeriod, saveWorkingHours } from '../services/admin.service';
 
 vi.mock('../services/admin.service', () => ({

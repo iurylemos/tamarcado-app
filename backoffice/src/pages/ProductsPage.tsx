@@ -1,18 +1,17 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import type { ProductRecord } from '../interfaces/admin.interface';
-import { ProductEditor } from '../components/organisms/ProductEditor/ProductEditor';
+import ProductEditor from '../components/organisms/ProductEditor/ProductEditor';
+import { CurrencyUtil } from '../utils/currency.util';
 
-interface ProductsPageProps {
+type ProductsPageProps = {
   products: ProductRecord[];
   onSaved: () => Promise<void>;
-}
+};
 
-const money = (cents: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
-
-export function ProductsPage({ products, onSaved }: ProductsPageProps) {
+export default function ProductsPage({ products, onSaved }: ProductsPageProps): JSX.Element {
   const [selected, setSelected] = useState<ProductRecord | undefined>();
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState<boolean>(false);
+
   const activeCount = products.filter((product) => product.active).length;
 
   return (
@@ -89,7 +88,7 @@ export function ProductsPage({ products, onSaved }: ProductsPageProps) {
                   {product.description || 'Sem descrição cadastrada.'}
                 </p>
                 <div className="product-details">
-                  <strong>{money(product.priceCents)}</strong>
+                  <strong>{CurrencyUtil.formatMoney(product.priceCents)}</strong>
                   <span>{product.durationMinutes} min</span>
                 </div>
                 <div className="product-footer">
@@ -97,7 +96,7 @@ export function ProductsPage({ products, onSaved }: ProductsPageProps) {
                   <strong>
                     {product.commissionType === 'percentage'
                       ? `${(product.commissionValue / 100).toLocaleString('pt-BR')}%`
-                      : money(product.commissionValue)}
+                      : CurrencyUtil.formatMoney(product.commissionValue)}
                   </strong>
                 </div>
               </div>

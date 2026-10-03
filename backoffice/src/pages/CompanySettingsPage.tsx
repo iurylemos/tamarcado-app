@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, type JSX, type SubmitEvent } from 'react';
 import type { CompanyRecord } from '../interfaces/admin.interface';
 import { errorMessage, saveCompany } from '../services/admin.service';
 
-interface CompanySettingsPageProps {
+type CompanySettingsPageProps = {
   company: CompanyRecord;
   onSaved: () => Promise<void>;
-}
+};
 
 const segmentLabels: Record<string, string> = {
   beauty: 'Beleza e bem-estar',
@@ -15,27 +15,32 @@ const segmentLabels: Record<string, string> = {
   other: 'Outro',
 };
 
-export function CompanySettingsPage({ company, onSaved }: CompanySettingsPageProps) {
-  const [name, setName] = useState(company.name);
-  const [slug, setSlug] = useState(company.slug);
-  const [segment, setSegment] = useState(company.segment);
-  const [description, setDescription] = useState(company.description ?? '');
-  const [phone, setPhone] = useState(company.phoneE164 ?? '');
-  const [logoUrl, setLogoUrl] = useState(company.logoUrl ?? '');
-  const [timezone, setTimezone] = useState(company.timezone);
+export default function CompanySettingsPage({
+  company,
+  onSaved,
+}: CompanySettingsPageProps): JSX.Element {
+  const [name, setName] = useState<string>(company.name);
+  const [slug, setSlug] = useState<string>(company.slug);
+  const [segment, setSegment] = useState<string>(company.segment);
+  const [description, setDescription] = useState<string>(company.description ?? '');
+  const [phone, setPhone] = useState<string>(company.phoneE164 ?? '');
+  const [logoUrl, setLogoUrl] = useState<string>(company.logoUrl ?? '');
+  const [timezone, setTimezone] = useState<string>(company.timezone);
   const [bookingIntervalMinutes, setBookingIntervalMinutes] = useState(
     String(company.bookingIntervalMinutes),
   );
-  const [active, setActive] = useState(company.active);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [active, setActive] = useState<boolean>(company.active);
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [saved, setSaved] = useState<boolean>(false);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+
     setBusy(true);
     setError('');
     setSaved(false);
+
     try {
       await saveCompany({
         name,
@@ -50,12 +55,12 @@ export function CompanySettingsPage({ company, onSaved }: CompanySettingsPagePro
       });
       await onSaved();
       setSaved(true);
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <section>

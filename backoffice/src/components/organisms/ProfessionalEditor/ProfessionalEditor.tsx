@@ -1,39 +1,39 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import type { ProductRecord, ProfessionalRecord } from '../../../interfaces/admin.interface';
 import { errorMessage, saveProfessional } from '../../../services/admin.service';
 
-interface ProfessionalEditorProps {
+type ProfessionalEditorProps = {
   professional?: ProfessionalRecord;
   products: ProductRecord[];
   assignedProductIds: string[];
   onClose: () => void;
   onSaved: () => Promise<void>;
-}
+};
 
-export function ProfessionalEditor({
+export default function ProfessionalEditor({
   professional,
   products,
   assignedProductIds,
   onClose,
   onSaved,
-}: ProfessionalEditorProps) {
-  const [name, setName] = useState(professional?.name ?? '');
-  const [phone, setPhone] = useState(professional?.phoneE164 ?? '');
-  const [photoUrl, setPhotoUrl] = useState(professional?.photoUrl ?? '');
-  const [active, setActive] = useState(professional?.active ?? true);
-  const [productIds, setProductIds] = useState(assignedProductIds);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+}: ProfessionalEditorProps): JSX.Element {
+  const [name, setName] = useState<string>(professional?.name ?? '');
+  const [phone, setPhone] = useState<string>(professional?.phoneE164 ?? '');
+  const [photoUrl, setPhotoUrl] = useState<string>(professional?.photoUrl ?? '');
+  const [active, setActive] = useState<boolean>(professional?.active ?? true);
+  const [productIds, setProductIds] = useState<string[]>(assignedProductIds);
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  function toggleProduct(productId: string) {
+  const toggleProduct = (productId: string) => {
     setProductIds((current) =>
       current.includes(productId)
         ? current.filter((id) => id !== productId)
         : [...current, productId],
     );
-  }
+  };
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  const submit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');
@@ -53,7 +53,7 @@ export function ProfessionalEditor({
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <div className="modal-backdrop">

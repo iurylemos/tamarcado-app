@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type JSX, type SubmitEvent } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from './config/firebase.config';
 import { errorMessage, getWorkspace } from './services/admin.service';
 import type { BackofficeWorkspace } from './interfaces/admin.interface';
-import { ProductsPage } from './pages/ProductsPage';
-import { ProfessionalsPage } from './pages/ProfessionalsPage';
-import { AvailabilityPage } from './pages/AvailabilityPage';
-import { CompanySettingsPage } from './pages/CompanySettingsPage';
+import ProductsPage from './pages/ProductsPage';
+import ProfessionalsPage from './pages/ProfessionalsPage';
+import AvailabilityPage from './pages/AvailabilityPage';
+import CompanySettingsPage from './pages/CompanySettingsPage';
 
 type Section = 'company' | 'products' | 'professionals' | 'availability';
 
@@ -17,24 +17,25 @@ const sectionLabels: Record<Section, string> = {
   availability: 'Agenda',
 };
 
-export function App() {
+export default function App(): JSX.Element {
   const [workspace, setWorkspace] = useState<BackofficeWorkspace | null>(null);
   const [section, setSection] = useState<Section>('products');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
-  const refreshWorkspace = useCallback(async () => {
+  const refreshWorkspace = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError('');
+
     try {
       const data = await getWorkspace();
       setWorkspace(data);
-    } catch (cause) {
+    } catch (error: unknown) {
       setWorkspace(null);
-      setError(errorMessage(cause));
+      setError(errorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -52,23 +53,23 @@ export function App() {
     return unsubscribe;
   }, [refreshWorkspace]);
 
-  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+  const handleLogin = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       await auth.currentUser?.getIdToken(true);
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
-  }
+  };
 
-  async function handleSignOut() {
+  const handleSignOut = async (): Promise<void> => {
     await signOut(auth);
-  }
+  };
 
   if (loading) {
     return (

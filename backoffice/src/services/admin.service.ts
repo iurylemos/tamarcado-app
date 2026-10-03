@@ -8,10 +8,15 @@ import { auth, functions } from '../config/firebase.config';
 
 async function callable<TInput, TOutput>(name: string, data?: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;
+
   if (!currentUser) throw new Error('Entre na sua conta para continuar.');
+
   await currentUser.getIdToken(true);
+
   const call = httpsCallable<TInput, TOutput>(functions, name);
+
   const result = data === undefined ? await call() : await call(data);
+
   return result.data;
 }
 

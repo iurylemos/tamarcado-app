@@ -1,33 +1,34 @@
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import type {
   AssignmentRecord,
   ProductRecord,
   ProfessionalRecord,
 } from '../interfaces/admin.interface';
-import { ProfessionalEditor } from '../components/organisms/ProfessionalEditor/ProfessionalEditor';
+import ProfessionalEditor from '../components/organisms/ProfessionalEditor/ProfessionalEditor';
 
-interface ProfessionalsPageProps {
+type ProfessionalsPageProps = {
   professionals: ProfessionalRecord[];
   products: ProductRecord[];
   assignments: AssignmentRecord[];
   onSaved: () => Promise<void>;
-}
+};
 
-export function ProfessionalsPage({
+export default function ProfessionalsPage({
   professionals,
   products,
   assignments,
   onSaved,
-}: ProfessionalsPageProps) {
+}: ProfessionalsPageProps): JSX.Element {
   const [selected, setSelected] = useState<ProfessionalRecord | undefined>();
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState<boolean>(false);
+
   const activeCount = professionals.filter((professional) => professional.active).length;
 
-  function assignedIds(professionalId: string) {
+  const assignedIds = (professionalId: string): string[] => {
     return assignments
       .filter((assignment) => assignment.professionalId === professionalId && assignment.active)
       .map((assignment) => assignment.productId);
-  }
+  };
 
   return (
     <section>

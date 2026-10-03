@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { saveCompany } from '../services/admin.service';
 import type { CompanyRecord } from '../interfaces/admin.interface';
-import { CompanySettingsPage } from './CompanySettingsPage';
+import CompanySettingsPage from './CompanySettingsPage';
 
 vi.mock('../services/admin.service', () => ({
   saveCompany: vi.fn(),
