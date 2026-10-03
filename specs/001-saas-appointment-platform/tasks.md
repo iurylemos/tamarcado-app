@@ -212,19 +212,19 @@ appointment snapshots.
 
 ### Tests for User Story 4
 
-- [ ] T066 [P] [US4] Test completed-only eligibility, snapshot calculations, percentage rounding, fixed commission, tenant scoping, and business-local month boundaries in `functions/src/functions/reports/calculate-sales-report.spec.ts`.
-- [ ] T067 [P] [US4] Test zero-result reports, product/period filters, CSV parity, privacy exclusions, and top-three threshold in `functions/src/functions/reports/export-sales-report.spec.ts`.
-- [ ] T068 [P] [US4] Test collaborator monthly report and backoffice dashboard/filter/export behavior in `collaborator/src/pages/ReportsPage.spec.tsx` and `backoffice/src/pages/ReportsPage.spec.tsx`.
+- [X] T066 [P] [US4] Test completed-only eligibility, snapshot calculations, percentage rounding, fixed commission, tenant scoping, and business-local month boundaries in `functions/src/functions/reports/calculate-sales-report.spec.ts`.
+- [X] T067 [P] [US4] Test zero-result reports, product/period filters, CSV parity, privacy exclusions, and top-three threshold in `functions/src/functions/reports/export-sales-report.spec.ts`.
+- [X] T068 [P] [US4] Test collaborator monthly report and backoffice dashboard/filter/export behavior in `collaborator/src/pages/ReportsPage.spec.tsx` and `backoffice/src/pages/ReportsPage.spec.tsx`.
 
 ### Implementation for User Story 4
 
-- [ ] T069 Implement pure completed-appointment sales and commission aggregation using snapshotted `productPriceCentsSnapshot`, commission basis points/cents, and half-up cent rounding in `shared/domain/commission.ts` and `shared/domain/reporting.ts`.
-- [ ] T070 Implement tenant/professional-scoped collaborator monthly sales and commission report in `functions/src/functions/reports/calculate-collaborator-report.ts` and `collaborator/src/services/report.service.ts`; define local month start/end from the business timezone.
-- [ ] T071 Implement backoffice period totals and sales breakdown by collaborator and product in `functions/src/functions/reports/calculate-sales-report.ts` and `backoffice/src/services/report.service.ts`; only completed appointment transactions count.
-- [ ] T072 Implement top-three ranking presentation only when at least three collaborators have eligible sales in the selected period in `backoffice/src/components/organisms/CollaboratorRanking/CollaboratorRanking.tsx` and `backoffice/src/pages/DashboardPage.tsx`.
-- [ ] T073 Implement a rebuildable monthly report projection partitioned by tenant, period, dimension type, and dimension ID in `functions/src/functions/reports/rebuild-monthly-report.ts` and `functions/src/services/monthly-report.service.ts`; appointments remain authoritative.
-- [ ] T074 Implement period/product/collaborator report filters, empty states, and UTF-8 CSV export with the same eligibility and calculation rules and without customer phone/message content in `functions/src/functions/reports/export-sales-report.ts` and `backoffice/src/pages/ReportsPage.tsx`.
-- [ ] T075 Implement collaborator monthly report presentation and business-local period selection in `collaborator/src/pages/ReportsPage.tsx` and `collaborator/src/components/organisms/MonthlyCommissionReport/MonthlyCommissionReport.tsx`.
+- [X] T069 Implement pure completed-appointment sales and commission aggregation using snapshotted `productPriceCentsSnapshot`, commission basis points/cents, and half-up cent rounding in `shared/domain/commission.ts` and `shared/domain/reporting.ts`.
+- [X] T070 Implement tenant/professional-scoped collaborator monthly sales and commission report in `functions/src/functions/reports/calculate-collaborator-report.ts` and `collaborator/src/services/report.service.ts`; define local month start/end from the business timezone.
+- [X] T071 Implement backoffice period totals and sales breakdown by collaborator and product in `functions/src/functions/reports/calculate-sales-report.ts` and `backoffice/src/services/report.service.ts`; only completed appointment transactions count.
+- [X] T072 Implement top-three ranking presentation only when at least three collaborators have eligible sales in the selected period in `backoffice/src/components/organisms/CollaboratorRanking/CollaboratorRanking.tsx` and `backoffice/src/pages/DashboardPage.tsx`.
+- [X] T073 Implement a rebuildable monthly report projection partitioned by tenant, period, dimension type, and dimension ID in `functions/src/functions/reports/rebuild-monthly-report.ts` and `functions/src/services/monthly-report.service.ts`; appointments remain authoritative.
+- [X] T074 Implement period/product/collaborator report filters, empty states, and UTF-8 CSV export with the same eligibility and calculation rules and without customer phone/message content in `functions/src/functions/reports/export-sales-report.ts` and `backoffice/src/pages/ReportsPage.tsx`.
+- [X] T075 Implement collaborator monthly report presentation and business-local period selection in `collaborator/src/pages/ReportsPage.tsx` and `collaborator/src/components/organisms/MonthlyCommissionReport/MonthlyCommissionReport.tsx`.
 
 **Checkpoint**: All role reports and exports reconcile to completed appointment snapshots;
 ranking is not fabricated when fewer than three collaborators qualify.

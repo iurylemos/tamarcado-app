@@ -7,19 +7,23 @@ import ProductsPage from './pages/ProductsPage';
 import ProfessionalsPage from './pages/ProfessionalsPage';
 import AvailabilityPage from './pages/AvailabilityPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
+import DashboardPage from './pages/DashboardPage';
+import ReportsPage from './pages/ReportsPage';
 
-type Section = 'company' | 'products' | 'professionals' | 'availability';
+type Section = 'dashboard' | 'company' | 'products' | 'professionals' | 'availability' | 'reports';
 
 const sectionLabels: Record<Section, string> = {
+  dashboard: 'Visão geral',
   company: 'Empresa',
   products: 'Serviços',
   professionals: 'Equipe',
   availability: 'Agenda',
+  reports: 'Relatórios',
 };
 
 export default function App(): JSX.Element {
   const [workspace, setWorkspace] = useState<BackofficeWorkspace | null>(null);
-  const [section, setSection] = useState<Section>('products');
+  const [section, setSection] = useState<Section>('dashboard');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -156,7 +160,11 @@ export default function App(): JSX.Element {
                     ? '◇'
                     : item === 'professionals'
                       ? '♙'
-                      : '▦'}
+                      : item === 'availability'
+                        ? '▦'
+                        : item === 'reports'
+                          ? '$'
+                          : '◷'}
               </span>
               {sectionLabels[item]}
               {item === 'products' && (
@@ -215,6 +223,20 @@ export default function App(): JSX.Element {
               bookingIntervalMinutes={workspace.company.bookingIntervalMinutes}
               timezone={workspace.company.timezone}
               onSaved={refreshWorkspace}
+            />
+          )}
+          {section === 'dashboard' && (
+            <DashboardPage
+              timezone={workspace.company.timezone}
+              products={workspace.products}
+              onOpenReports={() => setSection('reports')}
+            />
+          )}
+          {section === 'reports' && (
+            <ReportsPage
+              timezone={workspace.company.timezone}
+              products={workspace.products}
+              professionals={workspace.professionals}
             />
           )}
         </div>

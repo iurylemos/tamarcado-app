@@ -8,6 +8,7 @@ export const collections = {
   blockedPeriods: 'blocked_periods',
   appointments: 'appointments',
   bookingReservations: 'booking_reservations',
+  monthlyReports: 'monthly_reports',
   connections: 'connections',
   contacts: 'contacts',
   messages: 'messages',

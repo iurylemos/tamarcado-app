@@ -72,6 +72,32 @@
         { "fieldPath": "professionalId", "order": "ASCENDING" },
         { "fieldPath": "bucketStartAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "appointments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "appointments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "professionalId", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "monthly_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "ASCENDING" },
+        { "fieldPath": "month", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
