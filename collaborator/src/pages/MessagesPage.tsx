@@ -23,23 +23,26 @@ const statusLabels: Record<MessageStatus, string> = {
 
 export default function MessagesPage(): JSX.Element {
   const { tenantId } = useAuth();
+
   const [connections, setConnections] = useState<Connection[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [feedback, setFeedback] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  const [name, setName] = useState<string>('');
 
   useEffect(() => {
     if (!tenantId) return;
-    const fail = (subscriptionError: Error) => {
+
+    const fail = (subscriptionError: Error): void => {
       setError(
         ErrorUtil.formatMessage(subscriptionError, 'Não foi possível carregar as mensagens.'),
       );
       setLoading(false);
     };
+
     const stops = [
       subscribeConnections(tenantId, setConnections, fail),
       subscribeContacts(
@@ -52,12 +55,14 @@ export default function MessagesPage(): JSX.Element {
       ),
       subscribeMessages(tenantId, setMessages, fail),
     ];
+
     return () => stops.forEach((stop) => stop());
   }, [tenantId]);
 
-  const run = async (action: () => Promise<void>, success: string) => {
+  const run = async (action: () => Promise<void>, success: string): Promise<void> => {
     setError('');
     setFeedback('');
+
     try {
       await action();
       setFeedback(success);
@@ -68,11 +73,14 @@ export default function MessagesPage(): JSX.Element {
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     const connection = connections[0];
+
     if (!connection) {
       setError('Nenhuma conexão disponível para cadastrar contatos.');
       return;
     }
+
     await run(async () => {
       await createContact({ connectionId: connection.id, phone, ...(name ? { name } : {}) });
       setPhone('');
@@ -80,7 +88,7 @@ export default function MessagesPage(): JSX.Element {
     }, 'Contato cadastrado sem consentimento de WhatsApp.');
   };
 
-  const contactName = (contactId: string) => {
+  const contactName = (contactId: string): string => {
     const contact = contacts.find((item) => item.id === contactId);
     return contact?.name || (contact ? PhoneUtil.maskedPhone(contact.phoneE164) : 'Contato');
   };
@@ -139,9 +147,7 @@ export default function MessagesPage(): JSX.Element {
                 onClick={() =>
                   void run(
                     () => setContactConsent(contact.id, !contact.whatsappOptIn),
-                    contact.whatsappOptIn
-                      ? 'Consentimento revogado.'
-                      : 'Consentimento registrado.',
+                    contact.whatsappOptIn ? 'Consentimento revogado.' : 'Consentimento registrado.',
                   )
                 }
               >

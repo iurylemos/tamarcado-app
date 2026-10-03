@@ -1,4 +1,4 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { collections } from '../config/collections';
 import type { AppointmentDocument } from '../model/appointment.model';
@@ -8,6 +8,7 @@ import { firestore } from './firestore.service';
 import { isApprovedTemplate, WhatsAppProviderError } from './whatsapp-provider.interface';
 import type { WhatsAppProvider } from './whatsapp-provider.interface';
 import { whatsappProvider } from './whatsapp-provider.service';
+import type { WebhookMessageResult } from '../interfaces/message.interface';
 
 const statusRank: Record<MessageStatus, number> = {
   pending: 0,
@@ -26,6 +27,7 @@ export async function sendAppointmentMessage(
   if (!isApprovedTemplate(input.templateCategory)) {
     throw new HttpsError('invalid-argument', 'Use um modelo de mensagem aprovado.');
   }
+
   const content = input.content.trim();
   if (!content) throw new HttpsError('invalid-argument', 'Informe o conteÃºdo da mensagem.');
 
@@ -33,7 +35,9 @@ export async function sendAppointmentMessage(
     .collection(collections.appointments)
     .doc(input.appointmentId)
     .get();
+
   const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
+
   if (
     !appointment ||
     appointment.tenantId !== actor.tenantId ||
@@ -47,7 +51,9 @@ export async function sendAppointmentMessage(
     .where('tenantId', '==', actor.tenantId)
     .where('phoneE164', '==', appointment.customerPhoneE164)
     .get();
+
   const contact = contacts.docs.find((document) => document.data().whatsappOptIn === true);
+
   if (!contact) {
     throw new HttpsError(
       'failed-precondition',
@@ -75,52 +81,61 @@ export async function sendAppointmentMessage(
       templateCategory: input.templateCategory,
       content,
     });
+
     await messageReference.update({
       status: 'sent',
       providerMessageId,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
     return { messageId: messageReference.id, status: 'sent' };
-  } catch (error) {
+  } catch (error: unknown) {
     const failureCode = error instanceof WhatsAppProviderError ? error.code : 'PROVIDER_ERROR';
+
     await messageReference.update({
       status: 'failed',
       failureCode,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
     return { messageId: messageReference.id, status: 'failed' };
   }
 }
-
-export type WebhookResult = 'applied' | 'duplicate' | 'ignored' | 'unknown-message';
 
 export async function applyProviderStatusEvent(event: {
   eventId: string;
   providerMessageId: string;
   status: MessageStatus;
   failureCode?: string;
-}): Promise<WebhookResult> {
+}): Promise<WebhookMessageResult> {
   const eventReference = firestore.collection(collections.providerWebhookEvents).doc(event.eventId);
+
   const matches = await firestore
     .collection(collections.messages)
     .where('providerMessageId', '==', event.providerMessageId)
     .limit(1)
     .get();
+
   const messageSnapshot = matches.docs[0];
 
-  return firestore.runTransaction(async (transaction) => {
+  return firestore.runTransaction(async (transaction: Transaction) => {
     const seen = await transaction.get(eventReference);
     const current = messageSnapshot ? await transaction.get(messageSnapshot.ref) : undefined;
+
     if (seen.exists) return 'duplicate';
+
     transaction.set(eventReference, {
       providerMessageId: event.providerMessageId,
       status: event.status,
       receivedAt: FieldValue.serverTimestamp(),
     });
+
     if (!messageSnapshot) return 'unknown-message';
 
     const currentStatus = current?.data()?.status as MessageStatus | undefined;
+
     if (!currentStatus || statusRank[event.status] <= statusRank[currentStatus]) return 'ignored';
+
     if (currentStatus === 'failed') return 'ignored';
 
     transaction.update(messageSnapshot.ref, {
@@ -128,6 +143,7 @@ export async function applyProviderStatusEvent(event: {
       ...(event.status === 'failed' ? { failureCode: event.failureCode ?? 'PROVIDER_ERROR' } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
+
     return 'applied';
   });
 }
