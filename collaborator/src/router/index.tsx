@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../contexts/auth/auth.context';
 import AppointmentDetailsPage from '../pages/AppointmentDetailsPage';
@@ -7,8 +8,9 @@ import LoginPage from '../pages/LoginPage';
 import ReportsPage from '../pages/ReportsPage';
 import ProtectedRoute from './ProtectedRoute';
 
-export function WorkspaceLayout() {
+export function WorkspaceLayout(): JSX.Element {
   const { logout } = useAuth();
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -37,7 +39,7 @@ export function WorkspaceLayout() {
   );
 }
 
-export default function CollaboratorRouter() {
+export default function CollaboratorRouter(): JSX.Element {
   return (
     <BrowserRouter>
       <Routes>

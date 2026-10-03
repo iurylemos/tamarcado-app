@@ -3,47 +3,17 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { collections } from '../config/collections';
 import { firestore } from './firestore.service';
 import type { UserDocument } from '../model/user.model';
-import {
-  whatsappVerificationProvider,
-  type WhatsAppVerificationProvider,
-} from './whatsapp-verification.provider';
+import { whatsappVerificationProvider } from './whatsapp-verification.provider';
+import type {
+  PhoneVerificationChallenge,
+  PhoneVerificationServiceDependencies,
+  PhoneVerificationStore,
+} from '../interfaces/phone.interface';
 
 const challengeLifetimeMs = 5 * 60_000;
 const rateLimitWindowMs = 60 * 60_000;
 const maxChallengesPerWindow = 3;
 const maxAttempts = 5;
-
-export interface PhoneVerificationChallenge {
-  phoneHash: string;
-  role: UserDocument['role'];
-  codeHash: string;
-  createdAt: number;
-  expiresAt: number;
-  attempts: number;
-  consumedAt?: number;
-}
-
-export type ChallengeVerificationResult =
-  'verified' | 'invalid' | 'expired' | 'replayed' | 'rate-limited' | 'missing';
-
-export interface PhoneVerificationStore {
-  reserveChallenge(id: string, challenge: PhoneVerificationChallenge): Promise<boolean>;
-  verifyAndConsume(input: {
-    id: string;
-    phoneHash: string;
-    role: UserDocument['role'];
-    codeHash: string;
-    now: number;
-  }): Promise<ChallengeVerificationResult>;
-}
-
-export interface PhoneVerificationServiceDependencies {
-  store: PhoneVerificationStore;
-  provider: WhatsAppVerificationProvider;
-  now?: () => number;
-  createChallengeId?: () => string;
-  createCode?: () => string;
-}
 
 function hash(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -71,7 +41,7 @@ function sameHash(left: string, right: string): boolean {
 }
 
 export const firestorePhoneVerificationStore: PhoneVerificationStore = {
-  async reserveChallenge(id, challenge) {
+  async reserveChallenge(id: string, challenge) {
     const challengeRef = firestore.collection(collections.phoneVerificationChallenges).doc(id);
     const rateRef = firestore
       .collection(collections.phoneVerificationRateLimits)
