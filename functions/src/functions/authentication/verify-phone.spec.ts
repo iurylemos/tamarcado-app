@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createPhoneVerificationService,
-  type PhoneVerificationChallenge,
-  type PhoneVerificationStore,
-} from '../../services/phone-verification.service';
 import type { WhatsAppVerificationProvider } from '../../services/whatsapp-verification.provider';
+import type {
+  PhoneVerificationChallenge,
+  PhoneVerificationStore,
+} from '../../interfaces/phone.interface';
+import { createPhoneVerificationService } from '../../services/phone-verification.service';
 
 function createHarness() {
   const challenges = new Map<string, PhoneVerificationChallenge>();
