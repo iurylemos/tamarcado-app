@@ -7,5 +7,8 @@ export default defineConfig({
     setupFiles: ['test/vitest.setup.ts'],
     testTimeout: 20_000,
     exclude: ['**/node_modules/**', '**/lib/**', '**/dist/**', '**/*.js'],
+    alias: {
+      '@shared': '../shared',
+    },
   },
 });

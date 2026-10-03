@@ -1,6 +1,14 @@
+@import 'tailwindcss';
 @import './design-tokens.css';
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-body { margin: 0; background: var(--color-background); color: var(--color-text); font-family: var(--font-family); }
-:focus-visible { outline: 3px solid #818cf8; outline-offset: 2px; }
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family);
+}
+
+:focus-visible {
+  outline: 3px solid #818cf8;
+  outline-offset: 2px;
+}

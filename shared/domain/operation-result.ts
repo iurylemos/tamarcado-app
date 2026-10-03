@@ -1,4 +1,4 @@
-import type { OperationResultData } from './interfaces/operation-result.interface';
+import type { OperationResultData } from './interfaces/operation-result.interface.js';
 
 export function toOperationError(error: unknown): OperationResultData {
   if (error instanceof Error) return { message: error.message, retryable: false };

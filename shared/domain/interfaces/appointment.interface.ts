@@ -1,5 +1,5 @@
-import type { CommissionType } from './product.interface';
-import type { AppointmentStatus } from '../appointment-status';
+import type { CommissionType } from './product.interface.js';
+import type { AppointmentStatus } from '../appointment-status.js';
 
 export interface Appointment {
   id: string;

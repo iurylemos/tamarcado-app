@@ -1,6 +1,7 @@
 {
   "name": "tamarcado",
   "private": true,
+  "type": "module",
   "workspaces": [
     "client",
     "collaborator",
