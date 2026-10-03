@@ -8,7 +8,10 @@ type ProductsPageProps = {
   onSaved: () => Promise<void>;
 };
 
-export default function ProductsPage({ products, onSaved }: ProductsPageProps): JSX.Element {
+export default function ProductsPage({
+  products,
+  onSaved,
+}: Readonly<ProductsPageProps>): JSX.Element {
   const [selected, setSelected] = useState<ProductRecord | undefined>();
   const [editorOpen, setEditorOpen] = useState<boolean>(false);
 

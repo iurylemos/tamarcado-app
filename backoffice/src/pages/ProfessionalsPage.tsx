@@ -18,7 +18,7 @@ export default function ProfessionalsPage({
   products,
   assignments,
   onSaved,
-}: ProfessionalsPageProps): JSX.Element {
+}: Readonly<ProfessionalsPageProps>): JSX.Element {
   const [selected, setSelected] = useState<ProfessionalRecord | undefined>();
   const [editorOpen, setEditorOpen] = useState<boolean>(false);
 

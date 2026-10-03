@@ -2,9 +2,9 @@ import type { JSX } from 'react';
 import { getTopCollaborators, type SalesBreakdown } from '@shared/reporting';
 import { CurrencyUtil } from '../../../utils/currency.util';
 
-interface CollaboratorRankingProps {
+type CollaboratorRankingProps = {
   collaborators: readonly SalesBreakdown[];
-}
+};
 
 export default function CollaboratorRanking({
   collaborators,

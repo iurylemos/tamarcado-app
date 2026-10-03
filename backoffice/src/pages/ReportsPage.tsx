@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useCallback, useEffect, useState, type JSX, type SubmitEvent } from 'react';
 import { getZonedDateTimeParts } from '@shared/timezone';
 import type { SalesReport } from '@shared/reporting';
 import { CurrencyUtil } from '../utils/currency.util';
@@ -8,34 +8,15 @@ import {
   exportSalesReport,
   getSalesReport,
   rebuildMonthlyReport,
-  type ReportFilters,
 } from '../services/report.service';
 import CollaboratorRanking from '../components/organisms/CollaboratorRanking/CollaboratorRanking';
+import { DateUtil } from '../utils/date.util';
 
-interface ReportsPageProps {
+type ReportsPageProps = {
   timezone: string;
   products: ProductRecord[];
   professionals: ProfessionalRecord[];
-}
-
-function monthValue(year: number, month: number): string {
-  return `${year}-${String(month).padStart(2, '0')}`;
-}
-
-function filtersFromValues(
-  month: string,
-  productId: string,
-  professionalId: string,
-): ReportFilters {
-  const [year, periodMonth] = month.split('-').map(Number);
-  if (!year || !periodMonth) throw new RangeError('Selecione um período válido.');
-  return {
-    year,
-    month: periodMonth,
-    ...(productId ? { productId } : {}),
-    ...(professionalId ? { professionalId } : {}),
-  };
-}
+};
 
 export default function ReportsPage({
   timezone,
@@ -45,7 +26,7 @@ export default function ReportsPage({
   const currentPeriod = getZonedDateTimeParts(new Date(), timezone);
   const currentYear = currentPeriod.year;
   const currentMonth = currentPeriod.month;
-  const [month, setMonth] = useState<string>(monthValue(currentYear, currentMonth));
+  const [month, setMonth] = useState<string>(DateUtil.monthValue(currentYear, currentMonth));
   const [productId, setProductId] = useState<string>('');
   const [professionalId, setProfessionalId] = useState<string>('');
   const [report, setReport] = useState<SalesReport | null>(null);
@@ -55,11 +36,15 @@ export default function ReportsPage({
   const [error, setError] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
 
-  const filters = (): ReportFilters => filtersFromValues(month, productId, professionalId);
+  const filters = useCallback(
+    () => DateUtil.filtersFromValues(month, productId, professionalId),
+    [month, productId, professionalId],
+  );
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+
     void getSalesReport({
       year: currentYear,
       month: currentMonth,
@@ -78,11 +63,12 @@ export default function ReportsPage({
     };
   }, [currentYear, currentMonth]);
 
-  const applyFilters = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const applyFilters = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setLoading(true);
     setError('');
     setNotice('');
+
     try {
       const request = filters();
       setReport(await getSalesReport(request));
@@ -97,6 +83,7 @@ export default function ReportsPage({
     setExporting(true);
     setError('');
     setNotice('');
+
     try {
       const request = filters();
       const matchingReport = await getSalesReport(request);
@@ -114,6 +101,7 @@ export default function ReportsPage({
     setRebuilding(true);
     setError('');
     setNotice('');
+
     try {
       const request = filters();
       if (request.productId || request.professionalId) {

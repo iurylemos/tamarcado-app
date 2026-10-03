@@ -1,30 +1,28 @@
 import { httpsCallable } from 'firebase/functions';
 import type { SalesReport } from '@shared/reporting';
 import { auth, functions } from '../config/firebase.config';
+import type { ReportFilters } from '../interfaces/report.interface';
 
-export interface ReportFilters {
-  year: number;
-  month: number;
-  productId?: string;
-  professionalId?: string;
-}
-
-interface CsvExport {
+type CsvExport = {
   csv: string;
   filename: string;
-}
+};
 
-interface ProjectionRebuildResult {
+type ProjectionRebuildResult = {
   written: number;
   year: number;
   month: number;
-}
+};
 
 async function callable<TInput, TOutput>(name: string, data: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;
+
   if (!currentUser) throw new Error('Entre na sua conta para continuar.');
+
   await currentUser.getIdToken(true);
+
   const result = await httpsCallable<TInput, TOutput>(functions, name)(data);
+
   return result.data;
 }
 

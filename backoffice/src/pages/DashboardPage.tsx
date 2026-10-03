@@ -6,17 +6,17 @@ import type { ProductRecord } from '../interfaces/admin.interface';
 import CollaboratorRanking from '../components/organisms/CollaboratorRanking/CollaboratorRanking';
 import { CurrencyUtil } from '../utils/currency.util';
 
-interface DashboardPageProps {
+type DashboardPageProps = {
   timezone: string;
   onOpenReports: () => void;
   products: ProductRecord[];
-}
+};
 
 export default function DashboardPage({
   timezone,
   onOpenReports,
   products,
-}: DashboardPageProps): JSX.Element {
+}: Readonly<DashboardPageProps>): JSX.Element {
   const [report, setReport] = useState<SalesReport | null>(null);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);

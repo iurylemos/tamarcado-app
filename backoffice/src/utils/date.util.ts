@@ -1,5 +1,6 @@
 import { getZonedDateTimeParts, localDateTimeToUtc } from '@shared/timezone';
 import type { DateWeekday } from '../interfaces/date.interface';
+import type { ReportFilters } from '../services/report.service';
 
 export class DateUtil {
   public static readonly weekdays: DateWeekday[] = [
@@ -11,6 +12,25 @@ export class DateUtil {
     { value: 6, label: 'Sábado', short: 'Sáb' },
     { value: 7, label: 'Domingo', short: 'Dom' },
   ];
+
+  public static filtersFromValues(
+    month: string,
+    productId: string,
+    professionalId: string,
+  ): ReportFilters {
+    const [year, periodMonth] = month.split('-').map(Number);
+    if (!year || !periodMonth) throw new RangeError('Selecione um período válido.');
+    return {
+      year,
+      month: periodMonth,
+      ...(productId ? { productId } : {}),
+      ...(professionalId ? { professionalId } : {}),
+    };
+  }
+
+  public static monthValue(year: number, month: number): string {
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
 
   public static formatDateTimeInput(date: Date, timezone: string): string {
     const parts = getZonedDateTimeParts(date, timezone);
