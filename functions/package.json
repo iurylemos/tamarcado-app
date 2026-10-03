@@ -5,7 +5,8 @@
   "main": "lib/functions/src/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "seed:emulator": "npm run build && node lib/functions/test/fixtures/seed-emulator.js"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",

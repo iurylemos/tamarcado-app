@@ -36,11 +36,10 @@ export function localDateTimeToUtc(date: string, time: string, timeZone: string)
     throw new RangeError('Date must use YYYY-MM-DD.');
   }
 
-  const [hour, minute] = time.split(':').map(Number);
-
-  if (!hour || !minute) {
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
     throw new RangeError('Time must use HH:mm.');
   }
+  const [hour, minute] = time.split(':').map(Number);
 
   if (![year, month, day, hour, minute].every(Number.isFinite)) {
     throw new RangeError('Date and time must use YYYY-MM-DD and HH:mm.');

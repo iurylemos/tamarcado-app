@@ -57,6 +57,14 @@
       ]
     },
     {
+      "collectionGroup": "professional_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "professionalId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "booking_reservations",
       "queryScope": "COLLECTION",
       "fields": [
