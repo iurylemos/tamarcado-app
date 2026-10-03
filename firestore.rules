@@ -11,6 +11,18 @@ service cloud.firestore {
         && request.auth.token.active == true;
     }
 
+    function activeCollaborator(tenantId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return activeTenantMember(tenantId)
+        && request.auth.token.role == 'collaborator'
+        && exists(userPath)
+        && get(userPath).data.active == true
+        && get(userPath).data.tenantId == tenantId
+        && get(userPath).data.role == 'collaborator'
+        && get(userPath).data.get('professionalId', null)
+          == request.auth.token.get('professionalId', null);
+    }
+
     match /public_businesses/{businessId} {
       allow read: if resource.data.published == true;
       allow write: if false;
@@ -23,6 +35,13 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow read, write: if false;
+    }
+
+    match /appointments/{appointmentId} {
+      allow get, list: if activeCollaborator(resource.data.tenantId)
+        && (!request.auth.token.keys().hasAny(['professionalId'])
+          || resource.data.professionalId == request.auth.token.professionalId);
+      allow write: if false;
     }
 
     match /{collection}/{documentId} {

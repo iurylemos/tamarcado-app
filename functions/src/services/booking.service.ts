@@ -190,6 +190,7 @@ export async function createPublicAppointment(
         durationMinutes: product.durationMinutes,
         status: 'pending',
         productNameSnapshot: product.name,
+        productImageUrlSnapshot: product.imageUrl,
         productPriceCentsSnapshot: product.priceCents,
         commissionTypeSnapshot: product.commissionType,
         commissionValueSnapshot: product.commissionValue,
