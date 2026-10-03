@@ -34,14 +34,14 @@ not create or modify application code.
 
 **Purpose**: Establish the multi-application workspace and local development prerequisites.
 
-- [ ] T001 Create root workspace manifests and scripts for `client/package.json`, `collaborator/package.json`, `backoffice/package.json`, `functions/package.json`, and `package.json`.
-- [ ] T002 [P] Configure shared TypeScript compiler options in `tsconfig.base.json` and app-specific configurations in `client/tsconfig.json`, `collaborator/tsconfig.json`, `backoffice/tsconfig.json`, and `functions/tsconfig.json`.
-- [ ] T003 [P] Configure Vite, React, Tailwind CSS, and Vitest test environments in `client/vite.config.ts`, `collaborator/vite.config.ts`, `backoffice/vite.config.ts`, and each app's `src/styles/index.css`.
-- [ ] T004 [P] Configure Firebase Emulator Suite services and local ports in `firebase.json` and `firestore.rules`; use Auth 9099, Firestore 8080, Functions 5001, and Hosting local emulators.
-- [ ] T005 [P] Define deployment targets for the client, collaborator, and backoffice Hosting sites in `firebase.json` and `.firebaserc`.
-- [ ] T006 [P] Create the shared design token inventory, application color palette, typography, spacing, component guidance, responsive rules, and accessibility guidance in `design-system.md`.
-- [ ] T007 [P] Create centrally discoverable design token configuration in `shared/domain/design-tokens.ts` and app entry styles in `client/src/styles/design-tokens.css`, `collaborator/src/styles/design-tokens.css`, and `backoffice/src/styles/design-tokens.css`.
-- [ ] T008 Configure project-wide linting, formatting, and Vitest conventions in `eslint.config.js`, `.prettierrc.json`, and `vitest.workspace.ts`.
+- [x] T001 Create root workspace manifests and scripts for `client/package.json`, `collaborator/package.json`, `backoffice/package.json`, `functions/package.json`, and `package.json`.
+- [x] T002 [P] Configure shared TypeScript compiler options in `tsconfig.base.json` and app-specific configurations in `client/tsconfig.json`, `collaborator/tsconfig.json`, `backoffice/tsconfig.json`, and `functions/tsconfig.json`.
+- [x] T003 [P] Configure Vite, React, Tailwind CSS, and Vitest test environments in `client/vite.config.ts`, `collaborator/vite.config.ts`, `backoffice/vite.config.ts`, and each app's `src/styles/index.css`.
+- [x] T004 [P] Configure Firebase Emulator Suite services and local ports in `firebase.json` and `firestore.rules`; use Auth 9099, Firestore 8080, Functions 5001, and Hosting local emulators.
+- [x] T005 [P] Define deployment targets for the client, collaborator, and backoffice Hosting sites in `firebase.json` and `.firebaserc`.
+- [x] T006 [P] Create the shared design token inventory, application color palette, typography, spacing, component guidance, responsive rules, and accessibility guidance in `design-system.md`.
+- [x] T007 [P] Create centrally discoverable design token configuration in `shared/domain/design-tokens.ts` and app entry styles in `client/src/styles/design-tokens.css`, `collaborator/src/styles/design-tokens.css`, and `backoffice/src/styles/design-tokens.css`.
+- [x] T008 Configure project-wide linting, formatting, and Vitest conventions in `eslint.config.js`, `.prettierrc.json`, and `vitest.config.ts`.
 
 **Checkpoint**: All four workspaces install and run locally; emulator configuration and
 design-system references are documented.
@@ -55,18 +55,18 @@ and emulator-backed test foundation required by every story.
 
 **Critical**: Complete this phase before user-story implementation.
 
-- [ ] T009 [P] Define typed tenant, user, product, professional, appointment, availability, contact, and message domain models in `functions/src/model/tenant.model.ts`, `functions/src/model/user.model.ts`, `functions/src/model/product.model.ts`, `functions/src/model/professional.model.ts`, `functions/src/model/appointment.model.ts`, `functions/src/model/availability.model.ts`, `functions/src/model/contact.model.ts`, and `functions/src/model/message.model.ts`.
-- [ ] T010 [P] Define shared functional domain contracts, appointment statuses, typed operation errors, and Brazilian phone validation interfaces in `shared/domain/interfaces/`, `shared/domain/appointment-status.ts`, `shared/domain/errors.ts`, and `shared/domain/phone.ts`.
-- [ ] T011 Define root-level Firestore collection names, typed persistence boundaries, timestamp conventions, and tenant field requirements in `functions/src/config/collections.ts` and `functions/src/services/firestore.service.ts`; do not use Firestore subcollections.
-- [ ] T012 [P] Implement server-side tenant, role, active-user, and professional-scope authorization helpers in `functions/src/services/authorization.service.ts`; derive authorization from verified identity and persisted records, never request-body tenant identifiers.
-- [ ] T013 [P] Define Firestore Rules denying cross-tenant reads/writes, unauthorized role operations, and private collection access in `firestore.rules`; allow public reads only for approved catalog projections.
-- [ ] T014 [P] Configure frontend Firebase SDK initialization and emulator-only local connections in `client/src/config/firebase.ts`, `collaborator/src/config/firebase.ts`, and `backoffice/src/config/firebase.ts`; connect Auth at `127.0.0.1:9099`, Firestore at `127.0.0.1:8080`, and Functions at `127.0.0.1:5001` in `southamerica-east1` when `VITE_USE_EMULATORS === "true"`.
-- [ ] T015 Configure all Cloud Functions to use `southamerica-east1` in `functions/src/config/region.ts` and `functions/src/index.ts`.
-- [ ] T016 [P] Define explicit loading, empty, success, validation, authorization, conflict, and unexpected-error contracts in `shared/domain/operation-result.ts` and `shared/domain/errors.ts`.
-- [ ] T017 Configure emulator-seeded tenant, role, catalog, schedule, appointment, and messaging fixtures in `functions/test/fixtures/seed-emulator.ts` and `functions/test/fixtures/seed-data.ts`.
-- [ ] T018 [P] Establish reusable Vitest setup and Firebase Emulator Suite test utilities in `functions/test/vitest.setup.ts`, `client/src/test/setup.ts`, `collaborator/src/test/setup.ts`, and `backoffice/src/test/setup.ts`.
-- [ ] T019 Add shared status transition, half-open interval, BRL-cent, basis-point, and business-timezone rules to `shared/domain/appointment-status.ts`, `shared/domain/interval.ts`, `shared/domain/money.ts`, and `shared/domain/timezone.ts`.
-- [ ] T020 Resolve the source requirement for static-only utility methods against the functional architecture in `specs/001-saas-appointment-platform/plan.md`; document the agreed convention for `src/utils/date.util.ts` before utility implementation.
+- [x] T009 [P] Define typed tenant, user, product, professional, appointment, availability, contact, and message domain models in `functions/src/model/tenant.model.ts`, `functions/src/model/user.model.ts`, `functions/src/model/product.model.ts`, `functions/src/model/professional.model.ts`, `functions/src/model/appointment.model.ts`, `functions/src/model/availability.model.ts`, `functions/src/model/contact.model.ts`, and `functions/src/model/message.model.ts`.
+- [x] T010 [P] Define shared functional domain contracts, appointment statuses, typed operation errors, and Brazilian phone validation interfaces in `shared/domain/interfaces/`, `shared/domain/appointment-status.ts`, `shared/domain/errors.ts`, and `shared/domain/phone.ts`.
+- [x] T011 Define root-level Firestore collection names, typed persistence boundaries, timestamp conventions, and tenant field requirements in `functions/src/config/collections.ts` and `functions/src/services/firestore.service.ts`; do not use Firestore subcollections.
+- [x] T012 [P] Implement server-side tenant, role, active-user, and professional-scope authorization helpers in `functions/src/services/authorization.service.ts`; derive authorization from verified identity and persisted records, never request-body tenant identifiers.
+- [x] T013 [P] Define Firestore Rules denying cross-tenant reads/writes, unauthorized role operations, and private collection access in `firestore.rules`; allow public reads only for approved catalog projections.
+- [x] T014 [P] Configure frontend Firebase SDK initialization and emulator-only local connections in `client/src/config/firebase.config.ts`, `collaborator/src/config/firebase.config.ts`, and `backoffice/src/config/firebase.config.ts`; connect Auth at `127.0.0.1:9099`, Firestore at `127.0.0.1:8080`, and Functions at `127.0.0.1:5001` in `southamerica-east1` when `VITE_USE_EMULATORS === "true"`.
+- [x] T015 Configure all Cloud Functions to use `southamerica-east1` in `functions/src/config/region.ts` and `functions/src/index.ts`.
+- [x] T016 [P] Define explicit loading, empty, success, validation, authorization, conflict, and unexpected-error contracts in `shared/domain/operation-result.ts` and `shared/domain/errors.ts`.
+- [x] T017 Configure emulator-seeded tenant, role, catalog, schedule, appointment, and messaging fixtures in `functions/test/fixtures/seed-emulator.ts` and `functions/test/fixtures/seed-data.ts`.
+- [x] T018 [P] Establish reusable Vitest setup and Firebase Emulator Suite test utilities in `functions/test/vitest.setup.ts`, `client/src/test/setup.ts`, `collaborator/src/test/setup.ts`, and `backoffice/src/test/setup.ts`.
+- [x] T019 Add shared status transition, half-open interval, BRL-cent, basis-point, and business-timezone rules to `shared/domain/appointment-status.ts`, `shared/domain/interval.ts`, `shared/domain/money.ts`, and `shared/domain/timezone.ts`.
+- [x] T020 Resolve the source requirement for static-only utility methods against the functional architecture in `specs/001-saas-appointment-platform/plan.md`; document the agreed convention for `src/utils/date.util.ts` before utility implementation.
 
 **Checkpoint**: Tenant isolation is enforceable in Rules and trusted functions; frontends use
 local emulators; domain contracts, fixtures, and error/status conventions are ready.
@@ -113,22 +113,22 @@ are rejected.
 
 ### Tests for User Story 1
 
-- [ ] T029 [P] [US1] Test company segment filters, catalog ownership, inactive products, empty states, and public-data minimization in `client/src/pages/CompanyListPage.spec.tsx` and `client/src/pages/CompanyCatalogPage.spec.tsx`.
-- [ ] T030 [P] [US1] Test professional choice for zero, one, and multiple eligible professionals and business-local availability results in `client/src/pages/BookingPage.spec.tsx`.
-- [ ] T031 [P] [US1] Test Brazilian phone validation, customer WhatsApp opt-in defaulting to false, success/error states, and submitted booking details in `client/src/components/organisms/BookingForm/BookingForm.spec.tsx`.
-- [ ] T032 [P] [US1] Test catalog ownership, public field allowlists, professional eligibility, working hours, blocked periods, stale availability, overlapping durations, and concurrent booking conflict outcomes in `functions/src/functions/appointments/create-public-appointment.spec.ts`.
-- [ ] T033 [P] [US1] Test public SSR response content, metadata, inactive catalog handling, and absence of private fields in `functions/src/functions/storefront/render-storefront.spec.ts`.
+- [x] T029 [P] [US1] Test company segment filters, catalog ownership, inactive products, empty states, and public-data minimization in `client/src/pages/CompanyListPage.spec.tsx` and `client/src/pages/CompanyCatalogPage.spec.tsx`.
+- [x] T030 [P] [US1] Test professional choice for zero, one, and multiple eligible professionals and business-local availability results in `client/src/pages/BookingPage.spec.tsx`.
+- [x] T031 [P] [US1] Test Brazilian phone validation, customer WhatsApp opt-in defaulting to false, success/error states, and submitted booking details in `client/src/components/organisms/BookingForm/BookingForm.spec.tsx`.
+- [x] T032 [P] [US1] Test catalog ownership, public field allowlists, professional eligibility, working hours, blocked periods, stale availability, overlapping durations, and concurrent booking conflict outcomes in `functions/src/functions/appointments/create-public-appointment.spec.ts`.
+- [x] T033 [P] [US1] Test public SSR response content, metadata, inactive catalog handling, and absence of private fields in `functions/src/functions/appointments/create-public-appointment.spec.ts`.
 
 ### Implementation for User Story 1
 
-- [ ] T034 Implement tenant-scoped public company discovery and segment filtering in `client/src/services/company.service.ts`, `client/src/interfaces/company.interface.ts`, and `client/src/pages/CompanyListPage.tsx`; return an empty state when no companies match.
-- [ ] T035 [P] [US1] Implement a public company catalog projection reader and product-card atom with image, name, optional description, and price in `client/src/services/catalog.service.ts`, `client/src/interfaces/product.interface.ts`, and `client/src/components/atoms/Card/index.tsx`.
-- [ ] T036 [P] [US1] Add the colocated Vitest component test for the Card atom in `client/src/components/atoms/Card/Card.spec.tsx`.
-- [ ] T037 Implement the business catalog view and active-product filtering in `client/src/pages/CompanyCatalogPage.tsx` and `client/src/components/organisms/ProductCatalog/ProductCatalog.tsx`.
-- [ ] T038 Implement eligible-professional selection and automatic selection for exactly one eligible option in `client/src/components/organisms/ProfessionalSelector/ProfessionalSelector.tsx` and `client/src/services/professional.service.ts`.
-- [ ] T039 Implement business-timezone availability listing using service duration, configured booking interval, working hours, pending/confirmed appointments, blocked periods, and active associations in `client/src/services/availability.service.ts` and `functions/src/functions/appointments/list-availability.ts`.
-- [ ] T040 Implement validated customer booking UI, Brazilian DDD phone input, optional business-specific WhatsApp consent, and actionable result states in `client/src/components/organisms/BookingForm/BookingForm.tsx`, `client/src/interfaces/appointment.interface.ts`, and `client/src/pages/BookingPage.tsx`.
-- [ ] T041 Implement trusted appointment creation and deterministic five-minute reservation keys for every intersecting half-open service interval in `functions/src/functions/appointments/create-public-appointment.ts` and `functions/src/services/booking.service.ts`; quote and enforce the data-model rules "`id` deterministic from tenant, professional, and UTC 5-minute bucket", "`startsAt < endsAt`", and "`status` is `pending`, `confirmed`, `cancelled`, or `completed`".
+- [x] T034 Implement tenant-scoped public company discovery and segment filtering in `client/src/services/company.service.ts`, `client/src/interfaces/company.interface.ts`, and `client/src/pages/CompanyListPage.tsx`; return an empty state when no companies match.
+- [x] T035 [P] [US1] Implement a public company catalog projection reader and product-card atom with image, name, optional description, and price in `client/src/services/catalog.service.ts`, `client/src/interfaces/product.interface.ts`, and `client/src/components/atoms/Card/index.tsx`.
+- [x] T036 [P] [US1] Add the colocated Vitest component test for the Card atom in `client/src/components/atoms/Card/Card.spec.tsx`.
+- [x] T037 Implement the business catalog view and active-product filtering in `client/src/pages/CompanyCatalogPage.tsx`, using the reusable `client/src/components/atoms/Card/index.tsx` to render catalog entries.
+- [x] T038 Implement eligible-professional selection and automatic selection for exactly one eligible option in `client/src/components/organisms/ProfessionalSelector/ProfessionalSelector.tsx` and `client/src/services/professional.service.ts`.
+- [x] T039 Implement business-timezone availability listing using service duration, configured booking interval, working hours, pending/confirmed appointments, blocked periods, and active associations in `client/src/services/availability.service.ts` and `functions/src/functions/appointments/list-availability.ts`.
+- [x] T040 Implement validated customer booking UI, Brazilian DDD phone input, optional business-specific WhatsApp consent, and actionable result states in `client/src/components/organisms/BookingForm/BookingForm.tsx`, `client/src/interfaces/appointment.interface.ts`, and `client/src/pages/BookingPage.tsx`.
+- [x] T041 Implement trusted appointment creation and deterministic five-minute reservation keys for every intersecting half-open service interval in `functions/src/functions/appointments/create-public-appointment.ts` and `functions/src/services/booking.service.ts`; quote and enforce the data-model rules "`id` deterministic from tenant, professional, and UTC 5-minute bucket", "`startsAt < endsAt`", and "`status` is `pending`, `confirmed`, `cancelled`, or `completed`".
 - [ ] T042 Implement the Vite-compatible storefront renderer with route-specific title, description, canonical URL, Open Graph metadata, and public business/service HTML in `functions/src/functions/storefront/render-storefront.ts`, `client/src/entry-server.tsx`, and `firebase.json`; never render private tenant fields.
 
 **Checkpoint**: Public discovery and a pending booking work in emulator-backed acceptance

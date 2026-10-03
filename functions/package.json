@@ -1,0 +1,14 @@
+{
+  "name": "@tamarcado/functions",
+  "private": true,
+  "version": "0.1.0",
+  "main": "lib/functions/src/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.2.0"
+  }
+}

@@ -1,9 +1,8 @@
 # Quickstart: Validate the Appointment Commerce Platform
 
-This is the planned local and acceptance-validation guide for the feature. The repository
-currently has no application source, package manifests, Firebase configuration, or runnable
-test scripts; the commands below become executable after the implementation phase establishes
-those prerequisites. They are not run as part of this documentation-only planning task.
+This guide covers local setup for the initial platform foundation and public booking flow.
+Local Firebase configuration is pinned to the `demo-tamarcado` emulator project and does not
+select a production Firebase project.
 
 ## Prerequisites
 
@@ -19,35 +18,34 @@ those prerequisites. They are not run as part of this documentation-only plannin
 
 ## Planned Local Setup and Commands
 
-The implementation tasks must expose equivalent npm scripts; exact package-workspace wiring
-is selected when source manifests are added.
-
 ```powershell
-# Install dependencies and run tests in every created package.
-Set-Location client
-npm ci
+# From the repository root:
+npm install
+npm run build
 npm test
 
-Set-Location ..\collaborator
-npm ci
-npm test
+# Start the local suite (Auth 9099, Firestore 8080, Functions 5001, Hosting 5000).
+npm run emulators
 
-Set-Location ..\backoffice
-npm ci
-npm test
+# In a second terminal, seed repeatable demo businesses, users, services, schedules and appointments.
+npm run seed:emulator
 
-Set-Location ..\functions
-npm ci
-npm test
-
-# From repository root, start the local Firebase emulators after firebase.json is configured.
-Set-Location ..
-firebase emulators:start --only auth,firestore,functions,hosting
+# Start the customer app; it uses local emulators automatically.
+npm run dev:client
 ```
 
-In separate terminals, start the client and authenticated applications with their Vite
-development scripts. Configure them to use only local emulators and the WhatsApp test double.
-Never put production secrets in frontend environment configuration.
+The collaborator and backoffice shells are also available through `npm run dev:collaborator` and
+`npm run dev:backoffice`. Emulator test accounts use `EmulatorOnly123!`:
+
+| Role | Email |
+|---|---|
+| Aurora backoffice | `admin@aurora.test` |
+| Aurora collaborator | `ana@aurora.test` |
+| Horizonte backoffice | `admin@horizonte.test` |
+
+These are test-only identities and phone numbers. The seed command refuses Firebase project IDs
+that do not start with `demo-`; the WhatsApp connection is a local test double and never sends
+messages.
 
 ## Validation Scenarios
 
@@ -58,7 +56,7 @@ Never put production secrets in frontend environment configuration.
 3. Request available times for one service with one eligible professional and verify the
    professional is selected without an extra prompt.
 4. Repeat with multiple eligible professionals and verify only eligible choices appear.
-5. Submit a valid Brazilian phone, opt in to appointment WhatsApp messages, and request an
+5. Submit a valid Brazilian phone, optionally opt in to appointment WhatsApp messages, and request an
    available time.
 6. Verify the appointment is pending, commercial values are snapshotted, and the user sees
    the request result even if the provider test double reports a send failure.

@@ -1,0 +1,18 @@
+export const collections = {
+  tenants: 'tenants',
+  users: 'users',
+  products: 'products',
+  professionals: 'professionals',
+  professionalProducts: 'professional_products',
+  workingHours: 'working_hours',
+  blockedPeriods: 'blocked_periods',
+  appointments: 'appointments',
+  bookingReservations: 'booking_reservations',
+  connections: 'connections',
+  contacts: 'contacts',
+  messages: 'messages',
+  publicBusinesses: 'public_businesses',
+  publicProducts: 'public_products',
+} as const;
+
+export type CollectionName = (typeof collections)[keyof typeof collections];
