@@ -22,7 +22,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         slug: 'studio-aurora',
         segment: 'beauty',
         description: 'Cuidado e beleza no seu ritmo.',
-        logoUrl: 'https://images.example.test/studio-aurora.jpg',
+        logoUrl:
+          'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?auto=format&fit=crop&w=640&q=80',
         timezone: 'America/Sao_Paulo',
         bookingIntervalMinutes: 15,
         active: true,
@@ -42,10 +43,42 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
     },
   ];
   const professionals = [
-    { id: 'professional-ana', tenantId: 'tenant-aurora', name: 'Ana Souza', active: true, phoneE164: '+5511999990001' },
-    { id: 'professional-bruna', tenantId: 'tenant-aurora', name: 'Bruna Lima', active: true, phoneE164: '+5511999990002' },
-    { id: 'professional-inactive', tenantId: 'tenant-aurora', name: 'Carol Dias', active: false, phoneE164: '+5511999990003' },
-    { id: 'professional-horizonte', tenantId: 'tenant-horizonte', name: 'Dra. Marina Reis', active: true, phoneE164: '+5521999990004' },
+    {
+      id: 'professional-ana',
+      tenantId: 'tenant-aurora',
+      name: 'Ana Souza',
+      active: true,
+      phoneE164: '+5511999990001',
+      photoUrl:
+        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+    },
+    {
+      id: 'professional-bruna',
+      tenantId: 'tenant-aurora',
+      name: 'Bruna Lima',
+      active: true,
+      phoneE164: '+5511999990002',
+      photoUrl:
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+    },
+    {
+      id: 'professional-inactive',
+      tenantId: 'tenant-aurora',
+      name: 'Carol Dias',
+      active: false,
+      phoneE164: '+5511999990003',
+      photoUrl:
+        'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=256&q=80',
+    },
+    {
+      id: 'professional-horizonte',
+      tenantId: 'tenant-horizonte',
+      name: 'Dra. Marina Reis',
+      active: true,
+      phoneE164: '+5521999990004',
+      photoUrl:
+        'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=256&q=80',
+    },
   ];
   const products = [
     {
@@ -53,7 +86,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       tenantId: 'tenant-aurora',
       name: 'Corte e finalização',
       description: 'Corte personalizado com finalização.',
-      imageUrl: 'https://images.example.test/corte.jpg',
+      imageUrl:
+        'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=85',
       priceCents: 12000,
       durationMinutes: 60,
       commissionType: 'percentage',
@@ -65,7 +99,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       tenantId: 'tenant-aurora',
       name: 'Hidratação profunda',
       description: 'Tratamento nutritivo para os fios.',
-      imageUrl: 'https://images.example.test/hidratacao.jpg',
+      imageUrl:
+        'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=900&q=85',
       priceCents: 9500,
       durationMinutes: 45,
       commissionType: 'fixed',
@@ -76,7 +111,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       id: 'service-coloracao',
       tenantId: 'tenant-aurora',
       name: 'Coloração',
-      imageUrl: 'https://images.example.test/coloracao.jpg',
+      imageUrl:
+        'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=900&q=85',
       priceCents: 25000,
       durationMinutes: 120,
       commissionType: 'percentage',
@@ -88,7 +124,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       tenantId: 'tenant-horizonte',
       name: 'Consulta inicial',
       description: 'Avaliação individual.',
-      imageUrl: 'https://images.example.test/consulta.jpg',
+      imageUrl:
+        'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=85',
       priceCents: 18000,
       durationMinutes: 45,
       commissionType: 'fixed',
@@ -99,7 +136,11 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
   const documents: SeedDocument[] = [];
 
   for (const tenant of tenants) {
-    documents.push({ collection: 'tenants', id: tenant.id, data: { ...tenant.data, active: true } });
+    documents.push({
+      collection: 'tenants',
+      id: tenant.id,
+      data: { ...tenant.data, active: true },
+    });
     documents.push({
       collection: 'public_businesses',
       id: tenant.id,
@@ -108,8 +149,10 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         name: tenant.data.name,
         slug: tenant.data.slug,
         segment: tenant.data.segment,
-        description: tenant.data.description,
-        logoUrl: tenant.data.logoUrl,
+        ...(tenant.data.description ? { description: tenant.data.description } : {}),
+        ...('logoUrl' in tenant.data && tenant.data.logoUrl
+          ? { logoUrl: tenant.data.logoUrl }
+          : {}),
         published: true,
       },
     });
@@ -129,7 +172,9 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         tenantId: product.tenantId,
         businessSlug: tenant.data.slug,
         name: product.name,
-        description: product.description,
+        ...('description' in product && product.description
+          ? { description: product.description }
+          : {}),
         imageUrl: product.imageUrl,
         priceCents: product.priceCents,
         durationMinutes: product.durationMinutes,
@@ -166,7 +211,14 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       documents.push({
         collection: 'working_hours',
         id: `${tenantId}__${professionalId}__${dayOfWeek}`,
-        data: { tenantId, professionalId, dayOfWeek, startLocalTime: '09:00', endLocalTime: '18:00', active: true },
+        data: {
+          tenantId,
+          professionalId,
+          dayOfWeek,
+          startLocalTime: '09:00',
+          endLocalTime: '18:00',
+          active: true,
+        },
       });
     }
   }
@@ -225,18 +277,92 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
   });
 
   documents.push(
-    { collection: 'users', id: 'test-backoffice-aurora', data: { tenantId: 'tenant-aurora', role: 'backoffice', name: 'Gestor de teste', phoneE164: '+5511999990010', active: true } },
-    { collection: 'users', id: 'test-collaborator-ana', data: { tenantId: 'tenant-aurora', role: 'collaborator', professionalId: 'professional-ana', name: 'Ana Souza', phoneE164: '+5511999990001', active: true } },
-    { collection: 'users', id: 'test-backoffice-horizonte', data: { tenantId: 'tenant-horizonte', role: 'backoffice', name: 'Gestor Horizonte', phoneE164: '+5521999990010', active: true } },
-    { collection: 'connections', id: 'connection-aurora', data: { tenantId: 'tenant-aurora', provider: 'emulator-test-double', status: 'active' } },
-    { collection: 'contacts', id: 'contact-aurora-demo', data: { tenantId: 'tenant-aurora', connectionId: 'connection-aurora', phoneE164: '+5511999990009', name: 'Cliente de teste', whatsappOptIn: false } },
-    { collection: 'messages', id: 'message-aurora-demo', data: { tenantId: 'tenant-aurora', connectionId: 'connection-aurora', contactId: 'contact-aurora-demo', direction: 'outbound', content: 'Mensagem de demonstração', status: 'delivered' } },
+    {
+      collection: 'users',
+      id: 'test-backoffice-aurora',
+      data: {
+        tenantId: 'tenant-aurora',
+        role: 'backoffice',
+        name: 'Gestor de teste',
+        phoneE164: '+5511999990010',
+        active: true,
+      },
+    },
+    {
+      collection: 'users',
+      id: 'test-collaborator-ana',
+      data: {
+        tenantId: 'tenant-aurora',
+        role: 'collaborator',
+        professionalId: 'professional-ana',
+        name: 'Ana Souza',
+        phoneE164: '+5511999990001',
+        active: true,
+      },
+    },
+    {
+      collection: 'users',
+      id: 'test-backoffice-horizonte',
+      data: {
+        tenantId: 'tenant-horizonte',
+        role: 'backoffice',
+        name: 'Gestor Horizonte',
+        phoneE164: '+5521999990010',
+        active: true,
+      },
+    },
+    {
+      collection: 'connections',
+      id: 'connection-aurora',
+      data: { tenantId: 'tenant-aurora', provider: 'emulator-test-double', status: 'active' },
+    },
+    {
+      collection: 'contacts',
+      id: 'contact-aurora-demo',
+      data: {
+        tenantId: 'tenant-aurora',
+        connectionId: 'connection-aurora',
+        phoneE164: '+5511999990009',
+        name: 'Cliente de teste',
+        whatsappOptIn: false,
+      },
+    },
+    {
+      collection: 'messages',
+      id: 'message-aurora-demo',
+      data: {
+        tenantId: 'tenant-aurora',
+        connectionId: 'connection-aurora',
+        contactId: 'contact-aurora-demo',
+        direction: 'outbound',
+        content: 'Mensagem de demonstração',
+        status: 'delivered',
+      },
+    },
   );
   return documents;
 }
 
 export const emulatorUsers = [
-  { uid: 'test-backoffice-aurora', email: 'admin@aurora.test', password: 'EmulatorOnly123!', tenantId: 'tenant-aurora', role: 'backoffice' },
-  { uid: 'test-collaborator-ana', email: 'ana@aurora.test', password: 'EmulatorOnly123!', tenantId: 'tenant-aurora', role: 'collaborator' },
-  { uid: 'test-backoffice-horizonte', email: 'admin@horizonte.test', password: 'EmulatorOnly123!', tenantId: 'tenant-horizonte', role: 'backoffice' },
+  {
+    uid: 'test-backoffice-aurora',
+    email: 'admin@aurora.test',
+    password: 'EmulatorOnly123!',
+    tenantId: 'tenant-aurora',
+    role: 'backoffice',
+  },
+  {
+    uid: 'test-collaborator-ana',
+    email: 'ana@aurora.test',
+    password: 'EmulatorOnly123!',
+    tenantId: 'tenant-aurora',
+    role: 'collaborator',
+  },
+  {
+    uid: 'test-backoffice-horizonte',
+    email: 'admin@horizonte.test',
+    password: 'EmulatorOnly123!',
+    tenantId: 'tenant-horizonte',
+    role: 'backoffice',
+  },
 ] as const;

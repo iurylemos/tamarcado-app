@@ -32,20 +32,30 @@ npm run seed:emulator
 
 # Start the customer app; it uses local emulators automatically.
 npm run dev:client
+
+# Start the backoffice and sign in as the Aurora demo administrator.
+npm run dev:backoffice
 ```
 
 The collaborator and backoffice shells are also available through `npm run dev:collaborator` and
-`npm run dev:backoffice`. Emulator test accounts use `EmulatorOnly123!`:
+`npm run dev:backoffice`. Set the backoffice's local `VITE_FIREBASE_PROJECT_ID` to
+`demo-tamarcado`; do not use a production project ID while connecting to local emulators.
+Emulator test accounts use `EmulatorOnly123!`:
 
-| Role | Email |
-|---|---|
-| Aurora backoffice | `admin@aurora.test` |
-| Aurora collaborator | `ana@aurora.test` |
+| Role                 | Email                  |
+| -------------------- | ---------------------- |
+| Aurora backoffice    | `admin@aurora.test`    |
+| Aurora collaborator  | `ana@aurora.test`      |
 | Horizonte backoffice | `admin@horizonte.test` |
 
 These are test-only identities and phone numbers. The seed command refuses Firebase project IDs
 that do not start with `demo-`; the WhatsApp connection is a local test double and never sends
 messages.
+
+The backoffice demo includes the Studio Aurora catalog (active and inactive services), three
+collaborator profiles, service assignments, weekly hours, and a one-time blocked period. Sign in
+with `admin@aurora.test` to open the services, team, availability, and company-settings screens.
+The fixtures are synthetic; service and profile photos use remote demonstration images.
 
 ## Validation Scenarios
 
