@@ -9,12 +9,7 @@ import {
   notifyCustomer,
 } from '../../services/appointment-notification.service';
 import { firestore } from '../../services/firestore.service';
-
-export interface ButtonReply {
-  from: string;
-  payload: string;
-  eventId: string;
-}
+import { WhatsappButtonReply } from '../../interfaces/whatsapp.interface';
 
 export function isValidMetaSignature(
   rawBody: Buffer | string,
@@ -42,8 +37,8 @@ export function verifyMetaChallenge(
   return null;
 }
 
-export function extractButtonReplies(payload: unknown): ButtonReply[] {
-  const replies: ButtonReply[] = [];
+export function extractButtonReplies(payload: unknown): WhatsappButtonReply[] {
+  const replies: WhatsappButtonReply[] = [];
   const entries = (payload as { entry?: unknown[] } | null)?.entry;
   if (!Array.isArray(entries)) return replies;
   for (const entry of entries) {
@@ -58,8 +53,16 @@ export function extractButtonReplies(payload: unknown): ButtonReply[] {
           interactive?: { button_reply?: { id?: string } };
         };
         const reply = item.button?.payload ?? item.interactive?.button_reply?.id;
-        if (typeof item.id === 'string' && typeof item.from === 'string' && typeof reply === 'string') {
-          replies.push({ from: `+${item.from.replace(/^\+/, '')}`, payload: reply, eventId: item.id });
+        if (
+          typeof item.id === 'string' &&
+          typeof item.from === 'string' &&
+          typeof reply === 'string'
+        ) {
+          replies.push({
+            from: `+${item.from.replace(/^\+/, '')}`,
+            payload: reply,
+            eventId: item.id,
+          });
         }
       }
     }
@@ -70,31 +73,47 @@ export function extractButtonReplies(payload: unknown): ButtonReply[] {
 export type AcceptResult = 'confirmed' | 'ignored' | 'forbidden' | 'not-found' | 'duplicate';
 
 // A collaborator accepts a booking from WhatsApp. The sender must be the assigned professional.
-export async function acceptFromWhatsApp(reply: ButtonReply): Promise<AcceptResult> {
+export async function acceptFromWhatsApp(reply: WhatsappButtonReply): Promise<AcceptResult> {
   if (!reply.payload.startsWith(acceptPayloadPrefix)) return 'ignored';
   const appointmentId = reply.payload.slice(acceptPayloadPrefix.length);
-  const eventRef = firestore.collection(collections.providerWebhookEvents).doc(`wa-${reply.eventId}`);
+  const eventRef = firestore
+    .collection(collections.providerWebhookEvents)
+    .doc(`wa-${reply.eventId}`);
+
   const appointmentRef = firestore.collection(collections.appointments).doc(appointmentId);
 
   const result = await firestore.runTransaction(async (transaction): Promise<AcceptResult> => {
-    const [seen, snapshot] = await Promise.all([transaction.get(eventRef), transaction.get(appointmentRef)]);
+    const [seen, snapshot] = await Promise.all([
+      transaction.get(eventRef),
+      transaction.get(appointmentRef),
+    ]);
+
     if (seen.exists) return 'duplicate';
+
     transaction.set(eventRef, { kind: 'button-reply', receivedAt: Timestamp.now() });
+
     const appointment = snapshot.data();
+
     if (!snapshot.exists || !appointment) return 'not-found';
+
     const professional = await transaction.get(
       firestore.collection(collections.professionals).doc(String(appointment.professionalId)),
     );
+
     const data = professional.data();
+
     if (!data || data.tenantId !== appointment.tenantId || data.phoneE164 !== reply.from) {
       return 'forbidden';
     }
+
     if (!canTransitionAppointment(appointment.status, 'confirmed')) return 'ignored';
+
     transaction.update(appointmentRef, {
       status: 'confirmed',
       updatedAt: Timestamp.now(),
       updatedBy: `whatsapp:${reply.from}`,
     });
+
     return 'confirmed';
   });
 
@@ -111,6 +130,7 @@ export async function processMetaWebhook(
   appSecret: string | undefined = process.env.WHATSAPP_APP_SECRET,
 ): Promise<{ status: number; results?: AcceptResult[] }> {
   if (!isValidMetaSignature(rawBody, signature, appSecret)) return { status: 401 };
+
   let payload: unknown;
   try {
     payload = JSON.parse(rawBody.toString());
@@ -119,6 +139,7 @@ export async function processMetaWebhook(
   }
   const results: AcceptResult[] = [];
   for (const reply of extractButtonReplies(payload)) results.push(await acceptFromWhatsApp(reply));
+
   return { status: 200, results };
 }
 
@@ -129,10 +150,13 @@ export const whatsappCloudWebhook = onRequest(async (request, response) => {
     else response.status(200).send(challenge);
     return;
   }
+
   if (request.method !== 'POST') {
     response.status(405).end();
     return;
   }
+
   const { status } = await processMetaWebhook(request.rawBody, request.get('x-hub-signature-256'));
+
   response.status(status).end();
 });
