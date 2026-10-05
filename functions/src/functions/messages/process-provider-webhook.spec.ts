@@ -1,16 +1,20 @@
-import { createHmac } from 'node:crypto';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import twilio from 'twilio';
 import { createSeedDocuments } from '../../../test/fixtures/seed-data';
 import type { AuthorizedActor } from '../../services/authorization.service';
 import { sendAppointmentMessage } from '../../services/message.service';
-import { WhatsAppProviderError, type WhatsAppProvider } from '../../services/whatsapp-provider.interface';
-import { processProviderWebhook } from './process-provider-webhook';
+import {
+  WhatsAppProviderError,
+  type WhatsAppProvider,
+} from '../../services/whatsapp-provider.interface';
+import { isValidSignature, processProviderWebhook } from './process-provider-webhook';
 
 const emulatorOnly = describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
 let db: Firestore;
 const secret = 'test-secret';
+const callbackUrl = 'https://example.test/providerWebhook';
 const actor: AuthorizedActor = {
   uid: 'test-collaborator-ana',
   tenantId: 'tenant-aurora',
@@ -32,10 +36,27 @@ const failingProvider: WhatsAppProvider = {
   },
 };
 
-function signed(payload: object) {
-  const body = JSON.stringify(payload);
-  return { body, signature: createHmac('sha256', secret).update(body).digest('hex') };
+function signed(params: Record<string, string>) {
+  const body = new URLSearchParams(params).toString();
+  return {
+    body,
+    signature: twilio.getExpectedTwilioSignature(secret, callbackUrl, params),
+  };
 }
+
+describe('Twilio status callback authentication', () => {
+  it('validates the signature against Twilio’s callback URL and form parameters', () => {
+    const params = { MessageSid: 'SM123', MessageStatus: 'delivered' };
+    const signature = twilio.getExpectedTwilioSignature(secret, callbackUrl, params);
+    const body = new URLSearchParams(params).toString();
+
+    expect(isValidSignature(body, signature, callbackUrl, secret)).toBe(true);
+    expect(isValidSignature(body, signature, 'https://other.test/providerWebhook', secret)).toBe(
+      false,
+    );
+    expect(isValidSignature(body, 'invalid', callbackUrl, secret)).toBe(false);
+  });
+});
 
 async function resetFirestore() {
   for (const collection of await db.listCollections()) {
@@ -88,18 +109,43 @@ emulatorOnly('provider messaging and webhooks on the Firestore emulator', () => 
 
   it('authenticates callbacks, applies statuses idempotently, and ignores regressions', async () => {
     const { messageId } = await send(okProvider);
-    const delivered = signed({ eventId: 'e1', providerMessageId: 'provider-1', status: 'delivered' });
-    expect(await processProviderWebhook(delivered.body, 'bad', secret)).toEqual({ status: 401 });
-    expect(await processProviderWebhook(delivered.body, delivered.signature, secret)).toEqual({
+    const delivered = signed({ MessageSid: 'provider-1', MessageStatus: 'delivered' });
+    expect(await processProviderWebhook(delivered.body, 'bad', callbackUrl, secret)).toEqual({
+      status: 401,
+    });
+    expect(
+      await processProviderWebhook(delivered.body, delivered.signature, callbackUrl, secret),
+    ).toEqual({
       status: 200,
       result: 'applied',
     });
-    expect(await processProviderWebhook(delivered.body, delivered.signature, secret)).toEqual({
+    expect(
+      await processProviderWebhook(delivered.body, delivered.signature, callbackUrl, secret),
+    ).toEqual({
       status: 200,
       result: 'duplicate',
     });
-    const late = signed({ eventId: 'e2', providerMessageId: 'provider-1', status: 'sent' });
-    expect((await processProviderWebhook(late.body, late.signature, secret)).result).toBe('ignored');
+    const late = signed({ MessageSid: 'provider-1', MessageStatus: 'sent' });
+    expect(
+      (await processProviderWebhook(late.body, late.signature, callbackUrl, secret)).result,
+    ).toBe('ignored');
     expect((await db.collection('messages').doc(messageId).get()).data()?.status).toBe('delivered');
+  });
+
+  it('records Twilio delivery failures and provider error codes', async () => {
+    const { messageId } = await send(okProvider);
+    const undelivered = signed({
+      MessageSid: 'provider-1',
+      MessageStatus: 'undelivered',
+      ErrorCode: '30003',
+    });
+
+    expect(
+      await processProviderWebhook(undelivered.body, undelivered.signature, callbackUrl, secret),
+    ).toMatchObject({ status: 200, result: 'applied' });
+    expect((await db.collection('messages').doc(messageId).get()).data()).toMatchObject({
+      status: 'failed',
+      failureCode: 'TWILIO_30003',
+    });
   });
 });

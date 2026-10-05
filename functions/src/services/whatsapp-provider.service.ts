@@ -1,31 +1,65 @@
 import { randomUUID } from 'node:crypto';
+import twilio from 'twilio';
 import { collections } from '../config/collections';
 import { firestore } from './firestore.service';
+import type { WhatsAppSendTemplate } from '../interfaces/whatsapp.interface';
 import {
   WhatsAppProviderError,
   type RichTemplateRequest,
   type TemplateMessageRequest,
   type WhatsAppProvider,
 } from './whatsapp-provider.interface';
-import type { WhatsAppSendTemplate } from '../interfaces/whatsapp.interface';
+import {
+  createTwilioWhatsAppProvider,
+  type TwilioWhatsAppProviderConfig,
+} from './twilio-whatsapp.provider';
+
+export interface TwilioConfig {
+  accountSid: string;
+  authToken: string;
+  provider: TwilioWhatsAppProviderConfig;
+}
+
+export function readTwilioConfig(env: NodeJS.ProcessEnv = process.env): TwilioConfig | null {
+  const accountSid = env.TWILIO_ACCOUNT_SID;
+  const authToken = env.TWILIO_AUTH_TOKEN;
+  const from = env.TWILIO_WHATSAPP_FROM;
+  const statusCallbackUrl = env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL;
+
+  if (!accountSid || !authToken || !from) return null;
+
+  return {
+    accountSid,
+    authToken,
+    provider: {
+      from,
+      ...(statusCallbackUrl ? { statusCallbackUrl } : {}),
+      ...(env.COLLABORATOR_APP_URL ? { collaboratorAppUrl: env.COLLABORATOR_APP_URL } : {}),
+    },
+  };
+}
 
 const notConfiguredProvider: WhatsAppProvider = {
   name: 'not-configured',
   async sendTemplateMessage() {
-    throw new WhatsAppProviderError('NOT_CONFIGURED', 'O provedor de WhatsApp n„o est· configurado.');
+    throw new WhatsAppProviderError(
+      'NOT_CONFIGURED',
+      'O provedor de WhatsApp n√£o est√° configurado.',
+    );
   },
   async sendTemplate() {
-    throw new WhatsAppProviderError('NOT_CONFIGURED', 'O provedor de WhatsApp n„o est· configurado.');
+    throw new WhatsAppProviderError(
+      'NOT_CONFIGURED',
+      'O provedor de WhatsApp n√£o est√° configurado.',
+    );
   },
 };
 
-// Local-only double. It records deliveries in an outbox instead of calling a real provider,
-// and rejects phones ending in 0666 so failure paths can be exercised.
 const emulatorTestDouble: WhatsAppProvider = {
   name: 'emulator-test-double',
   async sendTemplateMessage(request: TemplateMessageRequest): Promise<WhatsAppSendTemplate> {
     if (request.phoneE164.endsWith('0666')) {
-      throw new WhatsAppProviderError('REJECTED', 'N˙mero rejeitado pelo provedor de teste.');
+      throw new WhatsAppProviderError('REJECTED', 'N√∫mero rejeitado pelo provedor de teste.');
     }
     const providerMessageId = `test-${randomUUID()}`;
     await firestore.collection(collections.providerOutbox).doc(providerMessageId).set({
@@ -39,7 +73,7 @@ const emulatorTestDouble: WhatsAppProvider = {
   },
   async sendTemplate(request: RichTemplateRequest): Promise<WhatsAppSendTemplate> {
     if (request.phoneE164.endsWith('0666')) {
-      throw new WhatsAppProviderError('REJECTED', 'N˙mero rejeitado pelo provedor de teste.');
+      throw new WhatsAppProviderError('REJECTED', 'N√∫mero rejeitado pelo provedor de teste.');
     }
     const providerMessageId = `test-${randomUUID()}`;
     await firestore.collection(collections.providerOutbox).doc(providerMessageId).set({
@@ -53,101 +87,20 @@ const emulatorTestDouble: WhatsAppProvider = {
   },
 };
 
-export interface CloudApiConfig {
-  accessToken: string;
-  phoneNumberId: string;
-  apiVersion: string;
-  languageCode: string;
-  baseUrl: string;
-}
-
-export function readCloudApiConfig(env: NodeJS.ProcessEnv = process.env): CloudApiConfig | null {
-  const accessToken = env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = env.WHATSAPP_PHONE_NUMBER_ID;
-  if (!accessToken || !phoneNumberId) return null;
-  return {
-    accessToken,
-    phoneNumberId,
-    apiVersion: env.WHATSAPP_API_VERSION || 'v21.0',
-    languageCode: env.WHATSAPP_TEMPLATE_LANGUAGE || 'pt_BR',
-    baseUrl: env.WHATSAPP_API_BASE_URL || 'https://graph.facebook.com',
-  };
-}
-
-type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
-
-// Official WhatsApp Business Cloud API (Meta). Only pre-approved templates are sent.
-export function createCloudApiProvider(
-  config: CloudApiConfig,
-  fetchImpl: FetchLike = fetch,
-): WhatsAppProvider {
-  async function post(body: Record<string, unknown>): Promise<WhatsAppSendTemplate> {
-    let response: Response;
-    try {
-      response = await fetchImpl(
-        `${config.baseUrl}/${config.apiVersion}/${config.phoneNumberId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${config.accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ messaging_product: 'whatsapp', ...body }),
-        },
-      );
-    } catch {
-      throw new WhatsAppProviderError('NETWORK_ERROR', 'N„o foi possÌvel contatar o WhatsApp.');
-    }
-    const payload = (await response.json().catch(() => ({}))) as {
-      messages?: Array<{ id?: string }>;
-      error?: { code?: number };
-    };
-    const providerMessageId = payload.messages?.[0]?.id;
-    if (!response.ok || !providerMessageId) {
-      throw new WhatsAppProviderError(
-        payload.error?.code ? `META_${payload.error.code}` : 'REJECTED',
-        'O WhatsApp recusou a mensagem.',
-      );
-    }
-    return { providerMessageId };
-  }
-
-  return {
-    name: 'whatsapp-cloud-api',
-    sendTemplate: (request) =>
-      post({
-        to: request.phoneE164.replace(/^\+/, ''),
-        type: 'template',
-        template: {
-          name: request.templateName,
-          language: { code: config.languageCode },
-          components: request.components,
-        },
-      }),
-    sendTemplateMessage: (request) =>
-      post({
-        to: request.phoneE164.replace(/^\+/, ''),
-        type: 'template',
-        template: {
-          name: request.templateCategory,
-          language: { code: config.languageCode },
-          components: [{ type: 'body', parameters: [{ type: 'text', text: request.content }] }],
-        },
-      }),
-  };
-}
-
-// Provider selection is deployment configuration (WHATSAPP_PROVIDER). Credentials are read from
-// server-side environment/secrets only and never returned to clients.
 export function resolveWhatsAppProvider(
   selected: string | undefined = process.env.WHATSAPP_PROVIDER,
 ): WhatsAppProvider {
   if (selected === 'emulator-test-double' && process.env.FUNCTIONS_EMULATOR === 'true') {
     return emulatorTestDouble;
   }
-  if (selected === 'whatsapp-cloud-api') {
-    const config = readCloudApiConfig();
-    if (config) return createCloudApiProvider(config);
+  if (selected === 'twilio') {
+    const config = readTwilioConfig();
+    if (config) {
+      return createTwilioWhatsAppProvider(
+        twilio(config.accountSid, config.authToken),
+        config.provider,
+      );
+    }
   }
   return notConfiguredProvider;
 }

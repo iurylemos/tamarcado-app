@@ -44,10 +44,14 @@ creates synthetic staff records and emulator-only Firebase accounts. The staff a
 sign in only through the phone-verification flow; they do not accept the seeded email/password
 accounts.
 
-The WhatsApp provider adapter is intentionally unconfigured until a provider and its onboarding
-requirements are approved. The app shows an explicit configuration error rather than pretending
-that a code was sent. Challenge lifecycle and authorization tests use deterministic provider/store
-test doubles; do not use real customer phone numbers or send real messages in automated tests.
+For simple development messaging, configure the Twilio WhatsApp Sandbox with the account SID,
+auth token, and Sandbox sender in `functions/.env.example`; Content SIDs and templates are not
+required. Each test recipient must join the Sandbox, and free-form messages can only be sent during
+the 24-hour window after that recipient messages the Sandbox. Twilio's Sandbox is for functional
+testing, not production, and trial messages may use the account's limited trial units. The status
+callback and collaborator app URL are optional. Challenge lifecycle and authorization tests use
+deterministic provider/store test doubles; do not use real customer phone numbers or send real
+messages in automated tests.
 
 The backoffice demo includes the Studio Aurora catalog (active and inactive services), three
 collaborator profiles, service assignments, weekly hours, and a one-time blocked period. The
