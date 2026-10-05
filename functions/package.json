@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts",
-    "seed:emulator": "npm run build && node lib/functions/test/fixtures/seed-emulator.js"
+    "seed:emulator": "npm run build && node lib/functions/test/fixtures/seed-emulator.js",
+    "seed:production": "npm run build && node lib/functions/test/fixtures/seed-production.js"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",

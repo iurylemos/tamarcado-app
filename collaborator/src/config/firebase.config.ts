@@ -3,8 +3,17 @@ import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 
-const useEmulators = import.meta.env.VITE_USE_EMULATORS === 'true';
-const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-tamarcado';
+const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true';
+const projectId =
+  import.meta.env.VITE_FIREBASE_PROJECT_ID || (import.meta.env.DEV ? 'demo-tamarcado' : undefined);
+
+if (!projectId) {
+  throw new Error('Set VITE_FIREBASE_PROJECT_ID before building this frontend for production.');
+}
+
+if (import.meta.env.PROD && projectId.startsWith('demo-')) {
+  throw new Error('Production frontend builds cannot target an emulator Firebase project.');
+}
 
 if (!useEmulators && !import.meta.env.VITE_FIREBASE_API_KEY) {
   throw new Error(

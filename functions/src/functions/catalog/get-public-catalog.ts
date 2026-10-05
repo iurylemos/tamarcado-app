@@ -1,11 +1,12 @@
 import { onCall } from 'firebase-functions/v2/https';
+import { callableOptionsPublic } from '../../options/callable.option';
 import { HttpsError } from 'firebase-functions/v2/https';
 import {
   listPublicProductRecords,
   findPublicBusiness,
 } from '../../services/public-catalog.service';
 
-export const getPublicCatalog = onCall(async (request) => {
+export const getPublicCatalog = onCall(callableOptionsPublic, async (request) => {
   const slug = request.data?.businessSlug;
 
   if (typeof slug !== 'string' || !slug.trim()) {

@@ -2,8 +2,9 @@ import { onCall } from 'firebase-functions/v2/https';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { listAvailableSlots } from '../../services/availability.service';
 import { DomainError } from '../../../../shared/domain/errors';
+import { callableOptionsPublic } from '../../options/callable.option';
 
-export const listAvailability = onCall(async (request) => {
+export const listAvailability = onCall(callableOptionsPublic, async (request) => {
   try {
     return await listAvailableSlots(request.data);
   } catch (error: unknown) {

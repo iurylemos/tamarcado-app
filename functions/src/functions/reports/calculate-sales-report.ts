@@ -1,8 +1,12 @@
 import { onCall } from 'firebase-functions/v2/https';
 import { authorizeActor } from '../../services/authorization.service';
 import { calculateSalesReport } from '../../services/report.service';
+import { callableOptionsBackoffice } from '../../options/callable.option';
 
-export const calculateSalesReportCallable = onCall(async (request) => {
-  const actor = await authorizeActor(request, ['backoffice']);
-  return calculateSalesReport(actor.tenantId, request.data);
-});
+export const calculateSalesReportCallable = onCall(
+  callableOptionsBackoffice,
+  async (request) => {
+    const actor = await authorizeActor(request, ['backoffice']);
+    return calculateSalesReport(actor.tenantId, request.data);
+  },
+);

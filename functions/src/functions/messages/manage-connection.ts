@@ -1,8 +1,9 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { authorizeActor } from '../../services/authorization.service';
 import { saveConnection } from '../../services/contact.service';
+import { callableOptionsBackoffice } from '../../options/callable.option';
 
-export const saveConnectionCallable = onCall(async (request) => {
+export const saveConnectionCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   const data: unknown = request.data;
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;

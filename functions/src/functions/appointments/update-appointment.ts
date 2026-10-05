@@ -5,8 +5,9 @@ import {
   updateAppointment,
   type UpdateAppointmentInput,
 } from '../../services/appointment-operations.service';
+import { callableOptionsCollaborator } from '../../options/callable.option';
 
-export const updateAppointmentCallable = onCall(async (request) => {
+export const updateAppointmentCallable = onCall(callableOptionsCollaborator, async (request) => {
   const actor = await authorizeActor(request, ['collaborator']);
   const data: unknown = request.data;
   if (typeof data !== 'object' || data === null) {
@@ -27,15 +28,18 @@ export const updateAppointmentCallable = onCall(async (request) => {
   } satisfies UpdateAppointmentInput);
 });
 
-export const listEligibleAppointmentProfessionalsCallable = onCall(async (request) => {
-  const actor = await authorizeActor(request, ['collaborator']);
-  const data: unknown = request.data;
-  if (typeof data !== 'object' || data === null) {
-    throw new HttpsError('invalid-argument', 'Informe o agendamento.');
-  }
-  const appointmentId = (data as Record<string, unknown>).appointmentId;
-  if (typeof appointmentId !== 'string') {
-    throw new HttpsError('invalid-argument', 'Informe o agendamento.');
-  }
-  return listEligibleAppointmentProfessionals(actor, appointmentId);
-});
+export const listEligibleAppointmentProfessionalsCallable = onCall(
+  callableOptionsCollaborator,
+  async (request) => {
+    const actor = await authorizeActor(request, ['collaborator']);
+    const data: unknown = request.data;
+    if (typeof data !== 'object' || data === null) {
+      throw new HttpsError('invalid-argument', 'Informe o agendamento.');
+    }
+    const appointmentId = (data as Record<string, unknown>).appointmentId;
+    if (typeof appointmentId !== 'string') {
+      throw new HttpsError('invalid-argument', 'Informe o agendamento.');
+    }
+    return listEligibleAppointmentProfessionals(actor, appointmentId);
+  },
+);

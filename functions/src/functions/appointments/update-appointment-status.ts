@@ -2,8 +2,9 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { appointmentStatuses } from '../../../../shared/domain/appointment-status';
 import { authorizeActor } from '../../services/authorization.service';
 import { updateAppointmentStatus } from '../../services/appointment-operations.service';
+import { callableOptionsCollaborator } from '../../options/callable.option';
 
-export const updateAppointmentStatusCallable = onCall(async (request) => {
+export const updateAppointmentStatusCallable = onCall(callableOptionsCollaborator, async (request) => {
   const actor = await authorizeActor(request, ['collaborator']);
   const data: unknown = request.data;
   if (typeof data !== 'object' || data === null) {

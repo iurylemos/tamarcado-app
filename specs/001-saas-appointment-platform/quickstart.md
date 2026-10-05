@@ -57,6 +57,29 @@ The backoffice demo includes the Studio Aurora catalog (active and inactive serv
 collaborator profiles, service assignments, weekly hours, and a one-time blocked period. The
 fixtures are synthetic; service and profile photos use remote demonstration images.
 
+## Explicit Production Demo Seed
+
+The production seed writes the same synthetic demo documents as the emulator seed and creates
+the three demo Firebase Authentication users. It merges documents and does not delete existing
+data. Run it only when those demo records are intended to exist in the selected production
+project.
+
+Authenticate with Application Default Credentials that can write Firestore documents and manage
+Firebase Authentication users. For each seed account that does not already exist, set a different
+password of at least 16 characters; the emulator-only password is never used. Existing accounts
+keep their current passwords and do not need an entry in this variable. For example, in PowerShell:
+
+```powershell
+$env:SEED_USER_PASSWORDS_JSON = '{"test-backoffice-aurora":"<unique-password-1>","test-collaborator-ana":"<unique-password-2>","test-backoffice-horizonte":"<unique-password-3>"}'
+npm run seed:production -- --project tamarcado-dad82 --confirm-production-seed
+Remove-Item Env:SEED_USER_PASSWORDS_JSON
+```
+
+The command requires both an explicit project ID and the confirmation flag, refuses `demo-*`
+projects and emulator host settings, and rejects reused or short passwords for accounts being
+created. Newly created users receive the configured passwords. Do not commit the password variable
+or store it in a checked-in environment file.
+
 ## Validation Scenarios
 
 ### 1. Public discovery and appointment booking
