@@ -15,55 +15,59 @@ import {
   saveTenantSettings,
   saveWorkingHours,
 } from '../../services/backoffice.service';
+import { callableOptionsBackoffice } from '../../options/callable.option';
 
-export const getBackofficeWorkspaceCallable = onCall(async (request) => {
+export const getBackofficeWorkspaceCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   return getBackofficeWorkspace(actor.tenantId);
 });
 
-export const saveProductCallable = onCall(async (request) => {
+export const saveProductCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   return saveProduct(actor.tenantId, request.data);
 });
 
-export const saveProfessionalCallable = onCall(async (request) => {
+export const saveProfessionalCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   const saved = await saveProfessional(actor.tenantId, request.data);
   const data = request.data as { name: string; phone: string; active: boolean };
   const phoneE164 = normalizeBrazilianPhone(data.phone) ?? '';
-  await syncCollaboratorAccount(actor.tenantId, saved.id, { name: data.name.trim(), phoneE164, active: data.active });
+  await syncCollaboratorAccount(actor.tenantId, saved.id, {
+    name: data.name.trim(),
+    phoneE164,
+    active: data.active,
+  });
   return saved;
 });
 
-export const saveCollaboratorAccountCallable = onCall(async (request) => {
+export const saveCollaboratorAccountCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   return saveCollaboratorAccount(actor.tenantId, request.data);
 });
 
-export const resetCollaboratorPasswordCallable = onCall(async (request) => {
+export const resetCollaboratorPasswordCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   return resetCollaboratorPassword(actor.tenantId, request.data);
 });
 
-export const saveWorkingHoursCallable = onCall(async (request) => {
+export const saveWorkingHoursCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   return saveWorkingHours(actor.tenantId, request.data);
 });
 
-export const saveBlockedPeriodCallable = onCall(async (request) => {
+export const saveBlockedPeriodCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   return saveBlockedPeriod(actor.tenantId, actor.uid, request.data);
 });
 
-export const deleteBlockedPeriodCallable = onCall(async (request) => {
+export const deleteBlockedPeriodCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   await deleteBlockedPeriod(actor.tenantId, request.data?.id);
   return { deleted: true };
 });
 
-export const saveTenantSettingsCallable = onCall(async (request) => {
+export const saveTenantSettingsCallable = onCall(callableOptionsBackoffice, async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
   await saveTenantSettings(actor.tenantId, request.data);
   return { saved: true };
 });
-

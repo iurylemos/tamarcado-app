@@ -348,25 +348,22 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
   return documents;
 }
 
-export const emulatorUsers = [
+export const seedUsers = [
   {
     uid: 'test-backoffice-aurora',
     email: 'admin@aurora.test',
-    password: 'EmulatorOnly123!',
     tenantId: 'tenant-aurora',
     role: 'backoffice',
   },
   {
     uid: 'test-collaborator-ana',
     email: 'ana@aurora.test',
-    password: 'EmulatorOnly123!',
     tenantId: 'tenant-aurora',
     role: 'collaborator',
   },
   {
     uid: 'test-backoffice-horizonte',
     email: 'admin@horizonte.test',
-    password: 'EmulatorOnly123!',
     tenantId: 'tenant-horizonte',
     role: 'backoffice',
   },

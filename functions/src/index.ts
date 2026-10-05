@@ -31,8 +31,5 @@ export {
   setContactConsentCallable as setContactConsent,
 } from './functions/messages/manage-contact';
 export { sendAppointmentMessageCallable as sendAppointmentMessage } from './functions/messages/send-appointment-message';
-export { whatsappCloudWebhook } from './functions/messages/process-whatsapp-cloud-webhook';
 export { providerWebhook } from './functions/messages/process-provider-webhook';
 export { renderStorefront } from './functions/catalog/render-storefront';
-
-

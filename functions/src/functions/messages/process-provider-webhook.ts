@@ -1,47 +1,52 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import twilio from 'twilio';
 import { onRequest } from 'firebase-functions/v2/https';
 import type { MessageStatus } from '../../../../shared/domain/interfaces/message.interface';
 import type { WebhookMessageResult } from '../../interfaces/message.interface';
 import { applyProviderStatusEvent } from '../../services/message.service';
 
-const statuses: readonly MessageStatus[] = ['pending', 'sent', 'delivered', 'read', 'failed'];
+const twilioStatuses: Record<string, MessageStatus> = {
+  accepted: 'sent',
+  queued: 'sent',
+  sending: 'sent',
+  sent: 'sent',
+  delivered: 'delivered',
+  read: 'read',
+  failed: 'failed',
+  undelivered: 'failed',
+  canceled: 'failed',
+};
 
 export function isValidSignature(
   rawBody: Buffer | string,
   signature: unknown,
-  secret: string | undefined,
+  callbackUrl: string,
+  authToken: string | undefined,
 ): boolean {
-  if (!secret || typeof signature !== 'string') return false;
-  const expected = createHmac('sha256', secret).update(rawBody).digest();
-  const provided = Buffer.from(signature, 'hex');
-  return provided.length === expected.length && timingSafeEqual(provided, expected);
+  if (!authToken || typeof signature !== 'string') return false;
+  const params = Object.fromEntries(new URLSearchParams(rawBody.toString()));
+  return twilio.validateRequest(authToken, signature, callbackUrl, params);
 }
 
 export async function processProviderWebhook(
   rawBody: Buffer | string,
   signature: unknown,
-  secret: string | undefined = process.env.WHATSAPP_WEBHOOK_SECRET,
+  callbackUrl: string,
+  authToken: string | undefined = process.env.TWILIO_AUTH_TOKEN,
 ): Promise<{ status: number; result?: WebhookMessageResult }> {
-  if (!isValidSignature(rawBody, signature, secret)) return { status: 401 };
-  let payload: unknown;
-  try {
-    payload = JSON.parse(rawBody.toString());
-  } catch {
-    return { status: 400 };
-  }
-  const event = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<
-    string,
-    unknown
-  >;
-  const status = statuses.find((item) => item === event.status);
-  if (typeof event.eventId !== 'string' || typeof event.providerMessageId !== 'string' || !status) {
-    return { status: 400 };
-  }
+  if (!isValidSignature(rawBody, signature, callbackUrl, authToken)) return { status: 401 };
+
+  const params = new URLSearchParams(rawBody.toString());
+  const providerMessageId = params.get('MessageSid');
+  const providerStatus = params.get('MessageStatus');
+  const status = providerStatus ? twilioStatuses[providerStatus] : undefined;
+  if (!providerMessageId || !providerStatus || !status) return { status: 400 };
+
+  const errorCode = params.get('ErrorCode');
   const result = await applyProviderStatusEvent({
-    eventId: event.eventId,
-    providerMessageId: event.providerMessageId,
+    eventId: `${providerMessageId}:${providerStatus}:${errorCode ?? ''}`,
+    providerMessageId,
     status,
-    ...(typeof event.failureCode === 'string' ? { failureCode: event.failureCode } : {}),
+    ...(errorCode ? { failureCode: `TWILIO_${errorCode}` } : {}),
   });
   return { status: 200, result };
 }
@@ -51,9 +56,19 @@ export const providerWebhook = onRequest(async (request, response) => {
     response.status(405).end();
     return;
   }
+
+  const host = request.get('host');
+  if (!host) {
+    response.status(400).end();
+    return;
+  }
+  const forwardedProtocol = request.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const protocol = forwardedProtocol || request.protocol;
+  const callbackUrl = `${protocol}://${host}${request.originalUrl}`;
   const { status, result } = await processProviderWebhook(
     request.rawBody,
-    request.get('x-signature'),
+    request.get('x-twilio-signature'),
+    callbackUrl,
   );
   response.status(status).json(result ? { result } : {});
 });
