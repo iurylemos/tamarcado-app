@@ -9,6 +9,7 @@ import { getCompanyCatalog } from '../services/catalog.service';
 import { eligibleProfessionals } from '../services/professional.service';
 import { getNextBookableDate } from '../utils/date.util';
 import type { BookingFormValues } from '../interfaces/booking.interface';
+import type { EligibleProfessional } from '../interfaces/professional.interface';
 
 import BookingForm from '../components/organisms/BookingForm/BookingForm';
 import ProfessionalSelector from '../components/organisms/ProfessionalSelector/ProfessionalSelector';
@@ -41,6 +42,7 @@ export default function BookingPage(): JSX.Element {
       .finally(() => {
         if (current) setLoading(false);
       });
+
     return () => {
       current = false;
     };
@@ -50,6 +52,7 @@ export default function BookingPage(): JSX.Element {
     if (!product) return;
 
     let current = true;
+
     setLoading(true);
     setError('');
     setSelectedStartsAt('');
@@ -62,11 +65,12 @@ export default function BookingPage(): JSX.Element {
           setSelectedProfessionalId(choices.length === 1 ? choices[0]!.id : '');
         }
       })
-      .catch((reason: unknown) => {
-        if (current)
+      .catch((error: unknown) => {
+        if (current) {
           setError(
-            reason instanceof Error ? reason.message : 'Não foi possível consultar os horários.',
+            error instanceof Error ? error.message : 'Não foi possível consultar os horários.',
           );
+        }
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -77,25 +81,15 @@ export default function BookingPage(): JSX.Element {
     };
   }, [date, product, productId, slug]);
 
-  const professionals = useMemo(() => eligibleProfessionals(slots), [slots]);
-  const visibleSlots = slots.filter((slot) => slot.professionalId === selectedProfessionalId);
+  const professionals = useMemo<EligibleProfessional[]>(
+    () => eligibleProfessionals(slots),
+    [slots],
+  );
 
-  if (loading && !catalog)
-    return (
-      <main className="page">
-        <p role="status">Carregando serviço...</p>
-      </main>
-    );
-  if (!catalog || !product) {
-    return catalog ? (
-      <main className="page">
-        <p role="status">Serviço não encontrado.</p>
-        <Link to={`/empresa/${slug}`}>Voltar ao catálogo</Link>
-      </main>
-    ) : (
-      <CompanyCatalogPage />
-    );
-  }
+  const visibleSlots = useMemo<AvailableSlot[]>(
+    () => slots.filter((slot) => slot.professionalId === selectedProfessionalId),
+    [slots, selectedProfessionalId],
+  );
 
   const submitBooking = async (values: BookingFormValues): Promise<void> => {
     setBusy(true);
@@ -122,6 +116,25 @@ export default function BookingPage(): JSX.Element {
       setBusy(false);
     }
   };
+
+  if (loading && !catalog) {
+    return (
+      <main className="page">
+        <p role="status">Carregando serviço...</p>
+      </main>
+    );
+  }
+
+  if (!catalog || !product) {
+    return catalog ? (
+      <main className="page">
+        <p role="status">Serviço não encontrado.</p>
+        <Link to={`/empresa/${slug}`}>Voltar ao catálogo</Link>
+      </main>
+    ) : (
+      <CompanyCatalogPage />
+    );
+  }
 
   return (
     <main className="page stack">

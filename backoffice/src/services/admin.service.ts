@@ -39,6 +39,21 @@ export function saveProfessional(input: {
   return callable('saveProfessional', input);
 }
 
+export function saveCollaboratorAccount(input: {
+  professionalId: string;
+  email: string;
+  password?: string;
+}): Promise<{ uid: string; email: string }> {
+  return callable('saveCollaboratorAccount', input);
+}
+
+export function resetCollaboratorPassword(input: {
+  professionalId: string;
+  password: string;
+}): Promise<{ uid: string }> {
+  return callable('resetCollaboratorPassword', input);
+}
+
 export function saveWorkingHours(
   input: Omit<WorkingHoursRecord, 'tenantId' | 'id'> & { id?: string },
 ): Promise<{ id: string }> {
@@ -66,6 +81,7 @@ export function saveCompany(input: {
   description: string;
   phone: string;
   logoUrl: string;
+  emailDomain: string;
   timezone: string;
   bookingIntervalMinutes: number;
   active: boolean;

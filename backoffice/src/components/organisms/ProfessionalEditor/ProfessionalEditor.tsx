@@ -1,11 +1,18 @@
 import { useState, type JSX } from 'react';
 import type { ProductRecord, ProfessionalRecord } from '../../../interfaces/admin.interface';
-import { errorMessage, saveProfessional } from '../../../services/admin.service';
+import {
+  errorMessage,
+  resetCollaboratorPassword,
+  saveCollaboratorAccount,
+  saveProfessional,
+} from '../../../services/admin.service';
 
 type ProfessionalEditorProps = {
   professional?: ProfessionalRecord;
   products: ProductRecord[];
   assignedProductIds: string[];
+  currentEmail?: string | undefined;
+  emailDomain?: string | undefined;
   onClose: () => void;
   onSaved: () => Promise<void>;
 };
@@ -14,6 +21,8 @@ export default function ProfessionalEditor({
   professional,
   products,
   assignedProductIds,
+  currentEmail,
+  emailDomain,
   onClose,
   onSaved,
 }: ProfessionalEditorProps): JSX.Element {
@@ -22,6 +31,9 @@ export default function ProfessionalEditor({
   const [photoUrl, setPhotoUrl] = useState<string>(professional?.photoUrl ?? '');
   const [active, setActive] = useState<boolean>(professional?.active ?? true);
   const [productIds, setProductIds] = useState<string[]>(assignedProductIds);
+  const [email, setEmail] = useState<string>(currentEmail ?? '');
+  const [password, setPassword] = useState<string>('');
+  const [notice, setNotice] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
@@ -38,7 +50,7 @@ export default function ProfessionalEditor({
     setBusy(true);
     setError('');
     try {
-      await saveProfessional({
+      const saved = await saveProfessional({
         ...(professional ? { id: professional.id } : {}),
         name,
         phone,
@@ -46,8 +58,32 @@ export default function ProfessionalEditor({
         active,
         productIds,
       });
+      const professionalId = professional?.id ?? saved.id;
+      if (email.trim() || password) {
+        await saveCollaboratorAccount({
+          professionalId,
+          email,
+          ...(password ? { password } : {}),
+        });
+      }
       await onSaved();
       onClose();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resetPassword = async (): Promise<void> => {
+    if (!professional) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await resetCollaboratorPassword({ professionalId: professional.id, password });
+      setPassword('');
+      setNotice('Senha redefinida. Informe a nova senha ao colaborador.');
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -104,6 +140,40 @@ export default function ProfessionalEditor({
               placeholder="https://…"
             />
           </label>
+          <fieldset className="assignment-fieldset">
+            <legend>Acesso à plataforma</legend>
+            <label>
+              E-mail de acesso
+              <input
+                type="email"
+                autoComplete="off"
+                placeholder={`nome@${emailDomain ?? 'suaempresa.com.br'}`}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+            <label>
+              {currentEmail ? 'Nova senha' : 'Senha inicial'}
+              <input
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            {currentEmail && (
+              <button
+                type="button"
+                className="button secondary compact"
+                disabled={busy || password.length < 8}
+                onClick={() => void resetPassword()}
+              >
+                Redefinir senha
+              </button>
+            )}
+            {notice && <p role="status">{notice}</p>}
+          </fieldset>
           <fieldset className="assignment-fieldset">
             <legend>Serviços que realiza</legend>
             {products.length === 0 ? (

@@ -1,4 +1,4 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+﻿import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { BusinessSegment } from '../../../shared/domain/interfaces/tenant.interface';
 import type { CommissionType } from '../../../shared/domain/interfaces/product.interface';
@@ -11,6 +11,7 @@ import type {
   ProfessionalProductDocument,
 } from '../model/professional.model';
 import type { TenantDocument } from '../model/tenant.model';
+import { getCollaboratorEmails } from './collaborator-account.service';
 import { firestore, professionalProductId } from './firestore.service';
 
 type Input = Record<string, unknown>;
@@ -153,10 +154,12 @@ export interface BackofficeWorkspace {
     | 'description'
     | 'phoneE164'
     | 'logoUrl'
+    | 'emailDomain'
     | 'timezone'
     | 'bookingIntervalMinutes'
     | 'active'
   > & { id: string };
+  collaboratorEmails: Record<string, string>;
   products: Array<ProductDocument & { id: string }>;
   professionals: Array<ProfessionalDocument & { id: string }>;
   assignments: Array<ProfessionalProductDocument & { id: string }>;
@@ -178,6 +181,7 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
     assignmentsSnapshot,
     hoursSnapshot,
     blocksSnapshot,
+    collaboratorEmails,
   ] = await Promise.all([
     firestore.collection(collections.tenants).doc(tenantId).get(),
     firestore.collection(collections.products).where('tenantId', '==', tenantId).get(),
@@ -185,6 +189,7 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
     firestore.collection(collections.professionalProducts).where('tenantId', '==', tenantId).get(),
     firestore.collection(collections.workingHours).where('tenantId', '==', tenantId).get(),
     firestore.collection(collections.blockedPeriods).where('tenantId', '==', tenantId).get(),
+    getCollaboratorEmails(tenantId),
   ]);
   const company = documentData<TenantDocument>(companySnapshot);
   if (!company) throw new HttpsError('not-found', 'Empresa não encontrada.');
@@ -203,7 +208,9 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
       ...(company.description ? { description: company.description } : {}),
       ...(company.phoneE164 ? { phoneE164: company.phoneE164 } : {}),
       ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
+      ...(company.emailDomain ? { emailDomain: company.emailDomain } : {}),
     },
+    collaboratorEmails,
     products: productsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...(doc.data() as ProductDocument) }))
       .sort(byName),
@@ -569,6 +576,10 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     throw new HttpsError('invalid-argument', 'Informe um telefone brasileiro válido com DDD.');
   }
   const logoUrl = optionalUrl(input.logoUrl, 'Logo');
+  const emailDomain = optionalText(input.emailDomain, 'Domínio de e-mail', 100)?.toLowerCase().replace(/^@/, '');
+  if (emailDomain && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(emailDomain)) {
+    throw new HttpsError('invalid-argument', 'Informe um domínio válido, como empresa.com.br.');
+  }
   const timezone = requiredText(input.timezone, 'Fuso horário', 80);
   try {
     new Intl.DateTimeFormat('pt-BR', { timeZone: timezone });
@@ -597,6 +608,7 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     description: description ?? FieldValue.delete(),
     phoneE164: phoneE164 ?? FieldValue.delete(),
     logoUrl: logoUrl ?? FieldValue.delete(),
+    emailDomain: emailDomain ?? FieldValue.delete(),
     timezone,
     bookingIntervalMinutes,
     active,
@@ -626,3 +638,6 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     );
   });
 }
+
+
+

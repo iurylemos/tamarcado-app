@@ -6,5 +6,7 @@ export interface UserDocument {
   professionalId?: string;
   name: string;
   phoneE164: string;
+  email?: string;
   active: boolean;
 }
+

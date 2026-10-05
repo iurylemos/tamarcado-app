@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-export type CardProps = {
+type CardProps = {
   title: string;
   imageUrl?: string;
   description?: string;
@@ -19,7 +19,7 @@ export default function Card({
   href,
   actionLabel = 'Ver detalhes',
   children,
-}: CardProps) {
+}: Readonly<CardProps>): JSX.Element {
   return (
     <article className="card stack">
       {imageUrl && <img src={imageUrl} alt="" loading="lazy" />}

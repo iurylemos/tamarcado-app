@@ -8,6 +8,7 @@ export interface TenantDocument {
   description?: string;
   phoneE164?: string;
   logoUrl?: string;
+  emailDomain?: string;
   timezone: string;
   bookingIntervalMinutes: number;
   active: boolean;
@@ -24,3 +25,4 @@ export interface PublicBusinessDocument {
   logoUrl?: string;
   published: boolean;
 }
+

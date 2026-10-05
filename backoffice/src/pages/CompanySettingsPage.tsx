@@ -25,6 +25,7 @@ export default function CompanySettingsPage({
   const [description, setDescription] = useState<string>(company.description ?? '');
   const [phone, setPhone] = useState<string>(company.phoneE164 ?? '');
   const [logoUrl, setLogoUrl] = useState<string>(company.logoUrl ?? '');
+  const [emailDomain, setEmailDomain] = useState<string>(company.emailDomain ?? '');
   const [timezone, setTimezone] = useState<string>(company.timezone);
   const [bookingIntervalMinutes, setBookingIntervalMinutes] = useState(
     String(company.bookingIntervalMinutes),
@@ -49,6 +50,7 @@ export default function CompanySettingsPage({
         description,
         phone,
         logoUrl,
+        emailDomain,
         timezone,
         bookingIntervalMinutes: Number(bookingIntervalMinutes),
         active,
@@ -136,6 +138,15 @@ export default function CompanySettingsPage({
               onChange={(event) => setPhone(event.target.value)}
               placeholder="(11) 99999-0000"
             />
+          </label>
+          <label>
+            Domínio de e-mail dos colaboradores
+            <input
+              value={emailDomain}
+              onChange={(event) => setEmailDomain(event.target.value.toLowerCase())}
+              placeholder="suaempresa.com.br"
+            />
+            <small className="muted">Os acessos dos colaboradores usam e-mails como nome@{emailDomain || 'suaempresa.com.br'}.</small>
           </label>
           <label>
             Logo (URL)

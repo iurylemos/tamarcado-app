@@ -1,11 +1,7 @@
 import { onAuthStateChanged } from 'firebase/auth';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
 import type { AuthSession } from '../../interfaces/auth.interface';
-import {
-  requestPhoneVerification,
-  signInWithPhoneVerification,
-  signOutCurrentUser,
-} from '../../services/auth.service';
+import { signInWithEmail, signOutCurrentUser } from '../../services/auth.service';
 import { auth } from '../../config/firebase.config';
 import { AuthContext } from './auth.context';
 
@@ -73,19 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     return unsubscribe;
   }, []);
 
-  const requestCode = useCallback(
-    (phone: string) => requestPhoneVerification(phone, 'collaborator'),
-    [],
-  );
-  const verifyCode = useCallback(
-    (challengeId: string, phone: string, code: string) =>
-      signInWithPhoneVerification(phone, 'collaborator', challengeId, code),
-    [],
-  );
+  const login = useCallback((email: string, password: string) => signInWithEmail(email, password), []);
   const logout = useCallback(() => signOutCurrentUser(), []);
   const value = useMemo(
-    () => ({ ...session, requestCode, verifyCode, logout }),
-    [session, requestCode, verifyCode, logout],
+    () => ({ ...session, login, logout }),
+    [session, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

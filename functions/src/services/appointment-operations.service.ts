@@ -1,4 +1,5 @@
-import { Timestamp, type DocumentData, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
+﻿import { Timestamp, type DocumentData, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { loadAppointment, notifyCustomer } from './appointment-notification.service';
 import { HttpsError } from 'firebase-functions/v2/https';
 import {
   canTransitionAppointment,
@@ -138,7 +139,7 @@ export async function updateAppointmentStatus(
   }
 
   const appointmentRef = firestore.collection(collections.appointments).doc(appointmentId);
-  return firestore.runTransaction(async (transaction) => {
+  const result = await firestore.runTransaction(async (transaction) => {
     const appointmentSnapshot = await transaction.get(appointmentRef);
     const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
     if (!appointmentSnapshot.exists || appointment?.tenantId !== actor.tenantId) {
@@ -167,6 +168,12 @@ export async function updateAppointmentStatus(
     }
     return { appointmentId, status: nextStatus };
   });
+  const customerEvent = { confirmed: 'confirmed', cancelled: 'cancelled', completed: 'completed' } as const;
+  if (nextStatus !== 'pending') {
+    const updated = await loadAppointment(appointmentId);
+    if (updated) await notifyCustomer(customerEvent[nextStatus], updated);
+  }
+  return result;
 }
 
 export interface UpdateAppointmentInput {
@@ -206,7 +213,7 @@ export async function updateAppointment(
   const startsAt = parseAppointmentDate(input.startsAt);
   const appointmentRef = firestore.collection(collections.appointments).doc(input.appointmentId);
 
-  return firestore.runTransaction(async (transaction) => {
+  const result = await firestore.runTransaction(async (transaction) => {
     const appointmentSnapshot = await transaction.get(appointmentRef);
     const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
     if (!appointmentSnapshot.exists || appointment?.tenantId !== actor.tenantId) {
@@ -432,6 +439,9 @@ export async function updateAppointment(
       professionalId: input.professionalId,
     };
   });
+  const updated = await loadAppointment(input.appointmentId);
+  if (updated) await notifyCustomer('rescheduled', updated);
+  return result;
 }
 
 export async function listEligibleAppointmentProfessionals(

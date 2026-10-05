@@ -9,8 +9,7 @@ const auth = vi.hoisted(() => ({
   user: null as object | null,
   loading: false,
   error: '',
-  requestCode: vi.fn(),
-  verifyCode: vi.fn(),
+  login: vi.fn(),
   logout: vi.fn(),
 }));
 const admin = vi.hoisted(() => ({ getWorkspace: vi.fn() }));
@@ -36,8 +35,7 @@ describe('backoffice login', () => {
     auth.user = null;
     auth.loading = false;
     auth.error = '';
-    auth.requestCode.mockReset();
-    auth.verifyCode.mockReset();
+    auth.login.mockReset();
     auth.logout.mockReset();
     admin.getWorkspace.mockResolvedValue({
       company: { name: 'Aurora', timezone: 'America/Sao_Paulo', bookingIntervalMinutes: 15 },
@@ -49,47 +47,31 @@ describe('backoffice login', () => {
     });
   });
 
-  it('requests and verifies a WhatsApp code for a backoffice account', async () => {
-    auth.requestCode.mockResolvedValue('challenge-1');
-    auth.verifyCode.mockResolvedValue(undefined);
+  it('signs in with e-mail and password', async () => {
+    auth.login.mockResolvedValue(undefined);
     render(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>,
     );
-
-    fireEvent.change(screen.getByLabelText('Telefone com DDD'), {
-      target: { value: '+5511999990001' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar código pelo WhatsApp' }));
-    await screen.findByLabelText('Código de verificação');
-    expect(auth.requestCode).toHaveBeenCalledWith('+5511999990001');
-
-    fireEvent.change(screen.getByLabelText('Código de verificação'), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar código' }));
-    await waitFor(() =>
-      expect(auth.verifyCode).toHaveBeenCalledWith('challenge-1', '+5511999990001', '123456'),
-    );
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ana@empresa.com' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-forte-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    await waitFor(() => expect(auth.login).toHaveBeenCalledWith('ana@empresa.com', 'senha-forte-1'));
+    expect(screen.queryByLabelText(/telefone/i)).not.toBeInTheDocument();
   });
 
-  it('shows authorization and provider errors', async () => {
-    auth.requestCode.mockRejectedValue(new Error('A conta não tem acesso ao backoffice.'));
+  it('shows a friendly message for wrong credentials', async () => {
+    auth.login.mockRejectedValue({ code: 'auth/invalid-credential' });
     render(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>,
     );
-
-    fireEvent.change(screen.getByLabelText('Telefone com DDD'), {
-      target: { value: '+5511999990001' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar código pelo WhatsApp' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'A conta não tem acesso ao backoffice.',
-    );
-    expect(screen.queryByText('Visão geral')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ana@empresa.com' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-forte-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('E-mail ou senha incorretos.');
   });
 
   it('redirects unauthenticated users away from protected company routes', async () => {
@@ -108,23 +90,17 @@ describe('backoffice login', () => {
     expect(screen.queryByText('Dados financeiros protegidos')).not.toBeInTheDocument();
   });
 
-  it('shows a retryable message when the verification service cannot be reached', async () => {
-    auth.requestCode.mockRejectedValue(
-      Object.assign(new Error('internal [0]'), { code: 'functions/internal' }),
-    );
+  it('shows a retryable message when the auth service cannot be reached', async () => {
+    auth.login.mockRejectedValue({ code: 'auth/network-request-failed' });
     render(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>,
     );
-
-    fireEvent.change(screen.getByLabelText('Telefone com DDD'), {
-      target: { value: '+5511999990010' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar código pelo WhatsApp' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Não foi possível conectar ao serviço de verificação. Verifique sua conexão e tente novamente.',
-    );
+    fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ana@empresa.com' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-forte-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível conectar');
   });
 
   it('logs out from the authorized backoffice workspace', async () => {

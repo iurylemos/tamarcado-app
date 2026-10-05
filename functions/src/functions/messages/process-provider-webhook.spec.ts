@@ -22,7 +22,7 @@ const actor: AuthorizedActor = {
 };
 const okProvider: WhatsAppProvider = {
   name: 'ok',
-  sendCode: async () => undefined,
+  sendTemplate: async () => ({ providerMessageId: 'provider-1' }),
   sendTemplateMessage: async () => ({ providerMessageId: 'provider-1' }),
 };
 const failingProvider: WhatsAppProvider = {

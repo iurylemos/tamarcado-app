@@ -1,5 +1,4 @@
-import './config/region';
-export { startPhoneVerification, verifyPhone } from './functions/authentication';
+﻿import './config/region';
 export { listPublicBusinesses } from './functions/catalog/list-public-businesses';
 export { getPublicCatalog } from './functions/catalog/get-public-catalog';
 export { listAvailability } from './functions/appointments/list-availability';
@@ -15,6 +14,8 @@ export {
   getBackofficeWorkspaceCallable as getBackofficeWorkspace,
   saveProductCallable as saveProduct,
   saveProfessionalCallable as saveProfessional,
+  saveCollaboratorAccountCallable as saveCollaboratorAccount,
+  resetCollaboratorPasswordCallable as resetCollaboratorPassword,
   saveWorkingHoursCallable as saveWorkingHours,
   saveBlockedPeriodCallable as saveBlockedPeriod,
   deleteBlockedPeriodCallable as deleteBlockedPeriod,
@@ -30,5 +31,8 @@ export {
   setContactConsentCallable as setContactConsent,
 } from './functions/messages/manage-contact';
 export { sendAppointmentMessageCallable as sendAppointmentMessage } from './functions/messages/send-appointment-message';
+export { whatsappCloudWebhook } from './functions/messages/process-whatsapp-cloud-webhook';
 export { providerWebhook } from './functions/messages/process-provider-webhook';
 export { renderStorefront } from './functions/catalog/render-storefront';
+
+
