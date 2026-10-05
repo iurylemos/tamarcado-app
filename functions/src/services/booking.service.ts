@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+﻿import { createHash } from 'node:crypto';
 import { Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { CreatePublicAppointmentInput } from '../../../shared/domain/interfaces/appointment.interface';
@@ -11,6 +11,7 @@ import { collections } from '../config/collections';
 import { firestore, professionalProductId } from './firestore.service';
 import { findBookableProduct, findPublicBusiness } from './public-catalog.service';
 import { listAvailableSlots } from './availability.service';
+import { loadAppointment, notifyAppointmentRequested } from './appointment-notification.service';
 
 const validName = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length <= 100;
@@ -211,6 +212,8 @@ export async function createPublicAppointment(
       });
     });
 
+    const created = await loadAppointment(appointmentId);
+    if (created) await notifyAppointmentRequested(appointmentId, created);
     return { appointmentId, status: 'pending' };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
@@ -259,3 +262,4 @@ export function toBusinessLocalDate(startsAt: Date, timezone: string): string {
   const local = getZonedDateTimeParts(startsAt, timezone);
   return `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
 }
+

@@ -1,16 +1,18 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs24",
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
-  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs24",
+    "codebase": "default",
+    "ignore": ["node_modules", "*.local"],
+    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+  },
   "hosting": [
     {
-      "target": "client",
+      "site": "tamarcado-dad82",
       "public": "client/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
@@ -19,27 +21,33 @@
           "function": { "functionId": "renderStorefront", "region": "southamerica-east1" }
         },
         { "source": "**", "destination": "/index.html" }
+      ],
+      "headers": [
+        {
+          "source": "/assets/**",
+          "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+        }
       ]
     },
     {
-      "target": "collaborator",
+      "site": "tamarcado-dad82-collaborator",
       "public": "collaborator/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
     },
     {
-      "target": "backoffice",
+      "site": "tamarcado-dad82-backoffice",
       "public": "backoffice/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
     }
   ],
   "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9099 },
-    "firestore": { "host": "127.0.0.1", "port": 8080 },
-    "functions": { "host": "127.0.0.1", "port": 5001 },
-    "hosting": { "host": "127.0.0.1", "port": 5000 },
-    "ui": { "enabled": true, "host": "127.0.0.1", "port": 4000 },
-    "singleProjectMode": true
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true },
+    "singleProjectMode": false
   }
 }

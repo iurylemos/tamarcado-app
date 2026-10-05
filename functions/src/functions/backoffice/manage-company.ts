@@ -1,4 +1,10 @@
-import { onCall } from 'firebase-functions/v2/https';
+﻿import { onCall } from 'firebase-functions/v2/https';
+import { normalizeBrazilianPhone } from '../../../../shared/domain/phone';
+import {
+  resetCollaboratorPassword,
+  saveCollaboratorAccount,
+  syncCollaboratorAccount,
+} from '../../services/collaborator-account.service';
 import { authorizeActor } from '../../services/authorization.service';
 import {
   deleteBlockedPeriod,
@@ -22,7 +28,21 @@ export const saveProductCallable = onCall(async (request) => {
 
 export const saveProfessionalCallable = onCall(async (request) => {
   const actor = await authorizeActor(request, ['backoffice']);
-  return saveProfessional(actor.tenantId, request.data);
+  const saved = await saveProfessional(actor.tenantId, request.data);
+  const data = request.data as { name: string; phone: string; active: boolean };
+  const phoneE164 = normalizeBrazilianPhone(data.phone) ?? '';
+  await syncCollaboratorAccount(actor.tenantId, saved.id, { name: data.name.trim(), phoneE164, active: data.active });
+  return saved;
+});
+
+export const saveCollaboratorAccountCallable = onCall(async (request) => {
+  const actor = await authorizeActor(request, ['backoffice']);
+  return saveCollaboratorAccount(actor.tenantId, request.data);
+});
+
+export const resetCollaboratorPasswordCallable = onCall(async (request) => {
+  const actor = await authorizeActor(request, ['backoffice']);
+  return resetCollaboratorPassword(actor.tenantId, request.data);
 });
 
 export const saveWorkingHoursCallable = onCall(async (request) => {
@@ -46,3 +66,4 @@ export const saveTenantSettingsCallable = onCall(async (request) => {
   await saveTenantSettings(actor.tenantId, request.data);
   return { saved: true };
 });
+

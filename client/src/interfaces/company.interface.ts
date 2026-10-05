@@ -22,3 +22,7 @@ export interface PublicProductSummary {
   priceCents: number;
   durationMinutes: number;
 }
+
+export interface ShowcaseProduct extends PublicProductSummary {
+  businessSlug: string;
+}

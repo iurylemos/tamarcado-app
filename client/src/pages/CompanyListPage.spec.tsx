@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { listPublicCompanies } from '../services/company.service';
 import CompanyListPage from './CompanyListPage';
 
 vi.mock('../services/company.service', () => ({ listPublicCompanies: vi.fn() }));
+vi.mock('../services/product.service', () => ({ listPublicProducts: vi.fn(async () => []) }));
 
 const companies = [
   {
@@ -12,11 +13,11 @@ const companies = [
     name: 'Studio Aurora',
     slug: 'studio-aurora',
     segment: 'beauty' as const,
-    description: 'Salão',
+    description: 'SalÃ£o',
   },
   {
     id: 'clinica-horizonte',
-    name: 'Clínica Horizonte',
+    name: 'ClÃ­nica Horizonte',
     slug: 'clinica-horizonte',
     segment: 'health' as const,
   },
@@ -34,13 +35,14 @@ describe('CompanyListPage', () => {
         <CompanyListPage />
       </MemoryRouter>,
     );
+    fireEvent.click(screen.getByRole('tab', { name: 'Lojas' }));
     expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Filtrar por segmento'), {
-      target: { value: 'fitness' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Bem-estar' }));
     expect(
       await screen.findByText('Nenhuma empresa encontrada neste segmento.'),
     ).toBeInTheDocument();
     await waitFor(() => expect(listPublicCompanies).toHaveBeenLastCalledWith('fitness'));
   });
 });
+
+

@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { onRequest } from 'firebase-functions/v2/https';
 import type { MessageStatus } from '../../../../shared/domain/interfaces/message.interface';
-import { applyProviderStatusEvent, type WebhookResult } from '../../services/message.service';
+import type { WebhookMessageResult } from '../../interfaces/message.interface';
+import { applyProviderStatusEvent } from '../../services/message.service';
 
 const statuses: readonly MessageStatus[] = ['pending', 'sent', 'delivered', 'read', 'failed'];
 
@@ -20,7 +21,7 @@ export async function processProviderWebhook(
   rawBody: Buffer | string,
   signature: unknown,
   secret: string | undefined = process.env.WHATSAPP_WEBHOOK_SECRET,
-): Promise<{ status: number; result?: WebhookResult }> {
+): Promise<{ status: number; result?: WebhookMessageResult }> {
   if (!isValidSignature(rawBody, signature, secret)) return { status: 401 };
   let payload: unknown;
   try {

@@ -8,7 +8,6 @@ export interface AuthSession {
 }
 
 export interface AuthContextValue extends AuthSession {
-  requestCode(phone: string): Promise<string>;
-  verifyCode(challengeId: string, phone: string, code: string): Promise<void>;
+  login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
 }

@@ -26,8 +26,27 @@ export interface TemplateMessageRequest {
   content: string;
 }
 
+export type TemplateParameter =
+  | { type: 'text'; text: string }
+  | { type: 'payload'; payload: string }
+  | { type: 'image'; image: { link: string } };
+
+export interface TemplateComponent {
+  type: 'header' | 'body' | 'button';
+  sub_type?: 'quick_reply' | 'url';
+  index?: string;
+  parameters: TemplateParameter[];
+}
+
+export interface RichTemplateRequest {
+  phoneE164: string;
+  templateName: string;
+  components: TemplateComponent[];
+}
+
 export interface WhatsAppProvider {
   readonly name: string;
-  sendCode(phoneE164: string, code: string): Promise<void>;
   sendTemplateMessage(request: TemplateMessageRequest): Promise<{ providerMessageId: string }>;
+  sendTemplate(request: RichTemplateRequest): Promise<{ providerMessageId: string }>;
 }
+

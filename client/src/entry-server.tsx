@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { PublicBusiness } from '../../shared/domain/interfaces/tenant.interface';
-import { StorefrontService } from './interfaces/storeFront.interface';
+import type { StorefrontService } from './interfaces/storeFront.interface';
 
 export function renderPublicContent(
   business: PublicBusiness,

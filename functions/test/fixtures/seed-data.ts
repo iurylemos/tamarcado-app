@@ -24,6 +24,7 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         description: 'Cuidado e beleza no seu ritmo.',
         logoUrl:
           'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?auto=format&fit=crop&w=640&q=80',
+        emailDomain: 'aurora.test',
         timezone: 'America/Sao_Paulo',
         bookingIntervalMinutes: 15,
         active: true,
@@ -287,6 +288,7 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         role: 'backoffice',
         name: 'Gestor de teste',
         phoneE164: '+5511999990010',
+        email: 'admin@aurora.test',
         active: true,
       },
     },
@@ -299,6 +301,7 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         professionalId: 'professional-ana',
         name: 'Ana Souza',
         phoneE164: '+5511999990001',
+        email: 'ana@aurora.test',
         active: true,
       },
     },

@@ -154,6 +154,8 @@ export default function BackofficeWorkspace(): JSX.Element {
               professionals={workspace.professionals}
               products={workspace.products}
               assignments={workspace.assignments}
+              collaboratorEmails={workspace.collaboratorEmails ?? {}}
+              emailDomain={workspace.company.emailDomain}
               onSaved={refreshWorkspace}
             />
           )}

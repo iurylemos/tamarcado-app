@@ -10,6 +10,8 @@ type ProfessionalsPageProps = {
   professionals: ProfessionalRecord[];
   products: ProductRecord[];
   assignments: AssignmentRecord[];
+  collaboratorEmails?: Record<string, string>;
+  emailDomain?: string | undefined;
   onSaved: () => Promise<void>;
 };
 
@@ -17,6 +19,8 @@ export default function ProfessionalsPage({
   professionals,
   products,
   assignments,
+  collaboratorEmails = {},
+  emailDomain,
   onSaved,
 }: Readonly<ProfessionalsPageProps>): JSX.Element {
   const [selected, setSelected] = useState<ProfessionalRecord | undefined>();
@@ -98,6 +102,7 @@ export default function ProfessionalsPage({
                   <div>
                     <h2>{professional.name}</h2>
                     <span>{professional.phoneE164}</span>
+                    <small className="muted">{collaboratorEmails[professional.id] ?? 'Sem acesso à plataforma'}</small>
                   </div>
                 </div>
                 <div className="professional-services">
@@ -138,6 +143,8 @@ export default function ProfessionalsPage({
           professional={selected}
           products={products}
           assignedProductIds={selected ? assignedIds(selected.id) : []}
+          currentEmail={selected ? collaboratorEmails[selected.id] : undefined}
+          emailDomain={emailDomain}
           onClose={() => setEditorOpen(false)}
           onSaved={onSaved}
         />

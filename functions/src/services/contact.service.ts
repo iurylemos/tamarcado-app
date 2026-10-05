@@ -4,7 +4,13 @@ import { collections } from '../config/collections';
 import type { ContactDocument } from '../model/contact.model';
 import type { AuthorizedActor } from './authorization.service';
 import { firestore } from './firestore.service';
-import { normalizeBrazilianPhone } from './phone-verification.service';
+import { normalizeBrazilianPhone as normalizeShared } from '../../../shared/domain/phone';
+
+function normalizeBrazilianPhone(value: string): string {
+  const normalized = normalizeShared(value);
+  if (!normalized) throw new HttpsError('invalid-argument', 'Informe um telefone celular válido com DDD.');
+  return normalized;
+}
 
 export function contactDocumentId(tenantId: string, connectionId: string, phoneE164: string) {
   return [tenantId, connectionId, phoneE164].map(encodeURIComponent).join('__');

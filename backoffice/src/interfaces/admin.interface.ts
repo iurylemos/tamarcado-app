@@ -9,6 +9,7 @@ export interface CompanyRecord {
   description?: string;
   phoneE164?: string;
   logoUrl?: string;
+  emailDomain?: string;
   timezone: string;
   bookingIntervalMinutes: number;
   active: boolean;
@@ -68,6 +69,7 @@ export interface BackofficeWorkspace {
   products: ProductRecord[];
   professionals: ProfessionalRecord[];
   assignments: AssignmentRecord[];
+  collaboratorEmails?: Record<string, string>;
   workingHours: WorkingHoursRecord[];
   blockedPeriods: BlockedPeriodRecord[];
 }

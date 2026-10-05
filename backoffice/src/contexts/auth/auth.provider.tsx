@@ -1,11 +1,7 @@
 import { onAuthStateChanged } from 'firebase/auth';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
 import type { AuthSession } from '../../interfaces/auth.interface';
-import {
-  requestPhoneVerification,
-  signInWithPhoneVerification,
-  signOutCurrentUser,
-} from '../../services/auth.service';
+import { signInWithEmail, signOutCurrentUser } from '../../services/auth.service';
 import { auth } from '../../config/firebase.config';
 import { AuthContext } from './auth.context';
 
@@ -16,9 +12,13 @@ const initialSession: AuthSession = {
   error: '',
 };
 
-export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+type AuthProviderProps = {
+  children: ReactNode;
+};
+
+export function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Element {
   const [session, setSession] = useState<AuthSession>(initialSession);
-  const eventId = useRef(0);
+  const eventId = useRef<number>(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -34,14 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
       void user
         .getIdTokenResult()
-        .then(async ({ claims }) => {
+        .then(async ({ claims }): Promise<void> => {
           if (currentEvent !== eventId.current) return;
+
           if (
             claims.role !== 'backoffice' ||
             claims.active !== true ||
             typeof claims.tenantId !== 'string'
           ) {
             await signOutCurrentUser();
+
             if (!auth.currentUser) {
               setSession({
                 ...initialSession,
@@ -49,8 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
                 error: 'Esta conta não tem acesso ao backoffice.',
               });
             }
+
             return;
           }
+
           setSession({
             user,
             tenantId: claims.tenantId,
@@ -58,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
             error: '',
           });
         })
-        .catch((error: unknown) => {
+        .catch((error: unknown): void => {
           if (currentEvent !== eventId.current) return;
           setSession({
             ...initialSession,
@@ -70,19 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     return unsubscribe;
   }, []);
 
-  const requestCode = useCallback(
-    (phone: string) => requestPhoneVerification(phone, 'backoffice'),
-    [],
-  );
-  const verifyCode = useCallback(
-    (challengeId: string, phone: string, code: string) =>
-      signInWithPhoneVerification(phone, 'backoffice', challengeId, code),
-    [],
-  );
+  const login = useCallback((email: string, password: string) => signInWithEmail(email, password), []);
   const logout = useCallback(() => signOutCurrentUser(), []);
+
   const value = useMemo(
-    () => ({ ...session, requestCode, verifyCode, logout }),
-    [session, requestCode, verifyCode, logout],
+    () => ({ ...session, login, logout }),
+    [session, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
