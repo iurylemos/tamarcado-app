@@ -17,25 +17,13 @@ import type { AuthorizedActor } from './authorization.service';
 import { collections } from '../config/collections';
 import { firestore, professionalProductId } from './firestore.service';
 import { reservationDocumentId } from './booking.service';
-
-export interface CollaboratorAppointment extends AppointmentDocument {
-  id: string;
-  startsAt: Timestamp;
-  endsAt: Timestamp;
-}
-
-export interface CollaboratorAppointmentResponse extends Omit<
+import type {
+  AppointmentDataTime,
   CollaboratorAppointment,
-  'startsAt' | 'endsAt'
-> {
-  startsAt: string;
-  endsAt: string;
-}
-
-export interface ListAppointmentsInput {
-  date?: string;
-  statuses?: AppointmentStatus[];
-}
+  CollaboratorAppointmentResponse,
+  ListAppointmentsInput,
+  UpdateAppointmentInputData,
+} from '../interfaces/appointment.interface';
 
 function nextLocalDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
@@ -72,13 +60,15 @@ function appointmentResponse(
 export async function listAppointments(
   actor: AuthorizedActor,
   input: ListAppointmentsInput = {},
-): Promise<{ appointments: CollaboratorAppointmentResponse[]; timezone: string }> {
+): Promise<AppointmentDataTime> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new HttpsError('invalid-argument', 'Os filtros de agendamento são inválidos.');
   }
+
   if (input.date !== undefined && !isDateString(input.date)) {
     throw new HttpsError('invalid-argument', 'Informe uma data válida no formato AAAA-MM-DD.');
   }
+
   if (
     input.statuses !== undefined &&
     (!Array.isArray(input.statuses) ||
@@ -91,12 +81,14 @@ export async function listAppointments(
 
   const tenantSnapshot = await firestore.collection(collections.tenants).doc(actor.tenantId).get();
   const tenant = tenantSnapshot.data();
+
   if (!tenantSnapshot.exists || typeof tenant?.timezone !== 'string') {
     throw new HttpsError('failed-precondition', 'O fuso horário da empresa não está configurado.');
   }
 
   let start: Date | undefined;
   let end: Date | undefined;
+
   if (input.date) {
     try {
       start = localDateTimeToUtc(input.date, '00:00', tenant.timezone);
@@ -114,7 +106,9 @@ export async function listAppointments(
     .collection(collections.appointments)
     .where('tenantId', '==', actor.tenantId)
     .get();
+
   const statuses = input.statuses ? new Set(input.statuses) : undefined;
+
   const appointments = snapshot.docs
     .map(appointmentFromSnapshot)
     .filter((appointment) => {
@@ -133,12 +127,13 @@ export async function updateAppointmentStatus(
   actor: AuthorizedActor,
   appointmentId: string,
   nextStatus: AppointmentStatus,
-): Promise<{ appointmentId: string; status: AppointmentStatus }> {
+): Promise<UpdateAppointmentInputData> {
   if (!appointmentId || !['pending', 'confirmed', 'cancelled', 'completed'].includes(nextStatus)) {
     throw new HttpsError('invalid-argument', 'Os dados da atualização são inválidos.');
   }
 
   const appointmentRef = firestore.collection(collections.appointments).doc(appointmentId);
+
   const result = await firestore.runTransaction(async (transaction) => {
     const appointmentSnapshot = await transaction.get(appointmentRef);
     const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
@@ -155,24 +150,36 @@ export async function updateAppointmentStatus(
     const reservationsQuery = firestore
       .collection(collections.bookingReservations)
       .where('appointmentId', '==', appointmentId);
+
     const reservations = await transaction.get(reservationsQuery);
+
     transaction.update(appointmentRef, {
       status: nextStatus,
       updatedAt: Timestamp.now(),
       updatedBy: actor.uid,
     });
+
     if (nextStatus === 'cancelled' || nextStatus === 'completed') {
       reservations.docs.forEach((reservation) => {
         if (reservation.data().tenantId === actor.tenantId) transaction.delete(reservation.ref);
       });
     }
+
     return { appointmentId, status: nextStatus };
   });
-  const customerEvent = { confirmed: 'confirmed', cancelled: 'cancelled', completed: 'completed' } as const;
+
+  const customerEvent = {
+    confirmed: 'confirmed',
+    cancelled: 'cancelled',
+    completed: 'completed',
+  } as const;
+
   if (nextStatus !== 'pending') {
     const updated = await loadAppointment(appointmentId);
+
     if (updated) await notifyCustomer(customerEvent[nextStatus], updated);
   }
+
   return result;
 }
 
@@ -216,18 +223,22 @@ export async function updateAppointment(
   const result = await firestore.runTransaction(async (transaction) => {
     const appointmentSnapshot = await transaction.get(appointmentRef);
     const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
+
     if (!appointmentSnapshot.exists || appointment?.tenantId !== actor.tenantId) {
       throw new HttpsError('not-found', 'Agendamento não encontrado.');
     }
+
     if (actor.professionalId && actor.professionalId !== appointment.professionalId) {
       throw new HttpsError('permission-denied', 'Você não tem acesso a este agendamento.');
     }
+
     if (actor.professionalId && input.professionalId !== actor.professionalId) {
       throw new HttpsError(
         'permission-denied',
         'Seu perfil não permite atribuir outro profissional.',
       );
     }
+
     if (appointment.status !== 'pending' && appointment.status !== 'confirmed') {
       throw new HttpsError(
         'failed-precondition',
@@ -243,6 +254,7 @@ export async function updateAppointment(
     const associationRef = firestore
       .collection(collections.professionalProducts)
       .doc(professionalProductId(actor.tenantId, input.professionalId, appointment.productId));
+
     const [tenantSnapshot, productSnapshot, professionalSnapshot, associationSnapshot] =
       await Promise.all([
         transaction.get(tenantRef),
@@ -250,9 +262,11 @@ export async function updateAppointment(
         transaction.get(professionalRef),
         transaction.get(associationRef),
       ]);
+
     const tenant = tenantSnapshot.data();
     const product = productSnapshot.data();
     const professional = professionalSnapshot.data();
+
     if (
       !tenantSnapshot.exists ||
       typeof tenant?.timezone !== 'string' ||
@@ -276,17 +290,20 @@ export async function updateAppointment(
     }
 
     let local;
+
     try {
       local = getZonedDateTimeParts(startsAt, tenant.timezone);
     } catch (error: unknown) {
       if (!(error instanceof RangeError)) throw error;
       throw new HttpsError('failed-precondition', 'O fuso horário da empresa não é válido.');
     }
+
     const date = `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
     const time = `${String(local.hour).padStart(2, '0')}:${String(local.minute).padStart(2, '0')}`;
     const requestedMinute = minutesFromLocalTime(time);
     const durationMinutes = appointment.durationMinutes;
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+
     if (
       startsAt.getTime() <= Date.now() ||
       !Number.isInteger(durationMinutes) ||
@@ -296,32 +313,39 @@ export async function updateAppointment(
     }
 
     const weekday = isoWeekday(date);
+
     const hoursQuery = firestore
       .collection(collections.workingHours)
       .where('tenantId', '==', actor.tenantId)
       .where('professionalId', '==', input.professionalId)
       .where('dayOfWeek', '==', weekday)
       .where('active', '==', true);
+
     const blocksQuery = firestore
       .collection(collections.blockedPeriods)
       .where('tenantId', '==', actor.tenantId);
+
     const appointmentsQuery = firestore
       .collection(collections.appointments)
       .where('tenantId', '==', actor.tenantId)
       .where('professionalId', '==', input.professionalId)
       .where('status', 'in', ['pending', 'confirmed']);
+
     const oldReservationsQuery = firestore
       .collection(collections.bookingReservations)
       .where('appointmentId', '==', input.appointmentId);
+
     const buckets = fiveMinuteBucketStarts({
       startsAt: startsAt.getTime(),
       endsAt: endsAt.getTime(),
     });
+
     const desiredReservationRefs = buckets.map((bucket) =>
       firestore
         .collection(collections.bookingReservations)
         .doc(reservationDocumentId(actor.tenantId, input.professionalId, bucket)),
     );
+
     const [hoursSnapshot, blocksSnapshot, activeAppointments, oldReservations, targetReservations] =
       await Promise.all([
         transaction.get(hoursQuery),
@@ -333,6 +357,7 @@ export async function updateAppointment(
 
     const localMinute = requestedMinute;
     const interval = Number(tenant.bookingIntervalMinutes);
+
     const withinWorkingHours = hoursSnapshot.docs.some((document) => {
       const hour = document.data();
       const opening = minutesFromLocalTime(String(hour.startLocalTime));
@@ -349,6 +374,7 @@ export async function updateAppointment(
         (localMinute - opening) % interval === 0
       );
     });
+
     if (!withinWorkingHours) {
       throw new HttpsError(
         'failed-precondition',
@@ -357,6 +383,7 @@ export async function updateAppointment(
     }
 
     const requestedInterval = { startsAt: startsAt.getTime(), endsAt: endsAt.getTime() };
+
     const isBlocked = blocksSnapshot.docs.some((document) => {
       const block = document.data();
       return (
@@ -368,11 +395,13 @@ export async function updateAppointment(
         })
       );
     });
+
     if (isBlocked) throw new HttpsError('already-exists', 'O horário escolhido está bloqueado.');
 
     const hasAppointmentConflict = activeAppointments.docs.some((document) => {
       if (document.id === input.appointmentId) return false;
       const other = document.data();
+
       return (
         other.tenantId === actor.tenantId &&
         other.professionalId === input.professionalId &&
@@ -383,23 +412,27 @@ export async function updateAppointment(
         })
       );
     });
+
     if (hasAppointmentConflict) {
       throw new HttpsError(
         'already-exists',
         'Este horário acabou de ser reservado. Escolha outro horário.',
       );
     }
-    if (
-      targetReservations.some((reservation) => {
-        if (!reservation.exists) return false;
-        const data = reservation.data() as BookingReservationDocument;
-        return (
-          data.tenantId !== actor.tenantId ||
-          data.professionalId !== input.professionalId ||
-          data.appointmentId !== input.appointmentId
-        );
-      })
-    ) {
+
+    const valTarget = targetReservations.some((reservation) => {
+      if (!reservation.exists) return false;
+
+      const data = reservation.data() as BookingReservationDocument;
+
+      return (
+        data.tenantId !== actor.tenantId ||
+        data.professionalId !== input.professionalId ||
+        data.appointmentId !== input.appointmentId
+      );
+    });
+
+    if (valTarget) {
       throw new HttpsError(
         'already-exists',
         'Este horário acabou de ser reservado. Escolha outro horário.',
@@ -439,8 +472,11 @@ export async function updateAppointment(
       professionalId: input.professionalId,
     };
   });
+
   const updated = await loadAppointment(input.appointmentId);
+
   if (updated) await notifyCustomer('rescheduled', updated);
+
   return result;
 }
 
@@ -449,17 +485,22 @@ export async function listEligibleAppointmentProfessionals(
   appointmentId: string,
 ): Promise<Array<{ id: string; name: string }>> {
   if (!appointmentId) throw new HttpsError('invalid-argument', 'Informe o agendamento.');
+
   const appointmentSnapshot = await firestore
     .collection(collections.appointments)
     .doc(appointmentId)
     .get();
+
   const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
+
   if (!appointmentSnapshot.exists || appointment?.tenantId !== actor.tenantId) {
     throw new HttpsError('not-found', 'Agendamento não encontrado.');
   }
+
   if (actor.professionalId && actor.professionalId !== appointment.professionalId) {
     throw new HttpsError('permission-denied', 'Você não tem acesso a este agendamento.');
   }
+
   if (appointment.status !== 'pending' && appointment.status !== 'confirmed') {
     throw new HttpsError('failed-precondition', 'Este agendamento não pode ser reagendado.');
   }
@@ -469,6 +510,7 @@ export async function listEligibleAppointmentProfessionals(
     .where('productId', '==', appointment.productId)
     .where('active', '==', true)
     .get();
+
   const professionals = await Promise.all(
     assignments.docs.map(async (assignmentSnapshot) => {
       const assignment = assignmentSnapshot.data();
@@ -480,11 +522,14 @@ export async function listEligibleAppointmentProfessionals(
       ) {
         return undefined;
       }
+
       const snapshot = await firestore
         .collection(collections.professionals)
         .doc(String(assignment.professionalId))
         .get();
+
       const professional = snapshot.data();
+
       if (
         !snapshot.exists ||
         professional?.tenantId !== actor.tenantId ||
@@ -492,9 +537,11 @@ export async function listEligibleAppointmentProfessionals(
       ) {
         return undefined;
       }
+
       return { id: snapshot.id, name: String(professional.name) };
     }),
   );
+
   return professionals.filter((professional): professional is { id: string; name: string } =>
     Boolean(professional),
   );

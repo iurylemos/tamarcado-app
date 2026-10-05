@@ -2,22 +2,28 @@ import { logger } from 'firebase-functions';
 import type { AppointmentDocument } from '../model/appointment.model';
 import { collections } from '../config/collections';
 import { firestore } from './firestore.service';
-import type { RichTemplateRequest, TemplateComponent, WhatsAppProvider } from './whatsapp-provider.interface';
+import type {
+  RichTemplateRequest,
+  TemplateComponent,
+  WhatsAppProvider,
+} from './whatsapp-provider.interface';
 import { whatsappProvider } from './whatsapp-provider.service';
-
-export type CustomerEvent = 'requested' | 'confirmed' | 'cancelled' | 'rescheduled' | 'completed';
+import type {
+  AppointmentParticipants,
+  AppointmentCustomerEvent as CustomerEvent,
+} from '../interfaces/appointment.interface';
 
 export const acceptPayloadPrefix = 'accept:';
 
 const customerHeadline: Record<CustomerEvent, string> = {
-  requested: 'Recebemos sua solicitação de agendamento',
+  requested: 'Recebemos sua solicitaï¿½ï¿½o de agendamento',
   confirmed: 'Seu agendamento foi confirmado',
   cancelled: 'Seu agendamento foi cancelado',
-  rescheduled: 'O horário do seu agendamento foi alterado',
-  completed: 'Seu atendimento foi concluído',
+  rescheduled: 'O horï¿½rio do seu agendamento foi alterado',
+  completed: 'Seu atendimento foi concluï¿½do',
 };
 
-export function templateNames(env: NodeJS.ProcessEnv = process.env) {
+export function templateNames(env: NodeJS.ProcessEnv = process.env): AppointmentParticipants {
   return {
     customer: env.WHATSAPP_TEMPLATE_CUSTOMER || 'appointment_customer_update',
     collaborator: env.WHATSAPP_TEMPLATE_COLLABORATOR || 'appointment_collaborator_request',
@@ -48,6 +54,7 @@ export function buildCustomerMessage(
       parameters: [{ type: 'image', image: { link: appointment.productImageUrlSnapshot } }],
     });
   }
+
   components.push({
     type: 'body',
     parameters: [
@@ -59,6 +66,7 @@ export function buildCustomerMessage(
       text(businessName),
     ],
   });
+
   return {
     phoneE164: appointment.customerPhoneE164,
     templateName: templateNames(env).customer,
@@ -133,13 +141,26 @@ export async function notifyCollaboratorOfRequest(
   appointment: AppointmentDocument,
   provider: WhatsAppProvider = whatsappProvider,
 ): Promise<void> {
-  await safely('collaborator:requested', async () => {
-    const professional = (
-      await firestore.collection(collections.professionals).doc(appointment.professionalId).get()
-    ).data();
-    if (!professional || professional.tenantId !== appointment.tenantId || !professional.phoneE164) {
+  await safely('collaborator:requested', async (): Promise<void> => {
+    const existsProfessional = await firestore
+      .collection(collections.professionals)
+      .doc(appointment.professionalId)
+      .get();
+
+    if (!existsProfessional.exists) {
       return;
     }
+
+    const professional = existsProfessional.data();
+
+    if (
+      !professional ||
+      professional.tenantId !== appointment.tenantId ||
+      !professional.phoneE164
+    ) {
+      return;
+    }
+
     const { timezone } = await tenantContext(appointment.tenantId);
     const message = buildCollaboratorMessage(appointmentId, appointment, timezone);
     await provider.sendTemplate({ ...message, phoneE164: String(professional.phoneE164) });
