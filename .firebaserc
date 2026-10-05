@@ -1,14 +1,35 @@
 {
   "projects": {
-    "default": "demo-tamarcado"
+    "default": "demo-tamarcado",
+    "ta-marcado": "tamarcado-dad82"
   },
   "targets": {
     "demo-tamarcado": {
       "hosting": {
-        "client": ["demo-tamarcado-client"],
-        "collaborator": ["demo-tamarcado-collaborator"],
-        "backoffice": ["demo-tamarcado-backoffice"]
+        "client": [
+          "demo-tamarcado-client"
+        ],
+        "collaborator": [
+          "demo-tamarcado-collaborator"
+        ],
+        "backoffice": [
+          "demo-tamarcado-backoffice"
+        ]
+      }
+    },
+    "tamarcado-dad82": {
+      "hosting": {
+        "client": [
+          "tamarcado-dad82"
+        ],
+        "collaborator": [
+          "tamarcado-dad82-collaborator"
+        ],
+        "backoffice": [
+          "tamarcado-dad82-backoffice"
+        ]
       }
     }
-  }
+  },
+  "etags": {}
 }

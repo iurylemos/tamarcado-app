@@ -31,3 +31,4 @@ export {
 } from './functions/messages/manage-contact';
 export { sendAppointmentMessageCallable as sendAppointmentMessage } from './functions/messages/send-appointment-message';
 export { providerWebhook } from './functions/messages/process-provider-webhook';
+export { renderStorefront } from './functions/catalog/render-storefront';
