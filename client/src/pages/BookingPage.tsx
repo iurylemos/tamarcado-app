@@ -27,6 +27,7 @@ export default function BookingPage(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [shareError, setShareError] = useState<string>('');
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
   const { runWithLoading } = useAppLoading();
 
@@ -128,12 +129,80 @@ export default function BookingPage(): JSX.Element {
       });
       setSlots((current) => current.filter((slot) => slot.startsAt !== selectedStartsAt));
       setSelectedStartsAt('');
+
+      setLoading(true);
+      try {
+        const refreshedSlots = await runWithLoading('Atualizando horários disponíveis...', () =>
+          listAvailability({ businessSlug: slug, productId, date }),
+        );
+        const currentSlots = refreshedSlots.filter(
+          (slot) =>
+            slot.professionalId !== selectedProfessionalId ||
+            slot.startsAt !== selectedSlot.startsAt,
+        );
+        setSlots(currentSlots);
+        const availableProfessionals = eligibleProfessionals(currentSlots);
+        setSelectedProfessionalId((current) =>
+          availableProfessionals.some((professional) => professional.id === current)
+            ? current
+            : availableProfessionals.length === 1
+              ? availableProfessionals[0]!.id
+              : '',
+        );
+      } catch {
+        setError(
+          'Seu agendamento foi enviado, mas não foi possível atualizar os horários. Atualize a página para consultar a disponibilidade.',
+        );
+      } finally {
+        setLoading(false);
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'Não foi possível solicitar este horário.');
     } finally {
       setBusy(false);
     }
   };
+
+  const shareAppointment = async (): Promise<void> => {
+    if (!receipt || !navigator.share) return;
+
+    setShareError('');
+    try {
+      await navigator.share({
+        title: `Agendamento - ${product?.name ?? 'Tamarcado'}`,
+        text: [
+          `Agendamento em ${catalog?.business.name ?? 'Tamarcado'}`,
+          `Serviço: ${product?.name ?? ''}`,
+          `Data: ${new Intl.DateTimeFormat('pt-BR', {
+            dateStyle: 'full',
+            timeZone: 'America/Sao_Paulo',
+          }).format(new Date(receipt.startsAt))}`,
+          `Horário: ${formatTimeRange(receipt)}`,
+          `Protocolo: ${receipt.appointmentId}`,
+        ].join('\n'),
+      });
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setShareError('Não foi possível abrir o compartilhamento. Tente usar WhatsApp ou e-mail.');
+    }
+  };
+
+  const appointmentShareText = useMemo(
+    () =>
+      receipt && catalog && product
+        ? [
+            `Agendamento em ${catalog.business.name}`,
+            `Serviço: ${product.name}`,
+            `Data: ${new Intl.DateTimeFormat('pt-BR', {
+              dateStyle: 'full',
+              timeZone: 'America/Sao_Paulo',
+            }).format(new Date(receipt.startsAt))}`,
+            `Horário: ${formatTimeRange(receipt)}`,
+            `Protocolo: ${receipt.appointmentId}`,
+          ].join('\n')
+        : '',
+    [receipt, catalog, product],
+  );
 
   if (loading && !catalog) {
     return (
@@ -366,6 +435,34 @@ export default function BookingPage(): JSX.Element {
                   <dd>{receipt.appointmentId}</dd>
                 </div>
               </dl>
+              <div className="receipt-share" aria-label="Compartilhar agendamento">
+                <a
+                  className="receipt-share-link"
+                  href={`https://wa.me/?text=${encodeURIComponent(appointmentShareText)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  WhatsApp
+                </a>
+                <a
+                  className="receipt-share-link"
+                  href={`https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Agendamento - ${product.name}`)}&body=${encodeURIComponent(appointmentShareText)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  E-mail
+                </a>
+                {'share' in navigator && (
+                  <button className="receipt-share-link" type="button" onClick={shareAppointment}>
+                    Compartilhar
+                  </button>
+                )}
+              </div>
+              {shareError && (
+                <p role="alert" className="error">
+                  {shareError}
+                </p>
+              )}
               <p className="receipt-note">
                 A empresa recebeu sua solicitação e poderá entrar em contato para confirmar.
               </p>

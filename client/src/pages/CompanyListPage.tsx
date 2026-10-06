@@ -3,13 +3,18 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { BusinessSegment } from '@shared/interfaces/tenant.interface';
 import { formatBrl } from '@shared/money';
-import type { CompanySummary, ShowcaseProduct } from '../interfaces/company.interface';
+import type {
+  CompanySegment,
+  CompanySummary,
+  CompanyTabs,
+  ShowcaseProduct,
+} from '../interfaces/company.interface';
 import { listPublicCompanies } from '../services/company.service';
 import { listPublicProducts } from '../services/product.service';
 import MarketBackground from '../components/atoms/MarketBackground';
 import { useAppLoading } from '../contexts/LoadingContext';
 
-const segmentOptions: Array<{ value: BusinessSegment; label: string }> = [
+const segmentOptions: Array<CompanySegment> = [
   { value: 'beauty', label: 'Beleza' },
   { value: 'health', label: 'Saúde' },
   { value: 'fitness', label: 'Bem-estar' },
@@ -17,11 +22,9 @@ const segmentOptions: Array<{ value: BusinessSegment; label: string }> = [
   { value: 'other', label: 'Outros' },
 ];
 
-type Tab = 'products' | 'stores';
-
 export default function CompanyListPage(): JSX.Element {
   const [segment, setSegment] = useState<BusinessSegment | ''>('');
-  const [tab, setTab] = useState<Tab>('products');
+  const [tab, setTab] = useState<CompanyTabs>('products');
   const [search, setSearch] = useState<string>('');
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [products, setProducts] = useState<ShowcaseProduct[]>([]);
@@ -55,6 +58,7 @@ export default function CompanyListPage(): JSX.Element {
   }, [runWithLoading, segment]);
 
   const term = search.trim().toLowerCase();
+
   const companyBySlug = useMemo(
     () => new Map(companies.map((company) => [company.slug, company])),
     [companies],

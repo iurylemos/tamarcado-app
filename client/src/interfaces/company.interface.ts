@@ -34,3 +34,7 @@ export type BookingReceipt = {
   startsAt: string;
   endsAt: string;
 };
+
+export type CompanySegment = { value: BusinessSegment; label: string };
+
+export type CompanyTabs = 'products' | 'stores';

@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import BookingForm from './BookingForm';
 
+afterEach(cleanup);
+
 describe('BookingForm', () => {
-  it('rejects an invalid phone and defaults WhatsApp consent to false', async () => {
+  it('masks the phone and prevents submission until the phone and WhatsApp consent are valid', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
     render(<BookingForm onSubmit={onSubmit} />);
@@ -15,24 +17,24 @@ describe('BookingForm', () => {
     });
 
     expect(submitButton).toBeDisabled();
-    fireEvent.click(consent);
 
     fireEvent.change(phoneInput, {
       target: { value: '123' },
     });
 
-    fireEvent.click(submitButton);
-
-    expect(
-      await screen.findByText('Informe um telefone brasileiro válido com DDD.'),
-    ).toBeInTheDocument();
-
+    expect(await screen.findByText('Informe um celular válido com DDD.')).toBeInTheDocument();
+    expect(phoneInput).toHaveValue('(12) 3');
+    expect(submitButton).toBeDisabled();
     expect(onSubmit).not.toHaveBeenCalled();
 
     fireEvent.change(phoneInput, {
       target: { value: '(11) 99999-0000' },
     });
+    expect(phoneInput).toHaveValue('(11) 99999-0000');
+    expect(submitButton).toBeDisabled();
 
+    fireEvent.click(consent);
+    expect(submitButton).toBeEnabled();
     fireEvent.click(submitButton);
 
     await waitFor(() =>
@@ -44,16 +46,17 @@ describe('BookingForm', () => {
     );
   });
 
-  it('requires WhatsApp consent before submitting even if the form is submitted directly', async () => {
+  it('validates a direct form submission even if browser controls are bypassed', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
     render(<BookingForm onSubmit={onSubmit} />);
-    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
-      target: { value: '(11) 99999-0000' },
-    });
-    fireEvent.submit(screen.getByRole('button', { name: 'Solicitar agendamento' }).closest('form')!);
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Solicitar agendamento' }).closest('form')!,
+    );
 
-    expect(await screen.findByText(/Aceite receber mensagens pelo WhatsApp/i)).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Informe um celular válido com DDD.',
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

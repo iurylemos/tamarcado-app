@@ -1,11 +1,6 @@
-import { useState, type FormEvent, type JSX } from 'react';
+import { useState, type SubmitEvent, type JSX } from 'react';
 import { isValidBrazilianPhone } from '@shared/phone';
-
-export type BookingFormValues = {
-  customerName: string;
-  customerPhone: string;
-  whatsappOptIn: boolean;
-};
+import type { BookingFormValues } from '../../../interfaces/booking.interface';
 
 type BookingFormProps = {
   onSubmit: (values: BookingFormValues) => Promise<void>;
@@ -17,16 +12,36 @@ export default function BookingForm({
   onSubmit,
   busy = false,
   error = '',
-}: BookingFormProps): JSX.Element {
+}: Readonly<BookingFormProps>): JSX.Element {
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [whatsappOptIn, setWhatsappOptIn] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string>('');
+  const phoneIsValid = isValidBrazilianPhone(customerPhone);
 
-  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const updatePhone = (value: string): void => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('55') && digits.length > 11) digits = digits.slice(2);
+    digits = digits.slice(0, 11);
+
+    const areaCode = digits.slice(0, 2);
+    const subscriber = digits.slice(2);
+    const splitAt = subscriber.startsWith('9') ? 5 : 4;
+    const formattedSubscriber =
+      subscriber.length > splitAt
+        ? `${subscriber.slice(0, splitAt)}-${subscriber.slice(splitAt)}`
+        : subscriber;
+
+    setCustomerPhone(
+      digits.length > 2 ? `(${areaCode}) ${formattedSubscriber}` : digits ? `(${digits}` : '',
+    );
+    setValidationError('');
+  };
+
+  const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    if (!isValidBrazilianPhone(customerPhone)) {
-      setValidationError('Informe um telefone brasileiro válido com DDD.');
+    if (!phoneIsValid) {
+      setValidationError('Informe um celular válido com DDD.');
       return;
     }
     if (!whatsappOptIn) {
@@ -57,12 +72,18 @@ export default function BookingForm({
           inputMode="tel"
           autoComplete="tel"
           value={customerPhone}
-          onChange={(event) => setCustomerPhone(event.target.value)}
+          onChange={(event) => updatePhone(event.target.value)}
           aria-describedby="phone-help"
+          aria-invalid={customerPhone.length > 0 && !phoneIsValid}
           required
         />
-        <span id="phone-help" className="muted">
-          Ex.: (11) 99999-0000
+        <span
+          id="phone-help"
+          className={customerPhone.length > 0 && !phoneIsValid ? 'error' : 'muted'}
+        >
+          {customerPhone.length > 0 && !phoneIsValid
+            ? 'Informe um celular válido com DDD.'
+            : 'Ex.: (11) 99999-0000'}
         </span>
       </label>
       <label className="whatsapp-consent">
@@ -83,7 +104,11 @@ export default function BookingForm({
           {error}
         </p>
       )}
-      <button className="button booking-submit" type="submit" disabled={busy || !whatsappOptIn}>
+      <button
+        className="button booking-submit"
+        type="submit"
+        disabled={busy || !whatsappOptIn || !phoneIsValid}
+      >
         {busy ? 'Enviando solicitação...' : 'Solicitar agendamento'}
       </button>
     </form>

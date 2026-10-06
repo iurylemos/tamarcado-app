@@ -255,7 +255,9 @@ select {
   margin: 0;
 }
 @keyframes market-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .eyebrow {
   margin: 0 0 0.35rem;
@@ -526,7 +528,10 @@ select {
   font-size: 0.82rem;
   font-weight: 750;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
 }
 .slot-option:hover {
   border-color: #fb923c;
@@ -595,7 +600,9 @@ select {
   min-height: 3rem;
   border-radius: 0.75rem;
   font-weight: 750;
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
 }
 .booking-submit:not(:disabled):hover {
   transform: translateY(-1px);
@@ -651,7 +658,8 @@ select {
   border-radius: 1.25rem;
   padding: 2rem;
   background:
-    radial-gradient(circle at 0 100%, transparent 0.55rem, white 0.58rem) 0 100% / 1rem 1rem repeat-x,
+    radial-gradient(circle at 0 100%, transparent 0.55rem, white 0.58rem) 0 100% / 1rem 1rem
+      repeat-x,
     white;
   box-shadow: 0 24px 70px rgb(15 23 42 / 0.3);
   text-align: center;
@@ -711,6 +719,33 @@ select {
   font-weight: 700;
   text-align: right;
   overflow-wrap: anywhere;
+}
+.receipt-share {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+  margin: 0.5rem 0 1rem;
+}
+.receipt-share-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fed7aa;
+  border-radius: 0.7rem;
+  padding: 0.45rem 0.85rem;
+  background: #fff7ed;
+  color: #9a3412;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.receipt-share-link:hover {
+  border-color: #fb923c;
+  background: #ffedd5;
 }
 .receipt-note {
   margin: 1rem 0;
