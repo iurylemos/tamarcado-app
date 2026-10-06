@@ -29,12 +29,16 @@ export default function BookingForm({
       setValidationError('Informe um telefone brasileiro válido com DDD.');
       return;
     }
+    if (!whatsappOptIn) {
+      setValidationError('Aceite receber mensagens pelo WhatsApp para solicitar o agendamento.');
+      return;
+    }
     setValidationError('');
     await onSubmit({ customerName: customerName.trim(), customerPhone, whatsappOptIn });
   };
 
   return (
-    <form className="stack" onSubmit={submit} noValidate>
+    <form className="stack booking-form" onSubmit={submit} noValidate>
       <label className="field" htmlFor="customer-name">
         Seu nome (opcional)
         <input
@@ -61,7 +65,7 @@ export default function BookingForm({
           Ex.: (11) 99999-0000
         </span>
       </label>
-      <label>
+      <label className="whatsapp-consent">
         <input
           type="checkbox"
           checked={whatsappOptIn}
@@ -79,7 +83,7 @@ export default function BookingForm({
           {error}
         </p>
       )}
-      <button className="button" type="submit" disabled={busy}>
+      <button className="button booking-submit" type="submit" disabled={busy || !whatsappOptIn}>
         {busy ? 'Enviando solicitação...' : 'Solicitar agendamento'}
       </button>
     </form>

@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX, type MouseEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
 import { formatBrl } from '@shared/money';
-import type { CompanyCatalog } from '../interfaces/company.interface';
+import type { BookingReceipt, CompanyCatalog } from '../interfaces/company.interface';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
 import { eligibleProfessionals } from '../services/professional.service';
-import { getNextBookableDate } from '../utils/date.util';
+import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
 import type { BookingFormValues } from '../interfaces/booking.interface';
 import type { EligibleProfessional } from '../interfaces/professional.interface';
-
+import MarketBackground from '../components/atoms/MarketBackground';
+import { useAppLoading } from '../contexts/LoadingContext';
 import BookingForm from '../components/organisms/BookingForm/BookingForm';
 import ProfessionalSelector from '../components/organisms/ProfessionalSelector/ProfessionalSelector';
 import CompanyCatalogPage from './CompanyCatalogPage';
@@ -25,14 +27,15 @@ export default function BookingPage(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
+  const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
+  const { runWithLoading } = useAppLoading();
 
   const product = catalog?.products.find((item) => item.id === productId);
 
   useEffect(() => {
     let current = true;
 
-    getCompanyCatalog(slug)
+    runWithLoading('Carregando os serviços da empresa...', () => getCompanyCatalog(slug))
       .then((result) => {
         if (current) setCatalog(result);
       })
@@ -46,7 +49,7 @@ export default function BookingPage(): JSX.Element {
     return () => {
       current = false;
     };
-  }, [slug]);
+  }, [runWithLoading, slug]);
 
   useEffect(() => {
     if (!product) return;
@@ -56,8 +59,11 @@ export default function BookingPage(): JSX.Element {
     setLoading(true);
     setError('');
     setSelectedStartsAt('');
+    setSlots([]);
 
-    listAvailability({ businessSlug: slug, productId, date })
+    runWithLoading('Procurando horários que cabem na sua agenda...', () =>
+      listAvailability({ businessSlug: slug, productId, date }),
+    )
       .then((result) => {
         if (current) {
           setSlots(result);
@@ -79,7 +85,7 @@ export default function BookingPage(): JSX.Element {
     return () => {
       current = false;
     };
-  }, [date, product, productId, slug]);
+  }, [date, product, productId, runWithLoading, slug]);
 
   const professionals = useMemo<EligibleProfessional[]>(
     () => eligibleProfessionals(slots),
@@ -94,20 +100,32 @@ export default function BookingPage(): JSX.Element {
   const submitBooking = async (values: BookingFormValues): Promise<void> => {
     setBusy(true);
     setError('');
-    setSuccess('');
 
     try {
-      const result = await createAppointment({
-        businessSlug: slug,
-        productId,
-        professionalId: selectedProfessionalId,
-        startsAt: selectedStartsAt,
-        customerName: values.customerName || undefined,
-        customerPhone: values.customerPhone,
-        whatsappOptIn: values.whatsappOptIn,
-      });
+      const selectedSlot = slots.find((slot) => slot.startsAt === selectedStartsAt);
+      if (!selectedSlot) {
+        setError('Escolha novamente um horário disponível antes de continuar.');
+        return;
+      }
+      const result = await runWithLoading('Enviando sua solicitação...', () =>
+        createAppointment({
+          businessSlug: slug,
+          productId,
+          professionalId: selectedProfessionalId,
+          startsAt: selectedStartsAt,
+          customerName: values.customerName || undefined,
+          customerPhone: values.customerPhone,
+          whatsappOptIn: values.whatsappOptIn,
+        }),
+      );
 
-      setSuccess(`Solicitação enviada. Seu código é ${result.appointmentId.slice(0, 8)}.`);
+      setReceipt({
+        appointmentId: result.appointmentId,
+        customerName: values.customerName,
+        customerPhone: values.customerPhone,
+        startsAt: selectedSlot.startsAt,
+        endsAt: selectedSlot.endsAt,
+      });
       setSlots((current) => current.filter((slot) => slot.startsAt !== selectedStartsAt));
       setSelectedStartsAt('');
     } catch (error: unknown) {
@@ -119,92 +137,249 @@ export default function BookingPage(): JSX.Element {
 
   if (loading && !catalog) {
     return (
-      <main className="page">
-        <p role="status">Carregando serviço...</p>
-      </main>
+      <>
+        <MarketBackground />
+        <main className="page market-page">
+          <p className="loading-message" role="status">
+            Carregando serviço...
+          </p>
+        </main>
+      </>
     );
   }
 
   if (!catalog || !product) {
     return catalog ? (
-      <main className="page">
-        <p role="status">Serviço não encontrado.</p>
-        <Link to={`/empresa/${slug}`}>Voltar ao catálogo</Link>
-      </main>
+      <>
+        <MarketBackground />
+        <main className="page market-page state-card">
+          <p role="status">Serviço não encontrado.</p>
+          <Link to={`/empresa/${slug}`}>Voltar ao catálogo</Link>
+        </main>
+      </>
     ) : (
       <CompanyCatalogPage />
     );
   }
 
   return (
-    <main className="page stack">
-      <Link to={`/empresa/${slug}`}>← Voltar ao catálogo</Link>
+    <>
+      <MarketBackground />
+      <main className="page stack market-page booking-page">
+        <Link className="market-back-link" to={`/empresa/${slug}`}>
+          ← Voltar ao catálogo
+        </Link>
 
-      <header className="stack">
-        <p className="muted">{catalog.business.name}</p>
-        <h1>Agendar {product.name}</h1>
-        <p>
-          {formatBrl(product.priceCents)} · {product.durationMinutes} minutos
-        </p>
-      </header>
+        <motion.header
+          className="booking-hero"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div>
+            <p className="eyebrow">AGENDAMENTO ONLINE</p>
+            <h1>Seu próximo momento começa aqui.</h1>
+            <p>Escolha um horário e deixe o resto com a gente.</p>
+          </div>
+          <div className="booking-hero-mark" aria-hidden="true">
+            ✦
+          </div>
+        </motion.header>
 
-      <label className="field" htmlFor="booking-date">
-        Data do atendimento
-        <input
-          id="booking-date"
-          type="date"
-          value={date}
-          min={getNextBookableDate(new Date(Date.now() - 86_400_000))}
-          onChange={(event) => setDate(event.target.value)}
-        />
-      </label>
+        <div className="booking-layout">
+          <motion.aside
+            className="booking-summary"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <p className="eyebrow">RESUMO DO SERVIÇO</p>
+            <span className="booking-summary-icon" aria-hidden="true">
+              ✂
+            </span>
+            <p className="muted">{catalog.business.name}</p>
+            <h2>{product.name}</h2>
+            {product.description && <p>{product.description}</p>}
+            <div className="booking-summary-details">
+              <span>{formatBrl(product.priceCents)}</span>
+              <span>{product.durationMinutes} minutos</span>
+            </div>
+          </motion.aside>
 
-      <ProfessionalSelector
-        professionals={professionals}
-        value={selectedProfessionalId}
-        onChange={(id) => {
-          setSelectedProfessionalId(id);
-          setSelectedStartsAt('');
-        }}
-      />
+          <section className="booking-panel" aria-label="Escolha seu horário">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">1. ESCOLHA A DATA E O HORÁRIO</p>
+                <h2>Quando você quer vir?</h2>
+              </div>
+            </div>
 
-      {loading && <p role="status">Buscando horários disponíveis...</p>}
-
-      {!loading && professionals.length > 0 && visibleSlots.length === 0 && (
-        <p role="status">Não há horários disponíveis para esta data. Escolha outra data.</p>
-      )}
-
-      {visibleSlots.length > 0 && (
-        <fieldset className="stack">
-          <legend>Horários disponíveis</legend>
-          {visibleSlots.map((slot) => (
-            <label key={`${slot.professionalId}-${slot.startsAt}`}>
+            <label className="field" htmlFor="booking-date">
+              Data do atendimento
               <input
-                type="radio"
-                name="booking-time"
-                value={slot.startsAt}
-                checked={selectedStartsAt === slot.startsAt}
-                onChange={() => setSelectedStartsAt(slot.startsAt)}
-              />{' '}
-              {new Intl.DateTimeFormat('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'America/Sao_Paulo',
-              }).format(new Date(slot.startsAt))}
+                id="booking-date"
+                type="date"
+                value={date}
+                min={getNextBookableDate(new Date(Date.now() - 86_400_000))}
+                onChange={(event) => setDate(event.target.value)}
+              />
             </label>
-          ))}
-        </fieldset>
-      )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+            <ProfessionalSelector
+              professionals={professionals}
+              value={selectedProfessionalId}
+              onChange={(id) => {
+                setSelectedProfessionalId(id);
+                setSelectedStartsAt('');
+              }}
+            />
 
-      {success && <p role="status">{success}</p>}
+            {loading && (
+              <p className="loading-message" role="status">
+                Buscando horários disponíveis...
+              </p>
+            )}
 
-      {selectedStartsAt && <BookingForm onSubmit={submitBooking} busy={busy} error={error} />}
-    </main>
+            {!loading && professionals.length > 0 && visibleSlots.length === 0 && (
+              <p role="status" className="state-card state-card-compact">
+                Não há horários disponíveis para esta data. Escolha outra data.
+              </p>
+            )}
+
+            {visibleSlots.length > 0 && (
+              <fieldset className="slot-fieldset">
+                <legend>Horários disponíveis</legend>
+                <div className="slot-grid">
+                  {visibleSlots.map((slot, index) => (
+                    <motion.label
+                      key={`${slot.professionalId}-${slot.startsAt}`}
+                      className={`slot-option${selectedStartsAt === slot.startsAt ? ' is-selected' : ''}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(index, 12) * 0.025 }}
+                    >
+                      <input
+                        type="radio"
+                        name="booking-time"
+                        value={slot.startsAt}
+                        checked={selectedStartsAt === slot.startsAt}
+                        onChange={() => setSelectedStartsAt(slot.startsAt)}
+                      />
+                      <span>{formatTimeRange(slot)}</span>
+                    </motion.label>
+                  ))}
+                </div>
+                <p className="slot-help">
+                  Cada opção mostra o início e o fim do atendimento ({product.durationMinutes} min).
+                </p>
+              </fieldset>
+            )}
+
+            {error && !selectedStartsAt && (
+              <p role="alert" className="error">
+                {error}
+              </p>
+            )}
+
+            <AnimatePresence initial={false}>
+              {selectedStartsAt && (
+                <motion.div
+                  className="booking-contact"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <div className="section-heading">
+                    <div>
+                      <p className="eyebrow">2. SEUS DADOS</p>
+                      <h2>Quase lá!</h2>
+                    </div>
+                  </div>
+                  <BookingForm onSubmit={submitBooking} busy={busy} error={error} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+        </div>
+      </main>
+
+      <AnimatePresence>
+        {receipt && (
+          <motion.div
+            className="receipt-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setReceipt(null)}
+          >
+            <motion.section
+              className="receipt-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="receipt-title"
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              onClick={(event: MouseEvent) => event.stopPropagation()}
+            >
+              <button
+                className="receipt-close"
+                type="button"
+                aria-label="Fechar comprovante"
+                onClick={() => setReceipt(null)}
+              >
+                ×
+              </button>
+              <span className="receipt-check" aria-hidden="true">
+                ✓
+              </span>
+              <p className="eyebrow">COMPROVANTE DE AGENDAMENTO</p>
+              <h2 id="receipt-title">Solicitação enviada!</h2>
+              <p className="receipt-business">{catalog.business.name}</p>
+              <div className="receipt-divider" />
+              <dl className="receipt-details">
+                <div>
+                  <dt>Serviço</dt>
+                  <dd>{product.name}</dd>
+                </div>
+                <div>
+                  <dt>Data</dt>
+                  <dd>
+                    {new Intl.DateTimeFormat('pt-BR', {
+                      dateStyle: 'full',
+                      timeZone: 'America/Sao_Paulo',
+                    }).format(new Date(receipt.startsAt))}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Horário</dt>
+                  <dd>{formatTimeRange(receipt)}</dd>
+                </div>
+                <div>
+                  <dt>Cliente</dt>
+                  <dd>{receipt.customerName || 'Cliente'}</dd>
+                </div>
+                <div>
+                  <dt>Celular</dt>
+                  <dd>{receipt.customerPhone}</dd>
+                </div>
+                <div>
+                  <dt>Protocolo</dt>
+                  <dd>{receipt.appointmentId}</dd>
+                </div>
+              </dl>
+              <p className="receipt-note">
+                A empresa recebeu sua solicitação e poderá entrar em contato para confirmar.
+              </p>
+              <button
+                className="button booking-submit"
+                type="button"
+                onClick={() => setReceipt(null)}
+              >
+                Entendi
+              </button>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

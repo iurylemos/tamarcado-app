@@ -1,4 +1,6 @@
+import type { AvailableSlot } from '@shared/interfaces/availability.interface';
 import { getZonedDateTimeParts } from '@shared/timezone';
+import type { BookingReceipt } from '../interfaces/company.interface';
 
 export function getDateInBusinessTimezone(
   now = new Date(),
@@ -20,4 +22,15 @@ export function getNextBookableDate(now = new Date(), timezone = 'America/Sao_Pa
   if (candidate.getUTCDay() === 0) candidate.setUTCDate(candidate.getUTCDate() + 1);
 
   return `${candidate.getUTCFullYear()}-${String(candidate.getUTCMonth() + 1).padStart(2, '0')}-${String(candidate.getUTCDate()).padStart(2, '0')}`;
+}
+
+export function formatTimeRange(slot: AvailableSlot | BookingReceipt): string {
+  const formatTime = (value: string): string =>
+    new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }).format(new Date(value));
+
+  return `${formatTime(slot.startsAt)} - ${formatTime(slot.endsAt)}`;
 }
