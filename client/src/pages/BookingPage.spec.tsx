@@ -1,10 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
 import BookingPage from './BookingPage';
+import { renderWithQueryClient } from '../test/render';
 
 vi.mock('../services/availability.service', () => ({ listAvailability: vi.fn() }));
 vi.mock('../services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
@@ -50,7 +51,7 @@ describe('BookingPage professional selection', () => {
       },
     ]);
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
@@ -85,7 +86,7 @@ describe('BookingPage professional selection', () => {
       status: 'pending',
     });
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
@@ -136,7 +137,7 @@ describe('BookingPage professional selection', () => {
         professionalName: 'Bruna Lima',
       },
     ]);
-    render(
+    renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
@@ -150,7 +151,7 @@ describe('BookingPage professional selection', () => {
 
   it('shows an empty eligibility state when no professional can serve the selected service', async () => {
     vi.mocked(listAvailability).mockResolvedValue([]);
-    render(
+    renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />

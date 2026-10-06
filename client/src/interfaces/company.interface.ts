@@ -1,4 +1,4 @@
-import type { BusinessSegment } from '@shared/interfaces/tenant.interface';
+import type { BusinessSegment } from '../../../shared/domain/interfaces/tenant.interface.js';
 
 export interface CompanySummary {
   id: string;

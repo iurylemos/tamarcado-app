@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
+import { renderWithQueryClient } from '../test/render';
 
 vi.mock('../services/catalog.service', () => ({
   getCompanyCatalog: vi.fn(),
@@ -30,7 +31,7 @@ describe('CompanyCatalogPage', () => {
       ],
     });
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
         <Routes>
           <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />

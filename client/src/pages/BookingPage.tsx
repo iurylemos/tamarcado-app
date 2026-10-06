@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState, type JSX, type MouseEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
 import { formatBrl } from '@shared/money';
 import type { BookingReceipt, CompanyCatalog } from '../interfaces/company.interface';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
+import {
+  availabilityQueryKey,
+  companyCatalogQueryKey,
+} from '../services/query-client';
 import { eligibleProfessionals } from '../services/professional.service';
 import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
 import type { BookingFormValues } from '../interfaces/booking.interface';
@@ -30,13 +35,19 @@ export default function BookingPage(): JSX.Element {
   const [shareError, setShareError] = useState<string>('');
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
   const { runWithLoading } = useAppLoading();
+  const queryClient = useQueryClient();
 
   const product = catalog?.products.find((item) => item.id === productId);
 
   useEffect(() => {
     let current = true;
 
-    runWithLoading('Carregando os serviços da empresa...', () => getCompanyCatalog(slug))
+    queryClient
+      .fetchQuery({
+        queryKey: companyCatalogQueryKey(slug),
+        queryFn: () =>
+          runWithLoading('Carregando os serviços da empresa...', () => getCompanyCatalog(slug)),
+      })
       .then((result) => {
         if (current) setCatalog(result);
       })
@@ -50,7 +61,7 @@ export default function BookingPage(): JSX.Element {
     return () => {
       current = false;
     };
-  }, [runWithLoading, slug]);
+  }, [queryClient, runWithLoading, slug]);
 
   useEffect(() => {
     if (!product) return;
@@ -62,9 +73,15 @@ export default function BookingPage(): JSX.Element {
     setSelectedStartsAt('');
     setSlots([]);
 
-    runWithLoading('Procurando horários que cabem na sua agenda...', () =>
-      listAvailability({ businessSlug: slug, productId, date }),
-    )
+    queryClient
+      .fetchQuery({
+        queryKey: availabilityQueryKey(slug, productId, date),
+        queryFn: () =>
+          runWithLoading('Procurando horários que cabem na sua agenda...', () =>
+            listAvailability({ businessSlug: slug, productId, date }),
+          ),
+        staleTime: 15_000,
+      })
       .then((result) => {
         if (current) {
           setSlots(result);
@@ -86,7 +103,7 @@ export default function BookingPage(): JSX.Element {
     return () => {
       current = false;
     };
-  }, [date, product, productId, runWithLoading, slug]);
+  }, [date, product, productId, queryClient, runWithLoading, slug]);
 
   const professionals = useMemo<EligibleProfessional[]>(
     () => eligibleProfessionals(slots),
@@ -132,9 +149,16 @@ export default function BookingPage(): JSX.Element {
 
       setLoading(true);
       try {
-        const refreshedSlots = await runWithLoading('Atualizando horários disponíveis...', () =>
-          listAvailability({ businessSlug: slug, productId, date }),
-        );
+        const queryKey = availabilityQueryKey(slug, productId, date);
+        await queryClient.invalidateQueries({ queryKey });
+        const refreshedSlots = await queryClient.fetchQuery({
+          queryKey,
+          queryFn: () =>
+            runWithLoading('Atualizando horários disponíveis...', () =>
+              listAvailability({ businessSlug: slug, productId, date }),
+            ),
+          staleTime: 0,
+        });
         const currentSlots = refreshedSlots.filter(
           (slot) =>
             slot.professionalId !== selectedProfessionalId ||

@@ -5,10 +5,21 @@
     "target": "es2022",
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "jsx": "react-jsx",
+    "paths": {
+      "@shared/*": ["../shared/domain/*"]
+    },
     "rootDir": "..",
     "outDir": "lib",
     "types": ["node"],
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "../shared/domain/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "../shared/domain/**/*.ts",
+    "../client/src/entry-server.tsx",
+    "../client/src/services/public-content-markup.ts",
+    "../client/src/interfaces/company.interface.ts"
+  ]
 }
