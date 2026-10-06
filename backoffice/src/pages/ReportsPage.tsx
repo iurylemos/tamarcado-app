@@ -22,7 +22,7 @@ export default function ReportsPage({
   timezone,
   products,
   professionals,
-}: ReportsPageProps): JSX.Element {
+}: Readonly<ReportsPageProps>): JSX.Element {
   const currentPeriod = getZonedDateTimeParts(new Date(), timezone);
   const currentYear = currentPeriod.year;
   const currentMonth = currentPeriod.month;

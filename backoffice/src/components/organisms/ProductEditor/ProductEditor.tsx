@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useState, type JSX, type SubmitEvent } from 'react';
 import type { ProductRecord } from '../../../interfaces/admin.interface';
 import { errorMessage, saveProduct } from '../../../services/admin.service';
 
@@ -12,7 +12,7 @@ export default function ProductEditor({
   product,
   onClose,
   onSaved,
-}: ProductEditorProps): JSX.Element {
+}: Readonly<ProductEditorProps>): JSX.Element {
   const [name, setName] = useState<string>(product?.name ?? '');
   const [description, setDescription] = useState<string>(product?.description ?? '');
   const [imageUrl, setImageUrl] = useState<string>(product?.imageUrl ?? '');
@@ -32,7 +32,7 @@ export default function ProductEditor({
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');

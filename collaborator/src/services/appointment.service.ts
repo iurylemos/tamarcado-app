@@ -11,20 +11,15 @@ import { httpsCallable } from 'firebase/functions';
 import { getZonedDateTimeParts } from '@shared/timezone';
 import { auth, db, functions } from '../config/firebase.config';
 import type {
+  AppointmentEligibleProfessionalListItem,
+  AppointmentListResponse,
+  AppointmentUpdateStatusData,
   CollaboratorAppointment,
   EligibleProfessional,
+  RawAppointment,
 } from '../interfaces/appointment.interface';
 import type { AppointmentListFilters } from '../interfaces/appointment.interface';
 import type { AppointmentStatus } from '@shared/appointment-status';
-
-type AppointmentListResponse = {
-  appointments: Array<CollaboratorAppointment>;
-  timezone: string;
-};
-interface RawAppointment extends Omit<CollaboratorAppointment, 'startsAt' | 'endsAt'> {
-  startsAt: { toDate(): Date };
-  endsAt: { toDate(): Date };
-}
 
 function parseAppointment(data: DocumentData, id: string): CollaboratorAppointment {
   const appointment = data as RawAppointment;
@@ -81,17 +76,17 @@ export async function updateAppointmentStatus(
   appointmentId: string,
   status: AppointmentStatus,
 ): Promise<void> {
-  const callable = httpsCallable<
-    { appointmentId: string; status: AppointmentStatus },
-    { appointmentId: string; status: AppointmentStatus }
-  >(functions, 'updateAppointmentStatus');
+  const callable = httpsCallable<AppointmentUpdateStatusData, AppointmentUpdateStatusData>(
+    functions,
+    'updateAppointmentStatus',
+  );
   await callable({ appointmentId, status });
 }
 
 export async function listEligibleProfessionals(
   appointmentId: string,
 ): Promise<EligibleProfessional[]> {
-  const callable = httpsCallable<{ appointmentId: string }, EligibleProfessional[]>(
+  const callable = httpsCallable<AppointmentEligibleProfessionalListItem, EligibleProfessional[]>(
     functions,
     'listEligibleAppointmentProfessionals',
   );

@@ -1,18 +1,11 @@
 import { httpsCallable } from 'firebase/functions';
 import type { SalesReport } from '@shared/reporting';
 import { auth, functions } from '../config/firebase.config';
-import type { ReportFilters } from '../interfaces/report.interface';
-
-type CsvExport = {
-  csv: string;
-  filename: string;
-};
-
-type ProjectionRebuildResult = {
-  written: number;
-  year: number;
-  month: number;
-};
+import type {
+  ReportCsvExport,
+  ReportFilters,
+  ReportProjectionRebuildResult,
+} from '../interfaces/report.interface';
 
 async function callable<TInput, TOutput>(name: string, data: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;
@@ -26,12 +19,12 @@ async function callable<TInput, TOutput>(name: string, data: TInput): Promise<TO
   return result.data;
 }
 
-export function getSalesReport(filters: ReportFilters): Promise<SalesReport> {
-  return callable('calculateSalesReport', filters);
+export async function getSalesReport(filters: ReportFilters): Promise<SalesReport> {
+  return await callable('calculateSalesReport', filters);
 }
 
 export async function exportSalesReport(filters: ReportFilters): Promise<void> {
-  const result = await callable<ReportFilters, CsvExport>('exportSalesReport', filters);
+  const result = await callable<ReportFilters, ReportCsvExport>('exportSalesReport', filters);
   const url = URL.createObjectURL(
     new Blob([`\uFEFF${result.csv}`], { type: 'text/csv;charset=utf-8' }),
   );
@@ -44,10 +37,10 @@ export async function exportSalesReport(filters: ReportFilters): Promise<void> {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function rebuildMonthlyReport(
+export async function rebuildMonthlyReport(
   period: Pick<ReportFilters, 'year' | 'month'>,
-): Promise<ProjectionRebuildResult> {
-  return callable('rebuildMonthlyReport', period);
+): Promise<ReportProjectionRebuildResult> {
+  return await callable('rebuildMonthlyReport', period);
 }
 
 export function errorMessage(error: unknown): string {

@@ -8,7 +8,7 @@ type CollaboratorRankingProps = {
 
 export default function CollaboratorRanking({
   collaborators,
-}: CollaboratorRankingProps): JSX.Element {
+}: Readonly<CollaboratorRankingProps>): JSX.Element {
   const topCollaborators = getTopCollaborators(collaborators);
 
   return (

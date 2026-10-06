@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import {
   appointmentLocalDate,
   listAppointments,
   subscribeToAppointments,
   updateAppointmentStatus,
 } from '../services/appointment.service';
-import { ErrorUtil } from '../utils/error.util';
 import type { CollaboratorAppointment } from '../interfaces/appointment.interface';
 import type { AppointmentStatus } from '@shared/appointment-status';
+import { ErrorUtil } from '../utils/error.util';
 import AppointmentCard from '../components/organisms/AppointmentCard/AppointmentCard';
 
 export default function AppointmentsPage(): JSX.Element {
@@ -80,7 +80,7 @@ export default function AppointmentsPage(): JSX.Element {
     }
   };
 
-  const applyDateFilter = (event: FormEvent<HTMLFormElement>): void => {
+  const applyDateFilter = (event: SubmitEvent<HTMLFormElement>): void => {
     event.preventDefault();
     void loadAppointments(date);
   };
@@ -110,11 +110,7 @@ export default function AppointmentsPage(): JSX.Element {
         <form className="report-filters" onSubmit={applyDateFilter}>
           <label className="date-filter">
             Filtrar por data
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-            />
+            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <button type="submit" disabled={loading}>
             {loading ? 'Filtrando...' : 'Filtrar'}

@@ -2,9 +2,18 @@ import { httpsCallable } from 'firebase/functions';
 import type {
   BackofficeWorkspace,
   ProductRecord,
-  WorkingHoursRecord,
+  InputWorkingHours,
 } from '../interfaces/admin.interface';
 import { auth, functions } from '../config/firebase.config';
+import type { InputProfessional } from '../interfaces/professional.interface';
+import type {
+  CollaboratorAccountData,
+  GenericAdmin,
+  InputCollaboratorAccount,
+  InputResetCollaborator,
+} from '../interfaces/collaborator.interface';
+import type { InputBlockedPeriod } from '../interfaces/period.interface';
+import type { InputCompany } from '../interfaces/company.interface';
 
 async function callable<TInput, TOutput>(name: string, data?: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;
@@ -24,68 +33,41 @@ export function getWorkspace(): Promise<BackofficeWorkspace> {
   return callable<void, BackofficeWorkspace>('getBackofficeWorkspace');
 }
 
-export function saveProduct(product: Omit<ProductRecord, 'tenantId'>): Promise<{ id: string }> {
+export function saveProduct(
+  product: Omit<ProductRecord, 'tenantId'>,
+): Promise<Pick<GenericAdmin, 'id'>> {
   return callable('saveProduct', product);
 }
 
-export function saveProfessional(input: {
-  id?: string;
-  name: string;
-  phone: string;
-  photoUrl: string;
-  active: boolean;
-  productIds: string[];
-}): Promise<{ id: string }> {
+export function saveProfessional(input: InputProfessional): Promise<Pick<GenericAdmin, 'id'>> {
   return callable('saveProfessional', input);
 }
 
-export function saveCollaboratorAccount(input: {
-  professionalId: string;
-  email: string;
-  password?: string;
-}): Promise<{ uid: string; email: string }> {
+export function saveCollaboratorAccount(
+  input: InputCollaboratorAccount,
+): Promise<CollaboratorAccountData> {
   return callable('saveCollaboratorAccount', input);
 }
 
-export function resetCollaboratorPassword(input: {
-  professionalId: string;
-  password: string;
-}): Promise<{ uid: string }> {
+export function resetCollaboratorPassword(
+  input: InputResetCollaborator,
+): Promise<Pick<CollaboratorAccountData, 'uid'>> {
   return callable('resetCollaboratorPassword', input);
 }
 
-export function saveWorkingHours(
-  input: Omit<WorkingHoursRecord, 'tenantId' | 'id'> & { id?: string },
-): Promise<{ id: string }> {
+export function saveWorkingHours(input: InputWorkingHours): Promise<Pick<GenericAdmin, 'id'>> {
   return callable('saveWorkingHours', input);
 }
 
-export function saveBlockedPeriod(input: {
-  id?: string;
-  professionalId?: string;
-  reason: string;
-  startsAt: string;
-  endsAt: string;
-}): Promise<{ id: string }> {
+export function saveBlockedPeriod(input: InputBlockedPeriod): Promise<{ id: string }> {
   return callable('saveBlockedPeriod', input);
 }
 
-export function deleteBlockedPeriod(id: string): Promise<{ deleted: boolean }> {
+export function deleteBlockedPeriod(id: string): Promise<Pick<GenericAdmin, 'deleted'>> {
   return callable('deleteBlockedPeriod', { id });
 }
 
-export function saveCompany(input: {
-  name: string;
-  slug: string;
-  segment: string;
-  description: string;
-  phone: string;
-  logoUrl: string;
-  emailDomain: string;
-  timezone: string;
-  bookingIntervalMinutes: number;
-  active: boolean;
-}): Promise<{ saved: boolean }> {
+export function saveCompany(input: InputCompany): Promise<Pick<GenericAdmin, 'saved'>> {
   return callable('saveTenantSettings', input);
 }
 

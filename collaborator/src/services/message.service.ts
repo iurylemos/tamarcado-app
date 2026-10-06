@@ -3,14 +3,7 @@ import { httpsCallable } from 'firebase/functions';
 import type { Contact } from '@shared/interfaces/contact.interface';
 import type { Message } from '@shared/interfaces/message.interface';
 import { db, functions } from '../config/firebase.config';
-
-export interface Connection {
-  id: string;
-  provider: string;
-  status: string;
-}
-
-type Unsubscribe = () => void;
+import type { MessageConnection, MessageUnsubscribe } from '../interfaces/message.interface';
 
 function toDate(value: unknown): Date {
   return typeof value === 'object' && value !== null && 'toDate' in value
@@ -24,7 +17,7 @@ function subscribe<T>(
   map: (id: string, data: DocumentData) => T,
   onData: (items: T[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
+): MessageUnsubscribe {
   return onSnapshot(
     query(collection(db, name), where('tenantId', '==', tenantId)),
     (snapshot) => onData(snapshot.docs.map((document) => map(document.id, document.data()))),
@@ -34,9 +27,9 @@ function subscribe<T>(
 
 export function subscribeConnections(
   tenantId: string,
-  onData: (items: Connection[]) => void,
+  onData: (items: MessageConnection[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
+): MessageUnsubscribe {
   return subscribe(
     'connections',
     tenantId,
@@ -54,7 +47,7 @@ export function subscribeContacts(
   tenantId: string,
   onData: (items: Contact[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
+): MessageUnsubscribe {
   return subscribe(
     'contacts',
     tenantId,
@@ -75,7 +68,7 @@ export function subscribeMessages(
   tenantId: string,
   onData: (items: Message[]) => void,
   onError: (error: Error) => void,
-): Unsubscribe {
+): MessageUnsubscribe {
   return subscribe(
     'messages',
     tenantId,

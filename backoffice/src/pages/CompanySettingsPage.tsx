@@ -19,7 +19,7 @@ const segmentLabels: Record<string, string> = {
 export default function CompanySettingsPage({
   company,
   onSaved,
-}: CompanySettingsPageProps): JSX.Element {
+}: Readonly<CompanySettingsPageProps>): JSX.Element {
   const [name, setName] = useState<string>(company.name);
   const [slug, setSlug] = useState<string>(company.slug);
   const [segment, setSegment] = useState<string>(company.segment);
@@ -79,7 +79,10 @@ export default function CompanySettingsPage({
           {active ? 'Empresa ativa' : 'Empresa inativa'}
         </span>
       </header>
-      <form className="settings-layout" onSubmit={(event) => void submit(event)}>
+      <form
+        className="settings-layout"
+        onSubmit={(event: SubmitEvent<HTMLFormElement>) => void submit(event)}
+      >
         <section className="content-card settings-card">
           <header className="section-heading">
             <div>
