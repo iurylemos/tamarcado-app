@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { emulatorUsers } from './emulator-users';
 import { createSeedDocuments } from './seed-data';
 
-const projectId = process.env.GCLOUD_PROJECT ?? 'tamarcado-dad82';
+const projectId = process.env.GCLOUD_PROJECT ?? 'demo-tamarcado';
 if (!projectId.startsWith('demo-')) {
   throw new Error(
     `Refusing to seed non-emulator Firebase project "${projectId}". Use a demo-* project ID.`,

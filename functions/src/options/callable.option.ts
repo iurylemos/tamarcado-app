@@ -15,14 +15,14 @@ export const callableOptionsPublic: CallableOptions = {
 export const callableOptionsCollaborator: CallableOptions = {
   region: 'southamerica-east1',
   invoker: 'public',
-  cors: ['https://tamarcado-dad82.collaborator.web.app'],
+  cors: ['https://tamarcado-dad82-collaborator.web.app'],
 };
 
 export const callableOptionsCollaboratorAndBackoffice: CallableOptions = {
   region: 'southamerica-east1',
   invoker: 'public',
   cors: [
-    'https://tamarcado-dad82.collaborator.web.app',
+    'https://tamarcado-dad82-collaborator.web.app',
     'https://tamarcado-dad82-backoffice.web.app',
   ],
 };

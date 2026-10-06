@@ -26,3 +26,15 @@ export interface PublicProductSummary {
 export interface ShowcaseProduct extends PublicProductSummary {
   businessSlug: string;
 }
+
+export type BookingReceipt = {
+  appointmentId: string;
+  customerName: string;
+  customerPhone: string;
+  startsAt: string;
+  endsAt: string;
+};
+
+export type CompanySegment = { value: BusinessSegment; label: string };
+
+export type CompanyTabs = 'products' | 'stores';

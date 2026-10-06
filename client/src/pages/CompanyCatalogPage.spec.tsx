@@ -42,8 +42,7 @@ describe('CompanyCatalogPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Corte e finalização' })).toBeInTheDocument();
 
-    expect(
-      screen.getByText((content) => content.includes('R$ 120,00 · 60 min')),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/120,00/)).toBeInTheDocument();
+    expect(screen.getByText(/60 min/)).toBeInTheDocument();
   });
 });

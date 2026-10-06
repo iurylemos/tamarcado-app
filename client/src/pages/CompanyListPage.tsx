@@ -3,11 +3,18 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { BusinessSegment } from '@shared/interfaces/tenant.interface';
 import { formatBrl } from '@shared/money';
-import type { CompanySummary, ShowcaseProduct } from '../interfaces/company.interface';
+import type {
+  CompanySegment,
+  CompanySummary,
+  CompanyTabs,
+  ShowcaseProduct,
+} from '../interfaces/company.interface';
 import { listPublicCompanies } from '../services/company.service';
 import { listPublicProducts } from '../services/product.service';
+import MarketBackground from '../components/atoms/MarketBackground';
+import { useAppLoading } from '../contexts/LoadingContext';
 
-const segmentOptions: Array<{ value: BusinessSegment; label: string }> = [
+const segmentOptions: Array<CompanySegment> = [
   { value: 'beauty', label: 'Beleza' },
   { value: 'health', label: 'Saúde' },
   { value: 'fitness', label: 'Bem-estar' },
@@ -15,51 +22,24 @@ const segmentOptions: Array<{ value: BusinessSegment; label: string }> = [
   { value: 'other', label: 'Outros' },
 ];
 
-const floaters = ['🛍️', '✂️', '💅', '🏪', '💆', '🚗', '🏷️', '💈', '🧴', '🎁', '⭐', '🛒'];
-
-function MarketBackground(): JSX.Element {
-  return (
-    <div className="market-bg" aria-hidden="true">
-      {floaters.map((icon, index) => (
-        <motion.span
-          key={icon}
-          style={{
-            left: `${(index * 83) % 96}%`,
-            top: `${(index * 37) % 90}%`,
-            fontSize: `${2 + (index % 3)}rem`,
-          }}
-          animate={{ y: [0, -28, 0], rotate: [-8, 8, -8] }}
-          transition={{
-            duration: 6 + (index % 5),
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: index * 0.3,
-          }}
-        >
-          {icon}
-        </motion.span>
-      ))}
-    </div>
-  );
-}
-
-type Tab = 'products' | 'stores';
-
 export default function CompanyListPage(): JSX.Element {
   const [segment, setSegment] = useState<BusinessSegment | ''>('');
-  const [tab, setTab] = useState<Tab>('products');
+  const [tab, setTab] = useState<CompanyTabs>('products');
   const [search, setSearch] = useState<string>('');
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [products, setProducts] = useState<ShowcaseProduct[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const { runWithLoading } = useAppLoading();
 
   useEffect(() => {
     let current = true;
     setLoading(true);
     setError('');
 
-    Promise.all([listPublicCompanies(segment || undefined), listPublicProducts()])
+    runWithLoading('Preparando sua vitrine...', () =>
+      Promise.all([listPublicCompanies(segment || undefined), listPublicProducts()]),
+    )
       .then(([companyResult, productResult]) => {
         if (!current) return;
         setCompanies(companyResult);
@@ -75,17 +55,16 @@ export default function CompanyListPage(): JSX.Element {
     return () => {
       current = false;
     };
-  }, [segment]);
+  }, [runWithLoading, segment]);
 
   const term = search.trim().toLowerCase();
+
   const companyBySlug = useMemo(
     () => new Map(companies.map((company) => [company.slug, company])),
     [companies],
   );
 
-  const visibleCompanies = companies.filter((company) =>
-    company.name.toLowerCase().includes(term),
-  );
+  const visibleCompanies = companies.filter((company) => company.name.toLowerCase().includes(term));
   const visibleProducts = products.filter((product) => {
     const store = companyBySlug.get(product.businessSlug);
     if (segment && !store) return false;
@@ -157,7 +136,11 @@ export default function CompanyListPage(): JSX.Element {
           </button>
         </div>
 
-        {loading && <p role="status">Carregando...</p>}
+        {loading && (
+          <p className="loading-message" role="status">
+            Carregando...
+          </p>
+        )}
 
         {error && (
           <p role="alert" className="error">
@@ -218,7 +201,15 @@ export default function CompanyListPage(): JSX.Element {
                     {company.logoUrl ? (
                       <img src={company.logoUrl} alt="" loading="lazy" />
                     ) : (
-                      <span aria-hidden="true" style={{ fontSize: '3rem', display: 'grid', placeItems: 'center', height: '100%' }}>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          fontSize: '3rem',
+                          display: 'grid',
+                          placeItems: 'center',
+                          height: '100%',
+                        }}
+                      >
                         🏪
                       </span>
                     )}
