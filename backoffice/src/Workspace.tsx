@@ -8,6 +8,7 @@ import AvailabilityPage from './pages/AvailabilityPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
+import LoadingScreen from './components/atoms/LoadingScreen/LoadingScreen';
 
 type Section = 'dashboard' | 'company' | 'products' | 'professionals' | 'availability' | 'reports';
 
@@ -50,13 +51,7 @@ export default function BackofficeWorkspace(): JSX.Element {
     }
   }, [refreshWorkspace, user]);
 
-  if (loading) {
-    return (
-      <main className="loading-screen" role="status">
-        Carregando dados da empresa…
-      </main>
-    );
-  }
+  if (loading) return <LoadingScreen message="Carregando os dados da empresa..." />;
 
   if (!workspace) {
     return (

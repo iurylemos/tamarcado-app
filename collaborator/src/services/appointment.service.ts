@@ -14,13 +14,13 @@ import type {
   CollaboratorAppointment,
   EligibleProfessional,
 } from '../interfaces/appointment.interface';
+import type { AppointmentListFilters } from '../interfaces/appointment.interface';
 import type { AppointmentStatus } from '@shared/appointment-status';
 
 type AppointmentListResponse = {
   appointments: Array<CollaboratorAppointment>;
   timezone: string;
 };
-
 interface RawAppointment extends Omit<CollaboratorAppointment, 'startsAt' | 'endsAt'> {
   startsAt: { toDate(): Date };
   endsAt: { toDate(): Date };
@@ -36,9 +36,14 @@ function parseAppointment(data: DocumentData, id: string): CollaboratorAppointme
   };
 }
 
-export async function listAppointments(): Promise<AppointmentListResponse> {
-  const callable = httpsCallable<void, AppointmentListResponse>(functions, 'listAppointments');
-  const { data } = await callable();
+export async function listAppointments(
+  filters: AppointmentListFilters = {},
+): Promise<AppointmentListResponse> {
+  const callable = httpsCallable<AppointmentListFilters, AppointmentListResponse>(
+    functions,
+    'listAppointments',
+  );
+  const { data } = await callable(filters);
   return {
     appointments: data.appointments.map((appointment) => ({
       ...appointment,

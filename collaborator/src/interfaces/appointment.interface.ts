@@ -32,3 +32,8 @@ export interface CollaboratorCustomer {
   latestAppointmentAt: string;
   canContactOnWhatsApp: boolean;
 }
+
+export interface AppointmentListFilters {
+  date?: string;
+  statuses?: AppointmentStatus[];
+}
