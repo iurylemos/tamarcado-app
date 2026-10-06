@@ -24,6 +24,7 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "deploy": "npm run build && firebase deploy",
+    "deploy:functions": "npm run build:functions && firebase deploy --project tamarcado-dad82 --only functions",
     "deploy:hosting": "npm run build --workspace client && npm run build --workspace collaborator && npm run build --workspace backoffice && firebase deploy --only hosting",
     "deploy:all": "npm run build && firebase deploy --project tamarcado-dad82 --only firestore,functions,hosting"
   },

@@ -18,11 +18,11 @@ export function WorkspaceLayout(): JSX.Element {
         <Link className="app-brand" to="/appointments">
           Tamarcado
         </Link>
-        <nav aria-label="NavegaÃ§Ã£o principal">
+        <nav aria-label="Navegação principal">
           <Link to="/appointments">Agendamentos</Link>
           <Link to="/customers">Clientes</Link>
           <Link to="/messages">Mensagens</Link>
-          <Link to="/reports">RelatÃ³rios</Link>
+          <Link to="/reports">Relatórios</Link>
         </nav>
         <button type="button" onClick={() => void logout()}>
           Sair

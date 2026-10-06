@@ -1,3 +1,4 @@
+import { logger } from 'firebase-functions';
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import type { UserDocument } from '../model/user.model';
 import { collections } from '../config/collections';
@@ -30,15 +31,22 @@ export async function authorizeActor(
   const snapshot = await firestore.collection(collections.users).doc(auth.uid).get();
   const user: unknown = snapshot.data();
 
-  if (!isUserDocument(user) || user.active !== true)
+  if (!isUserDocument(user) || user.active !== true) {
     throw new HttpsError('permission-denied', 'Esta conta está inativa ou sem acesso.');
+  }
 
-  if (
-    auth.token.active !== true ||
-    auth.token.tenantId !== user.tenantId ||
-    auth.token.role !== user.role ||
-    (auth.token.professionalId ?? null) !== (user.professionalId ?? null)
-  ) {
+  const claimMatches = {
+    active: auth.token.active === true,
+    tenantId: auth.token.tenantId === user.tenantId,
+    role: auth.token.role === user.role,
+    professionalId: (auth.token.professionalId ?? null) === (user.professionalId ?? null),
+  };
+
+  if (Object.values(claimMatches).some((matches) => !matches)) {
+    logger.warn('Authorization rejected: token claims do not match the user document.', {
+      uid: auth.uid,
+      claimMatches,
+    });
     throw new HttpsError('permission-denied', 'Sua sessão não corresponde ao acesso atual.');
   }
 

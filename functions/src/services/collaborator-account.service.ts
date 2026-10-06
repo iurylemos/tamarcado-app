@@ -31,7 +31,10 @@ export function normalizeCollaboratorEmail(value: unknown, domain: string | unde
 
 export function validatePassword(value: unknown): string {
   if (typeof value !== 'string' || value.length < minPasswordLength || value.length > 128) {
-    throw new HttpsError('invalid-argument', `A senha deve ter de ${minPasswordLength} a 128 caracteres.`);
+    throw new HttpsError(
+      'invalid-argument',
+      `A senha deve ter de ${minPasswordLength} a 128 caracteres.`,
+    );
   }
   return value;
 }
@@ -79,8 +82,14 @@ export async function saveCollaboratorAccount(
   rawInput: unknown,
   auth: Auth = getAuth(),
 ): Promise<{ uid: string; email: string }> {
-  const input = (typeof rawInput === 'object' && rawInput !== null ? rawInput : {}) as Record<string, unknown>;
-  const { professional, professionalId, domain } = await loadContext(tenantId, input.professionalId);
+  const input = (typeof rawInput === 'object' && rawInput !== null ? rawInput : {}) as Record<
+    string,
+    unknown
+  >;
+  const { professional, professionalId, domain } = await loadContext(
+    tenantId,
+    input.professionalId,
+  );
   const email = normalizeCollaboratorEmail(input.email, domain);
   const existing = await findLinkedUser(tenantId, professionalId);
   const claims = { tenantId, role: 'collaborator', active: professional.active, professionalId };
@@ -89,8 +98,15 @@ export async function saveCollaboratorAccount(
   try {
     if (existing) {
       uid = existing.id;
-      const password = input.password === undefined || input.password === '' ? undefined : validatePassword(input.password);
-      await auth.updateUser(uid, { email, ...(password ? { password } : {}), disabled: !professional.active });
+      const password =
+        input.password === undefined || input.password === ''
+          ? undefined
+          : validatePassword(input.password);
+      await auth.updateUser(uid, {
+        email,
+        ...(password ? { password } : {}),
+        disabled: !professional.active,
+      });
     } else {
       const password = validatePassword(input.password);
       const created = await auth.createUser({
@@ -125,13 +141,22 @@ export async function resetCollaboratorPassword(
   rawInput: unknown,
   auth: Auth = getAuth(),
 ): Promise<{ uid: string }> {
-  const input = (typeof rawInput === 'object' && rawInput !== null ? rawInput : {}) as Record<string, unknown>;
-  const { professionalId } = await loadContext(tenantId, input.professionalId);
+  const input = (typeof rawInput === 'object' && rawInput !== null ? rawInput : {}) as Record<
+    string,
+    unknown
+  >;
+  const { professional, professionalId } = await loadContext(tenantId, input.professionalId);
   const password = validatePassword(input.password);
   const existing = await findLinkedUser(tenantId, professionalId);
   if (!existing) throw new HttpsError('not-found', 'Este colaborador ainda não tem acesso.');
   try {
     await auth.updateUser(existing.id, { password });
+    await auth.setCustomUserClaims(existing.id, {
+      tenantId,
+      role: 'collaborator',
+      active: professional.active,
+      professionalId,
+    });
     await auth.revokeRefreshTokens(existing.id);
   } catch (error) {
     throw authError(error);

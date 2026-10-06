@@ -1,5 +1,5 @@
 import { useState, type SubmitEvent, type JSX } from 'react';
-import { isValidBrazilianPhone } from '@shared/phone';
+import { formatBrazilianPhone, isValidBrazilianPhone } from '@shared/phone';
 import type { BookingFormValues } from '../../../interfaces/booking.interface';
 
 type BookingFormProps = {
@@ -20,21 +20,7 @@ export default function BookingForm({
   const phoneIsValid = isValidBrazilianPhone(customerPhone);
 
   const updatePhone = (value: string): void => {
-    let digits = value.replace(/\D/g, '');
-    if (digits.startsWith('55') && digits.length > 11) digits = digits.slice(2);
-    digits = digits.slice(0, 11);
-
-    const areaCode = digits.slice(0, 2);
-    const subscriber = digits.slice(2);
-    const splitAt = subscriber.startsWith('9') ? 5 : 4;
-    const formattedSubscriber =
-      subscriber.length > splitAt
-        ? `${subscriber.slice(0, splitAt)}-${subscriber.slice(splitAt)}`
-        : subscriber;
-
-    setCustomerPhone(
-      digits.length > 2 ? `(${areaCode}) ${formattedSubscriber}` : digits ? `(${digits}` : '',
-    );
+    setCustomerPhone(formatBrazilianPhone(value));
     setValidationError('');
   };
 

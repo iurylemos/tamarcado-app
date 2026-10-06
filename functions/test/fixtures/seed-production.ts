@@ -1,7 +1,7 @@
 import { applicationDefault, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { createSeedDocuments, seedUsers } from './seed-data';
+import { createSeedDocuments, seedUserClaims, seedUsers } from './seed-data';
 
 function parseProjectId(args: string[]): string {
   let projectId: string | undefined;
@@ -131,11 +131,7 @@ async function seedProduction(): Promise<void> {
         emailVerified: true,
       });
     }
-    await auth.setCustomUserClaims(user.uid, {
-      tenantId: user.tenantId,
-      role: user.role,
-      active: true,
-    });
+    await auth.setCustomUserClaims(user.uid, seedUserClaims(user));
   }
 
   const documents = createSeedDocuments();

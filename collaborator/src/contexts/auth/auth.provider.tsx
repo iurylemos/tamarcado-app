@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       }
 
       void user
-        .getIdTokenResult()
+        .getIdTokenResult(true)
         .then(async ({ claims }) => {
           if (currentEvent !== eventId.current) return;
           if (
@@ -69,12 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     return unsubscribe;
   }, []);
 
-  const login = useCallback((email: string, password: string) => signInWithEmail(email, password), []);
-  const logout = useCallback(() => signOutCurrentUser(), []);
-  const value = useMemo(
-    () => ({ ...session, login, logout }),
-    [session, login, logout],
+  const login = useCallback(
+    (email: string, password: string) => signInWithEmail(email, password),
+    [],
   );
+  const logout = useCallback(() => signOutCurrentUser(), []);
+  const value = useMemo(() => ({ ...session, login, logout }), [session, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
