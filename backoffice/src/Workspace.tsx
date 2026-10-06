@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import { useAuth } from './contexts/auth/auth.context';
 import { errorMessage, getWorkspace } from './services/admin.service';
-import type { BackofficeWorkspace } from './interfaces/admin.interface';
+import type { BackofficeSection, BackofficeWorkspace } from './interfaces/admin.interface';
 import ProductsPage from './pages/ProductsPage';
 import ProfessionalsPage from './pages/ProfessionalsPage';
 import AvailabilityPage from './pages/AvailabilityPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
+import LoadingScreen from './components/atoms/LoadingScreen/LoadingScreen';
 
-type Section = 'dashboard' | 'company' | 'products' | 'professionals' | 'availability' | 'reports';
-
-const sectionLabels: Record<Section, string> = {
+const sectionLabels: Record<BackofficeSection, string> = {
   dashboard: 'Visão geral',
   company: 'Empresa',
   products: 'Serviços',
@@ -23,7 +22,7 @@ const sectionLabels: Record<Section, string> = {
 export default function BackofficeWorkspace(): JSX.Element {
   const { user, logout } = useAuth();
   const [workspace, setWorkspace] = useState<BackofficeWorkspace | null>(null);
-  const [section, setSection] = useState<Section>('dashboard');
+  const [section, setSection] = useState<BackofficeSection>('dashboard');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
@@ -50,13 +49,7 @@ export default function BackofficeWorkspace(): JSX.Element {
     }
   }, [refreshWorkspace, user]);
 
-  if (loading) {
-    return (
-      <main className="loading-screen" role="status">
-        Carregando dados da empresa…
-      </main>
-    );
-  }
+  if (loading) return <LoadingScreen message="Carregando os dados da empresa..." />;
 
   if (!workspace) {
     return (
@@ -88,7 +81,7 @@ export default function BackofficeWorkspace(): JSX.Element {
           <span aria-hidden="true">⌄</span>
         </div>
         <nav aria-label="Navegação principal" className="side-nav">
-          {(Object.keys(sectionLabels) as Section[]).map((item) => (
+          {(Object.keys(sectionLabels) as BackofficeSection[]).map((item) => (
             <button
               className={`nav-item ${section === item ? 'selected' : ''}`}
               key={item}

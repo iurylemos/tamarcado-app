@@ -32,3 +32,21 @@ export interface CollaboratorCustomer {
   latestAppointmentAt: string;
   canContactOnWhatsApp: boolean;
 }
+
+export interface AppointmentListFilters {
+  date?: string;
+  statuses?: AppointmentStatus[];
+}
+
+export type AppointmentUpdateStatusData = { appointmentId: string; status: AppointmentStatus };
+
+export type AppointmentListResponse = {
+  appointments: Array<CollaboratorAppointment>;
+  timezone: string;
+};
+export interface RawAppointment extends Omit<CollaboratorAppointment, 'startsAt' | 'endsAt'> {
+  startsAt: { toDate(): Date };
+  endsAt: { toDate(): Date };
+}
+
+export type AppointmentEligibleProfessionalListItem = { appointmentId: string };

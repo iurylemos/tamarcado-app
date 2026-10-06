@@ -19,7 +19,7 @@ export default function BlockedPeriodEditor({
   blockedPeriods,
   timezone,
   onSaved,
-}: BlockedPeriodEditorProps): JSX.Element {
+}: Readonly<BlockedPeriodEditorProps>): JSX.Element {
   const [professionalId, setProfessionalId] = useState<string>('');
   const [startsAt, setStartsAt] = useState(() => DateUtil.initialLocalDateTime(1, 13, timezone));
   const [endsAt, setEndsAt] = useState(() => DateUtil.initialLocalDateTime(1, 14, timezone));
@@ -69,7 +69,10 @@ export default function BlockedPeriodEditor({
           <p className="muted">Reserve períodos em que a empresa ou uma pessoa não atende.</p>
         </div>
       </header>
-      <form className="form-stack" onSubmit={(event) => void submit(event)}>
+      <form
+        className="form-stack"
+        onSubmit={(event: SubmitEvent<HTMLFormElement>) => void submit(event)}
+      >
         <label>
           Aplicar bloqueio a
           <select

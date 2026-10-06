@@ -24,7 +24,7 @@ export default function AvailabilityPage({
   bookingIntervalMinutes,
   timezone,
   onSaved,
-}: AvailabilityPageProps): JSX.Element {
+}: Readonly<AvailabilityPageProps>): JSX.Element {
   const [professionalId, setProfessionalId] = useState(professionals[0]?.id ?? '');
   const [editing, setEditing] = useState<WorkingHoursRecord | undefined>();
   const [dayOfWeek, setDayOfWeek] = useState<string>('1');

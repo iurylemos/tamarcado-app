@@ -13,9 +13,11 @@ const initialSession: AuthSession = {
   error: '',
 };
 
-export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+type AuthProviderProps = { children: ReactNode };
+
+export function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Element {
   const [session, setSession] = useState<AuthSession>(initialSession);
-  const eventId = useRef(0);
+  const eventId = useRef<number>(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -30,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       }
 
       void user
-        .getIdTokenResult()
+        .getIdTokenResult(true)
         .then(async ({ claims }) => {
           if (currentEvent !== eventId.current) return;
           if (
@@ -69,12 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     return unsubscribe;
   }, []);
 
-  const login = useCallback((email: string, password: string) => signInWithEmail(email, password), []);
-  const logout = useCallback(() => signOutCurrentUser(), []);
-  const value = useMemo(
-    () => ({ ...session, login, logout }),
-    [session, login, logout],
+  const login = useCallback(
+    (email: string, password: string) => signInWithEmail(email, password),
+    [],
   );
+  const logout = useCallback(() => signOutCurrentUser(), []);
+  const value = useMemo(() => ({ ...session, login, logout }), [session, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

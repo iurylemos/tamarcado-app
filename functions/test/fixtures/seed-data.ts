@@ -360,6 +360,7 @@ export const seedUsers = [
     email: 'ana@aurora.test',
     tenantId: 'tenant-aurora',
     role: 'collaborator',
+    professionalId: 'professional-ana',
   },
   {
     uid: 'test-backoffice-horizonte',
@@ -368,3 +369,12 @@ export const seedUsers = [
     role: 'backoffice',
   },
 ] as const;
+
+export function seedUserClaims(user: (typeof seedUsers)[number]) {
+  return {
+    tenantId: user.tenantId,
+    role: user.role,
+    active: true,
+    ...('professionalId' in user ? { professionalId: user.professionalId } : {}),
+  };
+}

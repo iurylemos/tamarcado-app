@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useState, type JSX, type SubmitEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/auth/auth.context';
 import { authErrorMessage } from '../services/auth.service';
@@ -15,14 +15,14 @@ export default function LoginPage(): JSX.Element {
     if (user) navigate('/', { replace: true });
   }, [user, navigate]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
       await login(email, password);
-    } catch (loginError: unknown) {
-      setError(authErrorMessage(loginError));
+    } catch (error: unknown) {
+      setError(authErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -34,7 +34,7 @@ export default function LoginPage(): JSX.Element {
         <p className="auth-login__eyebrow">TAMARCADO · BACKOFFICE</p>
         <h1 id="login-title">Gestão da empresa</h1>
         <p>Entre com o e-mail e a senha da sua conta.</p>
-        <form onSubmit={(event) => void handleSubmit(event)}>
+        <form onSubmit={(event: SubmitEvent<HTMLFormElement>) => void handleSubmit(event)}>
           <label htmlFor="auth-email">E-mail</label>
           <input
             id="auth-email"

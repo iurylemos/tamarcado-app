@@ -2,7 +2,7 @@ import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { emulatorUsers } from './emulator-users';
-import { createSeedDocuments } from './seed-data';
+import { createSeedDocuments, seedUserClaims } from './seed-data';
 
 const projectId = process.env.GCLOUD_PROJECT ?? 'demo-tamarcado';
 if (!projectId.startsWith('demo-')) {
@@ -49,11 +49,7 @@ async function seed() {
         emailVerified: true,
       });
     }
-    await auth.setCustomUserClaims(user.uid, {
-      tenantId: user.tenantId,
-      role: user.role,
-      active: true,
-    });
+    await auth.setCustomUserClaims(user.uid, seedUserClaims(user));
   }
   console.info(
     `Seeded ${createSeedDocuments().length} documents and ${emulatorUsers.length} emulator users in ${projectId}.`,

@@ -2,13 +2,13 @@ import type { JSX } from 'react';
 import type { SalesReport } from '@shared/reporting';
 import { formatBrl } from '@shared/money';
 
-interface MonthlyCommissionReportProps {
+type MonthlyCommissionReportProps = {
   report: SalesReport;
-}
+};
 
 export default function MonthlyCommissionReport({
   report,
-}: MonthlyCommissionReportProps): JSX.Element {
+}: Readonly<MonthlyCommissionReportProps>): JSX.Element {
   return (
     <>
       <section className="report-summary" aria-label="Resumo mensal">

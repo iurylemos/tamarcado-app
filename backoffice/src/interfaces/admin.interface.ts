@@ -55,6 +55,7 @@ export interface WorkingHoursRecord {
   active: boolean;
 }
 
+export type InputWorkingHours = Omit<WorkingHoursRecord, 'tenantId' | 'id'> & { id?: string };
 export interface BlockedPeriodRecord {
   id: string;
   tenantId: string;
@@ -73,3 +74,6 @@ export interface BackofficeWorkspace {
   workingHours: WorkingHoursRecord[];
   blockedPeriods: BlockedPeriodRecord[];
 }
+
+export type BackofficeSection =
+  'dashboard' | 'company' | 'products' | 'professionals' | 'availability' | 'reports';

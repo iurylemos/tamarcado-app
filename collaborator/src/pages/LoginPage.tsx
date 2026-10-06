@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useState, type SubmitEvent, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/auth/auth.context';
 import { authErrorMessage } from '../services/auth.service';
@@ -15,7 +15,7 @@ export default function LoginPage(): JSX.Element {
     if (user) navigate('/appointments', { replace: true });
   }, [user, navigate]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
     setError('');

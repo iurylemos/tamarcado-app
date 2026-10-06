@@ -23,7 +23,7 @@ export default function AppointmentCard({
   timezone,
   busy,
   onStatusChange,
-}: AppointmentCardProps): JSX.Element {
+}: Readonly<AppointmentCardProps>): JSX.Element {
   const date = new Intl.DateTimeFormat('pt-BR', {
     timeZone: timezone,
     dateStyle: 'long',

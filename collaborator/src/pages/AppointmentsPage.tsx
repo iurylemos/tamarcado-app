@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import {
   appointmentLocalDate,
   listAppointments,
   subscribeToAppointments,
   updateAppointmentStatus,
 } from '../services/appointment.service';
-import { ErrorUtil } from '../utils/error.util';
 import type { CollaboratorAppointment } from '../interfaces/appointment.interface';
 import type { AppointmentStatus } from '@shared/appointment-status';
+import { ErrorUtil } from '../utils/error.util';
 import AppointmentCard from '../components/organisms/AppointmentCard/AppointmentCard';
 
 export default function AppointmentsPage(): JSX.Element {
   const [appointments, setAppointments] = useState<CollaboratorAppointment[]>([]);
   const [timezone, setTimezone] = useState<string>('America/Sao_Paulo');
   const [date, setDate] = useState<string>('');
+  const [appliedDate, setAppliedDate] = useState<string>('');
   const [busyId, setBusyId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -22,7 +23,7 @@ export default function AppointmentsPage(): JSX.Element {
     let active = true;
     let unsubscribe: (() => void) | undefined;
 
-    void listAppointments()
+    void listAppointments({})
       .then((result) => {
         if (!active) return;
         setTimezone(result.timezone);
@@ -54,21 +55,42 @@ export default function AppointmentsPage(): JSX.Element {
   }, []);
 
   const visibleAppointments = useMemo<CollaboratorAppointment[]>(() => {
-    if (date) {
+    if (appliedDate) {
       return appointments.filter(
-        (appointment) => appointmentLocalDate(appointment.startsAt, timezone) === date,
+        (appointment) => appointmentLocalDate(appointment.startsAt, timezone) === appliedDate,
       );
     }
 
     return appointments;
-  }, [appointments, date, timezone]);
+  }, [appointments, appliedDate, timezone]);
+
+  const loadAppointments = async (filterDate: string): Promise<void> => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await listAppointments(filterDate ? { date: filterDate } : {});
+      setTimezone(result.timezone);
+      setAppointments(result.appointments);
+      setDate(filterDate);
+      setAppliedDate(filterDate);
+    } catch (loadError: unknown) {
+      setError(ErrorUtil.formatMessage(loadError));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyDateFilter = (event: SubmitEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    void loadAppointments(date);
+  };
 
   const changeStatus = async (appointmentId: string, status: AppointmentStatus): Promise<void> => {
     setBusyId(appointmentId);
     setError('');
     try {
       await updateAppointmentStatus(appointmentId, status);
-      const result = await listAppointments();
+      const result = await listAppointments(appliedDate ? { date: appliedDate } : {});
       setAppointments(result.appointments);
     } catch (actionError: unknown) {
       setError(ErrorUtil.formatMessage(actionError));
@@ -85,17 +107,25 @@ export default function AppointmentsPage(): JSX.Element {
           <h1>Agendamentos</h1>
           <p className="muted">Acompanhe os horários e atualize cada atendimento.</p>
         </div>
-        <label className="date-filter">
-          Filtrar por data
-          <span>
+        <form className="report-filters" onSubmit={applyDateFilter}>
+          <label className="date-filter">
+            Filtrar por data
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-            {date && (
-              <button type="button" className="text-button" onClick={() => setDate('')}>
-                Limpar
-              </button>
-            )}
-          </span>
-        </label>
+          </label>
+          <button type="submit" disabled={loading}>
+            {loading ? 'Filtrando...' : 'Filtrar'}
+          </button>
+          {(date || appliedDate) && (
+            <button
+              type="button"
+              className="button--secondary"
+              disabled={loading}
+              onClick={() => void loadAppointments('')}
+            >
+              Limpar
+            </button>
+          )}
+        </form>
       </header>
       {error && (
         <p className="feedback feedback--error" role="alert">
@@ -118,14 +148,19 @@ export default function AppointmentsPage(): JSX.Element {
         </div>
       ) : (
         <div className="empty-state">
-          <h2>{date ? 'Nenhum horário nesta data' : 'Sua agenda está vazia'}</h2>
+          <h2>{appliedDate ? 'Nenhum horário nesta data' : 'Sua agenda está vazia'}</h2>
           <p className="muted">
-            {date
+            {appliedDate
               ? 'Limpe o filtro para ver os outros agendamentos.'
               : 'Novos agendamentos aparecerão aqui.'}
           </p>
-          {date && (
-            <button type="button" className="button button--secondary" onClick={() => setDate('')}>
+          {appliedDate && (
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={loading}
+              onClick={() => void loadAppointments('')}
+            >
               Limpar filtro
             </button>
           )}

@@ -1,4 +1,5 @@
 import { useState, type JSX, type SubmitEvent } from 'react';
+import { formatBrazilianPhone } from '@shared/phone';
 import type { CompanyRecord } from '../interfaces/admin.interface';
 import { errorMessage, saveCompany } from '../services/admin.service';
 
@@ -18,12 +19,12 @@ const segmentLabels: Record<string, string> = {
 export default function CompanySettingsPage({
   company,
   onSaved,
-}: CompanySettingsPageProps): JSX.Element {
+}: Readonly<CompanySettingsPageProps>): JSX.Element {
   const [name, setName] = useState<string>(company.name);
   const [slug, setSlug] = useState<string>(company.slug);
   const [segment, setSegment] = useState<string>(company.segment);
   const [description, setDescription] = useState<string>(company.description ?? '');
-  const [phone, setPhone] = useState<string>(company.phoneE164 ?? '');
+  const [phone, setPhone] = useState<string>(formatBrazilianPhone(company.phoneE164 ?? ''));
   const [logoUrl, setLogoUrl] = useState<string>(company.logoUrl ?? '');
   const [emailDomain, setEmailDomain] = useState<string>(company.emailDomain ?? '');
   const [timezone, setTimezone] = useState<string>(company.timezone);
@@ -78,7 +79,10 @@ export default function CompanySettingsPage({
           {active ? 'Empresa ativa' : 'Empresa inativa'}
         </span>
       </header>
-      <form className="settings-layout" onSubmit={(event) => void submit(event)}>
+      <form
+        className="settings-layout"
+        onSubmit={(event: SubmitEvent<HTMLFormElement>) => void submit(event)}
+      >
         <section className="content-card settings-card">
           <header className="section-heading">
             <div>
@@ -134,8 +138,10 @@ export default function CompanySettingsPage({
             Telefone de contato
             <input
               type="tel"
+              autoComplete="tel"
+              inputMode="tel"
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              onChange={(event) => setPhone(formatBrazilianPhone(event.target.value))}
               placeholder="(11) 99999-0000"
             />
           </label>
@@ -146,7 +152,10 @@ export default function CompanySettingsPage({
               onChange={(event) => setEmailDomain(event.target.value.toLowerCase())}
               placeholder="suaempresa.com.br"
             />
-            <small className="muted">Os acessos dos colaboradores usam e-mails como nome@{emailDomain || 'suaempresa.com.br'}.</small>
+            <small className="muted">
+              Os acessos dos colaboradores usam e-mails como nome@
+              {emailDomain || 'suaempresa.com.br'}.
+            </small>
           </label>
           <label>
             Logo (URL)

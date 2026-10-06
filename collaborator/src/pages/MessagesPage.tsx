@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type JSX } from 'react';
 import type { Contact } from '@shared/interfaces/contact.interface';
 import type { Message, MessageStatus } from '@shared/interfaces/message.interface';
+import type { MessageConnection } from '../interfaces/message.interface';
 import { useAuth } from '../contexts/auth/auth.context';
 import {
   createContact,
@@ -8,7 +9,6 @@ import {
   subscribeConnections,
   subscribeContacts,
   subscribeMessages,
-  type Connection,
 } from '../services/message.service';
 import { ErrorUtil } from '../utils/error.util';
 import { PhoneUtil } from '../utils/phone.util';
@@ -24,7 +24,7 @@ const statusLabels: Record<MessageStatus, string> = {
 export default function MessagesPage(): JSX.Element {
   const { tenantId } = useAuth();
 
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connections, setConnections] = useState<MessageConnection[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

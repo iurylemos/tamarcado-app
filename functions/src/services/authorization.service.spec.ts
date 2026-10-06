@@ -6,6 +6,11 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   doc: vi.fn(),
   collection: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('firebase-functions', () => ({
+  logger: { warn: mocks.warn },
 }));
 
 vi.mock('./firestore.service', () => ({
@@ -84,6 +89,25 @@ describe('authorization service', () => {
     ).rejects.toMatchObject({
       code: 'permission-denied',
     });
+  });
+
+  it('logs which token claim differs without logging claim values', async () => {
+    await expect(authorizeActor(makeRequest({ professionalId: undefined }))).rejects.toMatchObject({
+      code: 'permission-denied',
+    });
+
+    expect(mocks.warn).toHaveBeenCalledWith(
+      'Authorization rejected: token claims do not match the user document.',
+      {
+        uid: 'user-a',
+        claimMatches: {
+          active: true,
+          tenantId: true,
+          role: true,
+          professionalId: false,
+        },
+      },
+    );
   });
 
   it('rejects a collaborator outside their professional scope and a role not allowed for the operation', async () => {

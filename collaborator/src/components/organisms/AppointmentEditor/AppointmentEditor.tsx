@@ -21,7 +21,7 @@ export default function AppointmentEditor({
   saving,
   onSave,
   onCancel,
-}: AppointmentEditorProps): JSX.Element {
+}: Readonly<AppointmentEditorProps>): JSX.Element {
   const local = getZonedDateTimeParts(appointment.startsAt, timezone);
   const [date, setDate] = useState<string>(
     `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`,

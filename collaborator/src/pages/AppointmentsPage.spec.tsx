@@ -91,15 +91,20 @@ describe('AppointmentsPage', () => {
     );
   });
 
-  it('filters using the business-local date and restores the default view when cleared', async () => {
+  it('submits the selected date and restores the default view when cleared', async () => {
     renderPage();
     await screen.findByText('Cliente Um');
     fireEvent.change(screen.getByLabelText('Filtrar por data'), {
       target: { value: '2026-10-05' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }));
+    await waitFor(() =>
+      expect(service.listAppointments).toHaveBeenLastCalledWith({ date: '2026-10-05' }),
+    );
     expect(screen.getByText('Cliente Um')).toBeInTheDocument();
     expect(screen.queryByText('Cliente Dois')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }));
+    await waitFor(() => expect(service.listAppointments).toHaveBeenLastCalledWith({}));
     expect(await screen.findByText('Cliente Dois')).toBeInTheDocument();
   });
 
@@ -109,6 +114,7 @@ describe('AppointmentsPage', () => {
     fireEvent.change(screen.getByLabelText('Filtrar por data'), {
       target: { value: '2026-10-10' },
     });
-    expect(screen.getByRole('button', { name: 'Limpar filtro' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }));
+    expect(await screen.findByRole('button', { name: 'Limpar filtro' })).toBeInTheDocument();
   });
 });

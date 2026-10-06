@@ -235,6 +235,78 @@ select {
   text-decoration: underline;
 }
 
+.loading-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at 15% 0%, #e8e8ff 0, transparent 42%),
+    var(--color-background);
+  padding: 1.5rem;
+}
+
+.loading-card {
+  display: grid;
+  width: min(100%, 22.5rem);
+  justify-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 2.1rem 1.75rem;
+  background: var(--color-surface);
+  box-shadow: 0 1rem 3rem rgb(15 23 42 / 8%);
+  text-align: center;
+}
+
+.loading-brand-mark {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  margin-bottom: 1.5rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: var(--color-brand);
+  color: white;
+  font-size: 1.7rem;
+  font-weight: 750;
+}
+
+.loading-spinner {
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-bottom: 1.1rem;
+  border: 3px solid #e0e7ff;
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+}
+
+.loading-card .eyebrow {
+  margin-bottom: 0.45rem;
+  color: var(--color-brand);
+}
+
+.loading-card h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.loading-card .muted {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation-duration: 1.8s;
+  }
+}
+
 .appointment-list,
 .customer-list {
   display: grid;

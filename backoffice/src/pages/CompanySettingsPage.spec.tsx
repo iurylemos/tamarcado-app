@@ -16,6 +16,7 @@ const company: CompanyRecord = {
   slug: 'studio-aurora',
   segment: 'beauty',
   description: 'Cuidado e beleza no seu ritmo.',
+  phoneE164: '+5511999990001',
   logoUrl: 'https://images.example.test/logo.jpg',
   timezone: 'America/Sao_Paulo',
   bookingIntervalMinutes: 15,
@@ -29,7 +30,17 @@ describe('CompanySettingsPage', () => {
     expect(screen.getByDisplayValue('Studio Aurora')).toBeInTheDocument();
     expect(screen.getByDisplayValue('studio-aurora')).toBeInTheDocument();
     expect(screen.getByDisplayValue('America/Sao_Paulo')).toBeInTheDocument();
+    expect(screen.getByLabelText('Telefone de contato')).toHaveValue('(11) 99999-0001');
     expect(screen.getByText('tamarcado.com/studio-aurora')).toBeInTheDocument();
+  });
+
+  it('formats the contact phone while typing', () => {
+    render(<CompanySettingsPage company={company} onSaved={vi.fn(async () => undefined)} />);
+    const phoneInput = screen.getByLabelText('Telefone de contato');
+
+    fireEvent.change(phoneInput, { target: { value: '11988887777' } });
+
+    expect(phoneInput).toHaveValue('(11) 98888-7777');
   });
 
   it('confirms successful save and surfaces errors', async () => {

@@ -1,5 +1,6 @@
-import type { JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import type { CollaboratorCustomer } from '../../../interfaces/appointment.interface';
+import type { CustomerHistoryData } from '../../../interfaces/customer.interface';
 import { PhoneUtil } from '../../../utils/phone.util';
 
 type CustomerHistoryProps = {
@@ -7,20 +8,27 @@ type CustomerHistoryProps = {
   timezone: string;
 };
 
-export default function CustomerHistory({ customer, timezone }: CustomerHistoryProps): JSX.Element {
-  const latestAppointment = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: timezone,
-    dateStyle: 'medium',
-  }).format(new Date(customer.latestAppointmentAt));
+export default function CustomerHistory({
+  customer,
+  timezone,
+}: Readonly<CustomerHistoryProps>): JSX.Element {
+  const { latestAppointment, attendance, whatsappUrl } = useMemo<CustomerHistoryData>(() => {
+    const latestAppointment = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: timezone,
+      dateStyle: 'medium',
+    }).format(new Date(customer.latestAppointmentAt));
 
-  const attendance =
-    customer.latestAttendanceMonth && customer.latestAttendanceYear
-      ? `${String(customer.latestAttendanceMonth).padStart(2, '0')}/${customer.latestAttendanceYear}`
-      : 'Sem atendimentos concluídos';
+    const attendance =
+      customer.latestAttendanceMonth && customer.latestAttendanceYear
+        ? `${String(customer.latestAttendanceMonth).padStart(2, '0')}/${customer.latestAttendanceYear}`
+        : 'Sem atendimentos concluídos';
 
-  const whatsappUrl = `https://wa.me/${customer.phoneE164.replace(/\D/g, '')}?text=${encodeURIComponent(
-    `Olá${customer.name ? `, ${customer.name}` : ''}. Estou entrando em contato sobre seu atendimento.`,
-  )}`;
+    const whatsappUrl = `https://wa.me/${customer.phoneE164.replace(/\D/g, '')}?text=${encodeURIComponent(
+      `Olá${customer.name ? `, ${customer.name}` : ''}. Estou entrando em contato sobre seu atendimento.`,
+    )}`;
+
+    return { latestAppointment, attendance, whatsappUrl };
+  }, [customer, timezone]);
 
   return (
     <article className="customer-card">

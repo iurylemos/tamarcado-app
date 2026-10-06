@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useState, type JSX, type SubmitEvent } from 'react';
 import type { ProductRecord, ProfessionalRecord } from '../../../interfaces/admin.interface';
 import {
   errorMessage,
@@ -25,7 +25,7 @@ export default function ProfessionalEditor({
   emailDomain,
   onClose,
   onSaved,
-}: ProfessionalEditorProps): JSX.Element {
+}: Readonly<ProfessionalEditorProps>): JSX.Element {
   const [name, setName] = useState<string>(professional?.name ?? '');
   const [phone, setPhone] = useState<string>(professional?.phoneE164 ?? '');
   const [photoUrl, setPhotoUrl] = useState<string>(professional?.photoUrl ?? '');
@@ -37,7 +37,7 @@ export default function ProfessionalEditor({
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const toggleProduct = (productId: string) => {
+  const toggleProduct = (productId: string): void => {
     setProductIds((current) =>
       current.includes(productId)
         ? current.filter((id) => id !== productId)
@@ -45,7 +45,7 @@ export default function ProfessionalEditor({
     );
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');
@@ -68,8 +68,8 @@ export default function ProfessionalEditor({
       }
       await onSaved();
       onClose();
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -84,8 +84,8 @@ export default function ProfessionalEditor({
       await resetCollaboratorPassword({ professionalId: professional.id, password });
       setPassword('');
       setNotice('Senha redefinida. Informe a nova senha ao colaborador.');
-    } catch (cause) {
-      setError(errorMessage(cause));
+    } catch (error: unknown) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }

@@ -11,6 +11,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build:functions": "npm run build --workspace functions",
+    "build:hosting": "npm run build --workspaces client collaborator backoffice",
     "dev:client": "npm run dev --workspace client",
     "dev:collaborator": "npm run dev --workspace collaborator",
     "dev:backoffice": "npm run dev --workspace backoffice",
@@ -24,7 +25,8 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "deploy": "npm run build && firebase deploy",
-    "deploy:hosting": "npm run build --workspace client && npm run build --workspace collaborator && npm run build --workspace backoffice && firebase deploy --only hosting",
+    "deploy:functions": "npm run build:functions && firebase deploy --project tamarcado-dad82 --only functions",
+    "deploy:hosting": "npm run build:hosting && firebase deploy --project tamarcado-dad82 --only hosting",
     "deploy:all": "npm run build && firebase deploy --project tamarcado-dad82 --only firestore,functions,hosting"
   },
   "devDependencies": {

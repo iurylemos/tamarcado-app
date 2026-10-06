@@ -1,11 +1,7 @@
 import { httpsCallable } from 'firebase/functions';
 import type { SalesReport } from '@shared/reporting';
 import { auth, functions } from '../config/firebase.config';
-
-export interface ReportPeriodRequest {
-  year?: number;
-  month?: number;
-}
+import type { ReportPeriodRequest } from '../interfaces/report.interface';
 
 async function callable<TInput, TOutput>(name: string, data: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;

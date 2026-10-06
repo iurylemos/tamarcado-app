@@ -9,7 +9,7 @@ type ReportsPageProps = {
   initialPeriod?: ReportPeriod;
 };
 
-export default function ReportsPage({ initialPeriod }: ReportsPageProps): JSX.Element {
+export default function ReportsPage({ initialPeriod }: Readonly<ReportsPageProps>): JSX.Element {
   const initialYear = initialPeriod?.year;
   const initialMonth = initialPeriod?.month;
   const [periodValue, setPeriodValue] = useState<string>(
