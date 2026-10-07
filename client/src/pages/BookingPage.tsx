@@ -13,7 +13,8 @@ import {
   companyCatalogQueryKey,
 } from '../services/query-client';
 import { eligibleProfessionals } from '../services/professional.service';
-import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
+import { addDaysToDate, formatTimeRange, getNextBookableDate } from '../utils/date.util';
+import { getBookingErrorMessage } from '../utils/booking-error.util';
 import type { BookingFormValues } from '../interfaces/booking.interface';
 import type { EligibleProfessional } from '../interfaces/professional.interface';
 import MarketBackground from '../components/atoms/MarketBackground';
@@ -30,6 +31,11 @@ export default function BookingPage(): JSX.Element {
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
   const [selectedStartsAt, setSelectedStartsAt] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [availabilityLoading, setAvailabilityLoading] = useState<boolean>(true);
+  const [searchingNextDate, setSearchingNextDate] = useState<boolean>(false);
+  const [nextAvailableDate, setNextAvailableDate] = useState<string | null>(null);
+  const [nextDateSearchComplete, setNextDateSearchComplete] = useState<boolean>(false);
+  const [nextDateSearchError, setNextDateSearchError] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [shareError, setShareError] = useState<string>('');
@@ -45,8 +51,7 @@ export default function BookingPage(): JSX.Element {
     queryClient
       .fetchQuery({
         queryKey: companyCatalogQueryKey(slug),
-        queryFn: () =>
-          runWithLoading('Carregando os serviços da empresa...', () => getCompanyCatalog(slug)),
+        queryFn: () => getCompanyCatalog(slug),
       })
       .then((result) => {
         if (current) setCatalog(result);
@@ -69,6 +74,7 @@ export default function BookingPage(): JSX.Element {
     let current = true;
 
     setLoading(true);
+    setAvailabilityLoading(true);
     setError('');
     setSelectedStartsAt('');
     setSlots([]);
@@ -86,24 +92,86 @@ export default function BookingPage(): JSX.Element {
         if (current) {
           setSlots(result);
           const choices = eligibleProfessionals(result);
-          setSelectedProfessionalId(choices.length === 1 ? choices[0]!.id : '');
+          setSelectedProfessionalId(choices[0]?.id ?? '');
         }
       })
       .catch((error: unknown) => {
         if (current) {
           setError(
-            error instanceof Error ? error.message : 'Não foi possível consultar os horários.',
+            getBookingErrorMessage(
+              error,
+              'Não foi possível consultar os horários agora. Tente novamente em instantes.',
+            ),
           );
         }
       })
       .finally(() => {
-        if (current) setLoading(false);
+        if (current) {
+          setLoading(false);
+          setAvailabilityLoading(false);
+        }
       });
 
     return () => {
       current = false;
     };
   }, [date, product, productId, queryClient, runWithLoading, slug]);
+
+  useEffect(() => {
+    if (availabilityLoading || error || !product || slots.length > 0) {
+      setSearchingNextDate(false);
+      setNextAvailableDate(null);
+      setNextDateSearchComplete(false);
+      setNextDateSearchError('');
+      return;
+    }
+
+    let current = true;
+    setSearchingNextDate(true);
+    setNextAvailableDate(null);
+    setNextDateSearchComplete(false);
+    setNextDateSearchError('');
+
+    const findNextAvailableDate = async (): Promise<void> => {
+      for (let offset = 1; offset <= 30; offset += 1) {
+        const candidateDate = addDaysToDate(date, offset);
+        const candidateSlots = await queryClient.fetchQuery({
+          queryKey: availabilityQueryKey(slug, productId, candidateDate),
+          queryFn: () =>
+            listAvailability({
+              businessSlug: slug,
+              productId,
+              date: candidateDate,
+            }),
+          staleTime: 15_000,
+        });
+
+        if (candidateSlots.length > 0) {
+          if (current) setNextAvailableDate(candidateDate);
+          return;
+        }
+      }
+    };
+
+    void findNextAvailableDate()
+      .catch(() => {
+        if (current) {
+          setNextDateSearchError(
+            'Não foi possível localizar o próximo dia disponível. Você ainda pode escolher outra data.',
+          );
+        }
+      })
+      .finally(() => {
+        if (current) {
+          setSearchingNextDate(false);
+          setNextDateSearchComplete(true);
+        }
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [availabilityLoading, date, error, product, productId, queryClient, slug, slots.length]);
 
   const professionals = useMemo<EligibleProfessional[]>(
     () => eligibleProfessionals(slots),
@@ -131,7 +199,7 @@ export default function BookingPage(): JSX.Element {
           productId,
           professionalId: selectedProfessionalId,
           startsAt: selectedStartsAt,
-          customerName: values.customerName || undefined,
+          customerName: values.customerName,
           customerPhone: values.customerPhone,
           whatsappOptIn: values.whatsappOptIn,
         }),
@@ -148,6 +216,7 @@ export default function BookingPage(): JSX.Element {
       setSelectedStartsAt('');
 
       setLoading(true);
+      setAvailabilityLoading(true);
       try {
         const queryKey = availabilityQueryKey(slug, productId, date);
         await queryClient.invalidateQueries({ queryKey });
@@ -169,9 +238,7 @@ export default function BookingPage(): JSX.Element {
         setSelectedProfessionalId((current) =>
           availableProfessionals.some((professional) => professional.id === current)
             ? current
-            : availableProfessionals.length === 1
-              ? availableProfessionals[0]!.id
-              : '',
+            : availableProfessionals[0]?.id ?? '',
         );
       } catch {
         setError(
@@ -179,9 +246,15 @@ export default function BookingPage(): JSX.Element {
         );
       } finally {
         setLoading(false);
+        setAvailabilityLoading(false);
       }
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Não foi possível solicitar este horário.');
+      setError(
+        getBookingErrorMessage(
+          error,
+          'Não foi possível enviar sua solicitação de agendamento agora. Tente novamente em instantes.',
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -325,16 +398,56 @@ export default function BookingPage(): JSX.Element {
               }}
             />
 
-            {loading && (
+            {availabilityLoading && (
               <p className="loading-message" role="status">
                 Buscando horários disponíveis...
               </p>
             )}
 
-            {!loading && professionals.length > 0 && visibleSlots.length === 0 && (
+            {!availabilityLoading && slots.length === 0 && professionals.length > 0 && (
               <p role="status" className="state-card state-card-compact">
-                Não há horários disponíveis para esta data. Escolha outra data.
+                Não há horários disponíveis para esta data.
               </p>
+            )}
+
+            {!availabilityLoading && slots.length === 0 && (
+              <div className="next-availability">
+                {searchingNextDate && (
+                  <p className="muted" role="status">
+                    Procurando o próximo dia com horários...
+                  </p>
+                )}
+                {nextAvailableDate && (
+                  <p>
+                    Próximo dia com horários:{' '}
+                    <strong>
+                      {new Intl.DateTimeFormat('pt-BR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        timeZone: 'UTC',
+                      }).format(new Date(`${nextAvailableDate}T12:00:00Z`))}
+                    </strong>
+                    <button
+                      className="next-availability-button"
+                      type="button"
+                      onClick={() => setDate(nextAvailableDate)}
+                    >
+                      Ver horários
+                    </button>
+                  </p>
+                )}
+                {nextDateSearchComplete && !nextAvailableDate && !nextDateSearchError && (
+                  <p className="muted">
+                    Não encontramos horários nos próximos 30 dias. Escolha outra data.
+                  </p>
+                )}
+                {nextDateSearchError && (
+                  <p className="error" role="alert">
+                    {nextDateSearchError}
+                  </p>
+                )}
+              </div>
             )}
 
             {visibleSlots.length > 0 && (

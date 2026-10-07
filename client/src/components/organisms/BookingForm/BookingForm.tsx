@@ -17,6 +17,7 @@ export default function BookingForm({
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [whatsappOptIn, setWhatsappOptIn] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string>('');
+  const nameIsValid = customerName.trim().length > 0;
   const phoneIsValid = isValidBrazilianPhone(customerPhone);
 
   const updatePhone = (value: string): void => {
@@ -26,6 +27,10 @@ export default function BookingForm({
 
   const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+    if (!nameIsValid) {
+      setValidationError('Informe seu nome.');
+      return;
+    }
     if (!phoneIsValid) {
       setValidationError('Informe um celular válido com DDD.');
       return;
@@ -41,13 +46,18 @@ export default function BookingForm({
   return (
     <form className="stack booking-form" onSubmit={submit} noValidate>
       <label className="field" htmlFor="customer-name">
-        Seu nome (opcional)
+        Seu nome
         <input
           id="customer-name"
           autoComplete="name"
           value={customerName}
-          onChange={(event) => setCustomerName(event.target.value)}
+          onChange={(event) => {
+            setCustomerName(event.target.value);
+            if (event.target.value.trim()) setValidationError('');
+          }}
           maxLength={100}
+          aria-invalid={!nameIsValid && validationError === 'Informe seu nome.'}
+          required
         />
       </label>
       <label className="field" htmlFor="customer-phone">
@@ -93,7 +103,7 @@ export default function BookingForm({
       <button
         className="button booking-submit"
         type="submit"
-        disabled={busy || !whatsappOptIn || !phoneIsValid}
+        disabled={busy || !nameIsValid || !whatsappOptIn || !phoneIsValid}
       >
         {busy ? 'Enviando solicitação...' : 'Solicitar agendamento'}
       </button>

@@ -22,6 +22,15 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "businessSlug", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" },
+        { "fieldPath": "published", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "public_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "businessSlug", "order": "ASCENDING" },
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "active", "order": "ASCENDING" },
         { "fieldPath": "published", "order": "ASCENDING" },
@@ -44,7 +53,8 @@
       "fields": [
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "professionalId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startsAt", "order": "ASCENDING" }
       ]
     },
     {

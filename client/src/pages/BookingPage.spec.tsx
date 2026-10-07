@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
+import { addDaysToDate, getNextBookableDate } from '../utils/date.util';
 import BookingPage from './BookingPage';
 import { renderWithQueryClient } from '../test/render';
 
@@ -95,6 +96,9 @@ describe('BookingPage professional selection', () => {
     );
 
     fireEvent.click(await screen.findByRole('radio', { name: '09:00 - 11:00' }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), {
+      target: { value: 'Maria Silva' },
+    });
     fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
       target: { value: '(11) 99999-0000' },
     });
@@ -122,6 +126,45 @@ describe('BookingPage professional selection', () => {
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
   });
 
+  it('shows a customer-friendly message when the booking request fails internally', async () => {
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+    vi.mocked(createAppointment).mockRejectedValue(
+      Object.assign(new Error('INTERNAL'), { code: 'functions/internal' }),
+    );
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: '09:00 - 11:00' }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), {
+      target: { value: 'Maria Silva' },
+    });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+
+    expect(
+      await screen.findByText(
+        'Não foi possível enviar sua solicitação de agendamento agora. Tente novamente em instantes.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('INTERNAL')).not.toBeInTheDocument();
+  });
+
   it('offers only eligible choices if multiple professionals can perform the service', async () => {
     vi.mocked(listAvailability).mockResolvedValue([
       {
@@ -147,6 +190,7 @@ describe('BookingPage professional selection', () => {
     expect(await screen.findByLabelText('Profissional')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Ana Souza' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Bruna Lima' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Profissional')).toHaveValue('ana');
   });
 
   it('shows an empty eligibility state when no professional can serve the selected service', async () => {
@@ -161,5 +205,35 @@ describe('BookingPage professional selection', () => {
     expect(
       await screen.findByText('Não há profissionais disponíveis para este serviço.'),
     ).toBeInTheDocument();
+  });
+
+  it('suggests the next date with available hours when the selected date is empty', async () => {
+    const nextAvailableDate = addDaysToDate(getNextBookableDate(), 3);
+    vi.mocked(listAvailability).mockImplementation(async ({ date }) =>
+      date === nextAvailableDate
+        ? [
+            {
+              startsAt: '2030-02-07T12:00:00.000Z',
+              endsAt: '2030-02-07T14:00:00.000Z',
+              professionalId: 'ana',
+              professionalName: 'Ana Souza',
+            },
+          ]
+        : [],
+    );
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Ver horários' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver horários' }));
+    expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ import { firestore, professionalProductId } from './firestore.service';
 import { findBookableProduct, findPublicBusiness } from './public-catalog.service';
 import { listAvailableSlots } from './availability.service';
 import { loadAppointment, notifyAppointmentRequested } from './appointment-notification.service';
+import { isFirestoreIndexUnavailableError } from './firestore-error.service';
 
 const validName = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length <= 100;
@@ -26,7 +27,8 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
     typeof input.professionalId !== 'string' ||
     typeof input.startsAt !== 'string' ||
     typeof input.customerPhone !== 'string' ||
-    (input.customerName !== undefined && !validName(input.customerName)) ||
+    !validName(input.customerName) ||
+    input.customerName.trim().length === 0 ||
     (input.whatsappOptIn !== undefined && typeof input.whatsappOptIn !== 'boolean')
   ) {
     throw new HttpsError('invalid-argument', 'Revise os dados do agendamento e tente novamente.');
@@ -37,7 +39,7 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
     professionalId: input.professionalId,
     startsAt: input.startsAt,
     customerPhone: input.customerPhone,
-    customerName: input.customerName?.trim(),
+    customerName: input.customerName.trim(),
     whatsappOptIn: input.whatsappOptIn === true,
   };
 };
@@ -217,6 +219,12 @@ export async function createPublicAppointment(
     return { appointmentId, status: 'pending' };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
+    if (isFirestoreIndexUnavailableError(error)) {
+      throw new HttpsError(
+        'unavailable',
+        'Estamos atualizando a disponibilidade dos horários. Tente novamente em alguns minutos.',
+      );
+    }
     if (error instanceof DomainError) {
       const code =
         error.code === 'NOT_FOUND'
@@ -262,4 +270,3 @@ export function toBusinessLocalDate(startsAt: Date, timezone: string): string {
   const local = getZonedDateTimeParts(startsAt, timezone);
   return `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
 }
-

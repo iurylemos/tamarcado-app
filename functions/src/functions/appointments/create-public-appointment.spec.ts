@@ -114,6 +114,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       productId: 'service-corte',
       professionalId: 'professional-ana',
       startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
       whatsappOptIn: false,
     };
@@ -149,6 +150,26 @@ describe('reservationDocumentId', () => {
     );
     expect(reservationDocumentId('tenant', 'professional', 0)).not.toBe(
       reservationDocumentId('other-tenant', 'professional', 0),
+    );
+  });
+});
+
+describe('public appointment customer name validation', () => {
+  it('rejects a missing or blank customer name', async () => {
+    const request = {
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      startsAt: '2030-02-04T12:00:00.000Z',
+      customerPhone: '(11) 99999-0009',
+      whatsappOptIn: true,
+    };
+
+    await expect(createPublicAppointment(request)).rejects.toThrow(
+      'Revise os dados do agendamento e tente novamente.',
+    );
+    await expect(createPublicAppointment({ ...request, customerName: '   ' })).rejects.toThrow(
+      'Revise os dados do agendamento e tente novamente.',
     );
   });
 });

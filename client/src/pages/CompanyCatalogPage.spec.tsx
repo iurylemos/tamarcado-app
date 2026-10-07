@@ -45,5 +45,9 @@ describe('CompanyCatalogPage', () => {
 
     expect(screen.getByText(/120,00/)).toBeInTheDocument();
     expect(screen.getByText(/60 min/)).toBeInTheDocument();
+    expect(screen.getByText('Agendamentos online com Tá Marcado').previousElementSibling).toHaveAttribute(
+      'src',
+      '/pwa-icon.svg',
+    );
   });
 });

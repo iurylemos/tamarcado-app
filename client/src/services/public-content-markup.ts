@@ -67,5 +67,9 @@ export function createPublicContentMarkup(catalog: CompanyCatalog): string {
             : `<section class="showcase-grid catalog-grid" aria-label="Serviços">${productCards}</section>`
         }
       </section>
+      <footer class="tamarcado-brand">
+        <img src="/pwa-icon.svg" alt="" width="24" height="24" loading="lazy" />
+        <span>Agendamentos online com Tá Marcado</span>
+      </footer>
     </main>`;
 }

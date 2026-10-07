@@ -103,124 +103,141 @@ export async function listAvailableSlots(input: ListAvailabilityInput): Promise<
 
   const dayStart = localDateTimeToUtc(input.date, '00:00', timezone);
   const dayEnd = localDateTimeToUtc(nextDate(input.date), '00:00', timezone);
-  const results: AvailableSlot[] = [];
   const now = Date.now();
 
-  for (const professionalId of assignedIds) {
-    const professionalSnapshot = await firestore
-      .collection(collections.professionals)
-      .doc(professionalId)
-      .get();
-    const professional = professionalSnapshot.data() as ProfessionalRecord | undefined;
-    if (
-      !professionalSnapshot.exists ||
-      professional?.tenantId !== business.tenantId ||
-      !professional.active
+  const professionals = (
+    await Promise.all(
+      assignedIds.map(async (professionalId) => {
+        const snapshot = await firestore
+          .collection(collections.professionals)
+          .doc(professionalId)
+          .get();
+        const professional = snapshot.data() as ProfessionalRecord | undefined;
+
+        return snapshot.exists &&
+          professional?.tenantId === business.tenantId &&
+          professional.active
+          ? professional
+          : null;
+      }),
     )
-      continue;
+  ).filter((professional): professional is ProfessionalRecord => professional !== null);
 
-    const [hoursSnapshot, appointmentsSnapshot, reservationsSnapshot] = await Promise.all([
-      firestore
-        .collection(collections.workingHours)
-        .where('tenantId', '==', business.tenantId)
-        .where('professionalId', '==', professionalId)
-        .where('dayOfWeek', '==', weekday)
-        .where('active', '==', true)
-        .get(),
-      firestore
-        .collection(collections.appointments)
-        .where('tenantId', '==', business.tenantId)
-        .where('professionalId', '==', professionalId)
-        .where('status', 'in', ['pending', 'confirmed'])
-        .get(),
-      firestore
-        .collection(collections.bookingReservations)
-        .where('tenantId', '==', business.tenantId)
-        .where('professionalId', '==', professionalId)
-        .where('bucketStartAt', '>=', Timestamp.fromDate(dayStart))
-        .where('bucketStartAt', '<', Timestamp.fromDate(dayEnd))
-        .get(),
-    ]);
+  const professionalSlots = await Promise.all(
+    professionals.map(async (professional) => {
+      const professionalId = professional.id;
+      const [hoursSnapshot, appointmentsSnapshot, reservationsSnapshot] = await Promise.all([
+        firestore
+          .collection(collections.workingHours)
+          .where('tenantId', '==', business.tenantId)
+          .where('professionalId', '==', professionalId)
+          .where('dayOfWeek', '==', weekday)
+          .where('active', '==', true)
+          .get(),
+        firestore
+          .collection(collections.appointments)
+          .where('tenantId', '==', business.tenantId)
+          .where('professionalId', '==', professionalId)
+          .where('status', 'in', ['pending', 'confirmed'])
+          .where('startsAt', '>=', Timestamp.fromDate(dayStart))
+          .where('startsAt', '<', Timestamp.fromDate(dayEnd))
+          .get(),
+        firestore
+          .collection(collections.bookingReservations)
+          .where('tenantId', '==', business.tenantId)
+          .where('professionalId', '==', professionalId)
+          .where('bucketStartAt', '>=', Timestamp.fromDate(dayStart))
+          .where('bucketStartAt', '<', Timestamp.fromDate(dayEnd))
+          .get(),
+      ]);
+      const hours = hoursSnapshot.docs
+        .map((document) => document.data() as WorkingHoursDocument)
+        .filter(
+          (item) => item.tenantId === business.tenantId && item.professionalId === professionalId,
+        );
+      const appointments = appointmentsSnapshot.docs
+        .map((document) => document.data())
+        .filter(
+          (item) =>
+            item.tenantId === business.tenantId &&
+            item.status !== 'cancelled' &&
+            item.status !== 'completed',
+        );
+      const reservations = reservationsSnapshot.docs
+        .map((document) => document.data())
+        .filter(
+          (item) => item.tenantId === business.tenantId && item.professionalId === professionalId,
+        )
+        .map((item) => (item.bucketStartAt as Timestamp).toDate().getTime());
+      const blocks = blocksSnapshot.docs
+        .map((document) => document.data() as BlockedPeriodDocument)
+        .filter((item) => {
+          if (
+            item.tenantId !== business.tenantId ||
+            (item.professionalId && item.professionalId !== professionalId)
+          ) {
+            return false;
+          }
 
-    const hours = hoursSnapshot.docs
-      .map((document) => document.data() as WorkingHoursDocument)
-      .filter(
-        (item) => item.tenantId === business.tenantId && item.professionalId === professionalId,
-      );
-    const appointments = appointmentsSnapshot.docs
-      .map((document) => document.data())
-      .filter(
-        (item) =>
-          item.tenantId === business.tenantId &&
-          item.status !== 'cancelled' &&
-          item.status !== 'completed',
-      );
-    const reservations = reservationsSnapshot.docs
-      .map((document) => document.data())
-      .filter(
-        (item) => item.tenantId === business.tenantId && item.professionalId === professionalId,
-      )
-      .map((item) => (item.bucketStartAt as Timestamp).toDate().getTime());
-    const blocks = blocksSnapshot.docs
-      .map((document) => document.data() as BlockedPeriodDocument)
-      .filter((item) => {
-        if (
-          item.tenantId !== business.tenantId ||
-          (item.professionalId && item.professionalId !== professionalId)
+          const startsAt = item.startsAt.toDate().getTime();
+          const endsAt = item.endsAt.toDate().getTime();
+          return startsAt < dayEnd.getTime() && endsAt > dayStart.getTime();
+        });
+      const results: AvailableSlot[] = [];
+
+      for (const workingHours of hours) {
+        const opening = parseMinutes(workingHours.startLocalTime);
+        const closing = parseMinutes(workingHours.endLocalTime);
+        for (
+          let startMinute = opening;
+          startMinute + product.durationMinutes <= closing;
+          startMinute += bookingInterval
         ) {
-          return false;
+          const localTime = `${String(Math.floor(startMinute / 60)).padStart(2, '0')}:${String(startMinute % 60).padStart(2, '0')}`;
+          const startsAt = localDateTimeToUtc(input.date, localTime, timezone);
+          const endsAt = new Date(startsAt.getTime() + product.durationMinutes * 60_000);
+          const interval = { startsAt: startsAt.getTime(), endsAt: endsAt.getTime() };
+
+          if (startsAt.getTime() <= now) continue;
+
+          const conflictingAppointment = appointments.some((appointment) => {
+            const appointmentStart = (appointment.startsAt as Timestamp).toDate().getTime();
+            const appointmentEnd = (appointment.endsAt as Timestamp).toDate().getTime();
+            return intervalsOverlap(interval, {
+              startsAt: appointmentStart,
+              endsAt: appointmentEnd,
+            });
+          });
+
+          const conflictingBlock = blocks.some((block) =>
+            intervalsOverlap(interval, {
+              startsAt: block.startsAt.toDate().getTime(),
+              endsAt: block.endsAt.toDate().getTime(),
+            }),
+          );
+
+          const conflictingReservation = reservations.some(
+            (bucketStart) => bucketStart >= interval.startsAt && bucketStart < interval.endsAt,
+          );
+
+          if (conflictingAppointment || conflictingBlock || conflictingReservation) continue;
+
+          const localParts = getZonedDateTimeParts(startsAt, timezone);
+          if (localParts.year !== Number(input.date.slice(0, 4))) continue;
+          results.push({
+            startsAt: startsAt.toISOString(),
+            endsAt: endsAt.toISOString(),
+            professionalId: professional.id,
+            professionalName: professional.name,
+          });
         }
-
-        const startsAt = item.startsAt.toDate().getTime();
-        const endsAt = item.endsAt.toDate().getTime();
-        return startsAt < dayEnd.getTime() && endsAt > dayStart.getTime();
-      });
-
-    for (const workingHours of hours) {
-      const opening = parseMinutes(workingHours.startLocalTime);
-      const closing = parseMinutes(workingHours.endLocalTime);
-      for (
-        let startMinute = opening;
-        startMinute + product.durationMinutes <= closing;
-        startMinute += bookingInterval
-      ) {
-        const localTime = `${String(Math.floor(startMinute / 60)).padStart(2, '0')}:${String(startMinute % 60).padStart(2, '0')}`;
-        const startsAt = localDateTimeToUtc(input.date, localTime, timezone);
-        const endsAt = new Date(startsAt.getTime() + product.durationMinutes * 60_000);
-        const interval = { startsAt: startsAt.getTime(), endsAt: endsAt.getTime() };
-
-        if (startsAt.getTime() <= now) continue;
-
-        const conflictingAppointment = appointments.some((appointment) => {
-          const appointmentStart = (appointment.startsAt as Timestamp).toDate().getTime();
-          const appointmentEnd = (appointment.endsAt as Timestamp).toDate().getTime();
-          return intervalsOverlap(interval, { startsAt: appointmentStart, endsAt: appointmentEnd });
-        });
-
-        const conflictingBlock = blocks.some((block) =>
-          intervalsOverlap(interval, {
-            startsAt: block.startsAt.toDate().getTime(),
-            endsAt: block.endsAt.toDate().getTime(),
-          }),
-        );
-
-        const conflictingReservation = reservations.some(
-          (bucketStart) => bucketStart >= interval.startsAt && bucketStart < interval.endsAt,
-        );
-
-        if (conflictingAppointment || conflictingBlock || conflictingReservation) continue;
-
-        const localParts = getZonedDateTimeParts(startsAt, timezone);
-        if (localParts.year !== Number(input.date.slice(0, 4))) continue;
-        results.push({
-          startsAt: startsAt.toISOString(),
-          endsAt: endsAt.toISOString(),
-          professionalId,
-          professionalName: professional.name,
-        });
       }
-    }
-  }
 
-  return results.sort((first, second) => first.startsAt.localeCompare(second.startsAt));
+      return results;
+    }),
+  );
+
+  return professionalSlots
+    .flat()
+    .sort((first, second) => first.startsAt.localeCompare(second.startsAt));
 }

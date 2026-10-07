@@ -31,6 +31,6 @@ export interface CreatePublicAppointmentInput {
   professionalId: string;
   startsAt: string;
   customerPhone: string;
-  customerName?: string;
+  customerName: string;
   whatsappOptIn?: boolean;
 }
