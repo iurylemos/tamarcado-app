@@ -1,18 +1,22 @@
-﻿import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import type { BusinessSegment } from '@shared/interfaces/tenant.interface';
 import { formatBrl } from '@shared/money';
 import type {
   CompanySegment,
-  CompanySummary,
   CompanyTabs,
   ShowcaseProduct,
 } from '../interfaces/company.interface';
 import { listPublicCompanies } from '../services/company.service';
 import { listPublicProducts } from '../services/product.service';
+import {
+  publicCompaniesQueryKey,
+  publicProductsQueryKey,
+} from '../services/query-client';
 import MarketBackground from '../components/atoms/MarketBackground';
-import { useAppLoading } from '../contexts/LoadingContext';
+import { useCatalogFiltersStore } from '../stores/catalog-filters.store';
 
 const segmentOptions: Array<CompanySegment> = [
   { value: 'beauty', label: 'Beleza' },
@@ -23,39 +27,24 @@ const segmentOptions: Array<CompanySegment> = [
 ];
 
 export default function CompanyListPage(): JSX.Element {
-  const [segment, setSegment] = useState<BusinessSegment | ''>('');
-  const [tab, setTab] = useState<CompanyTabs>('products');
-  const [search, setSearch] = useState<string>('');
-  const [companies, setCompanies] = useState<CompanySummary[]>([]);
-  const [products, setProducts] = useState<ShowcaseProduct[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
-  const { runWithLoading } = useAppLoading();
-
-  useEffect(() => {
-    let current = true;
-    setLoading(true);
-    setError('');
-
-    runWithLoading('Preparando sua vitrine...', () =>
-      Promise.all([listPublicCompanies(segment || undefined), listPublicProducts()]),
-    )
-      .then(([companyResult, productResult]) => {
-        if (!current) return;
-        setCompanies(companyResult);
-        setProducts(productResult);
-      })
-      .catch(() => {
-        if (current) setError('Não foi possível carregar a vitrine. Tente novamente.');
-      })
-      .finally(() => {
-        if (current) setLoading(false);
-      });
-
-    return () => {
-      current = false;
-    };
-  }, [runWithLoading, segment]);
+  const segment = useCatalogFiltersStore((state) => state.segment);
+  const tab = useCatalogFiltersStore((state) => state.tab);
+  const search = useCatalogFiltersStore((state) => state.search);
+  const setSegment = useCatalogFiltersStore((state) => state.setSegment);
+  const setTab = useCatalogFiltersStore((state) => state.setTab);
+  const setSearch = useCatalogFiltersStore((state) => state.setSearch);
+  const companiesQuery = useQuery({
+    queryKey: publicCompaniesQueryKey(segment || undefined),
+    queryFn: () => listPublicCompanies(segment || undefined),
+  });
+  const productsQuery = useQuery({
+    queryKey: publicProductsQueryKey,
+    queryFn: listPublicProducts,
+  });
+  const companies = companiesQuery.data ?? [];
+  const products = productsQuery.data ?? [];
+  const loading = companiesQuery.isPending || productsQuery.isPending;
+  const error = companiesQuery.isError || productsQuery.isError;
 
   const term = search.trim().toLowerCase();
 
@@ -144,7 +133,7 @@ export default function CompanyListPage(): JSX.Element {
 
         {error && (
           <p role="alert" className="error">
-            {error}
+            Não foi possível carregar a vitrine. Tente novamente.
           </p>
         )}
 

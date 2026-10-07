@@ -1,8 +1,10 @@
-﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { listPublicCompanies } from '../services/company.service';
 import CompanyListPage from './CompanyListPage';
+import { renderWithQueryClient } from '../test/render';
+import { useCatalogFiltersStore } from '../stores/catalog-filters.store';
 
 vi.mock('../services/company.service', () => ({ listPublicCompanies: vi.fn() }));
 vi.mock('../services/product.service', () => ({ listPublicProducts: vi.fn(async () => []) }));
@@ -24,13 +26,16 @@ const companies = [
 ];
 
 describe('CompanyListPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCatalogFiltersStore.setState({ segment: '', tab: 'products', search: '' });
+  });
 
   it('filters company discovery by segment and shows an empty state', async () => {
     vi.mocked(listPublicCompanies).mockImplementation(async (segment) =>
       segment ? [] : companies,
     );
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <CompanyListPage />
       </MemoryRouter>,
@@ -44,5 +49,4 @@ describe('CompanyListPage', () => {
     await waitFor(() => expect(listPublicCompanies).toHaveBeenLastCalledWith('fitness'));
   });
 });
-
 

@@ -235,6 +235,8 @@ select {
   gap: 0.8rem;
   width: fit-content;
   max-width: 100%;
+  box-sizing: border-box;
+  justify-self: center;
   border: 1px solid rgb(255 255 255 / 0.8);
   border-radius: 1rem;
   padding: 1rem 1.2rem;
@@ -364,7 +366,7 @@ select {
   color: var(--color-muted);
   font-size: 0.86rem;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 .booking-page {
   gap: 1.25rem;
@@ -578,6 +580,28 @@ select {
   font-size: 0.8rem;
   font-weight: 400;
 }
+.next-availability {
+  display: grid;
+  gap: 0.5rem;
+  color: #334155;
+  line-height: 1.5;
+}
+.next-availability p {
+  margin: 0;
+}
+.next-availability-button {
+  display: block;
+  min-height: 2.75rem;
+  margin-top: 0.6rem;
+  border: 0;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.9rem;
+  background: #fff1e8;
+  color: #9a3412;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
 .whatsapp-consent {
   display: flex;
   align-items: flex-start;
@@ -625,6 +649,10 @@ select {
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  width: min(calc(100% - 2rem), 24rem);
+  box-sizing: border-box;
+  justify-content: center;
+  justify-self: center;
   border: 1px solid rgb(255 255 255 / 0.8);
   border-radius: 1.1rem;
   padding: 1.1rem 1.4rem;
@@ -632,6 +660,24 @@ select {
   box-shadow: 0 16px 45px rgb(15 23 42 / 0.18);
   color: #334155;
   font-weight: 700;
+}
+.pwa-install-prompt {
+  display: none;
+}
+.tamarcado-brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.55rem;
+  padding-top: 0.5rem;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.tamarcado-brand img {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.4rem;
 }
 .app-loading-spinner {
   width: 1.45rem;
@@ -765,6 +811,171 @@ select {
   }
 }
 @media (max-width: 540px) {
+  .booking-page {
+    padding-top: 1rem;
+    padding-bottom: 6rem;
+  }
+  .booking-layout {
+    gap: 0.75rem;
+  }
+  .booking-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.15rem 0.75rem;
+    padding: 1rem;
+  }
+  .booking-summary > .eyebrow,
+  .booking-summary > .muted,
+  .booking-summary > h2,
+  .booking-summary-details {
+    grid-column: 1 / -1;
+  }
+  .booking-summary-icon {
+    display: none;
+  }
+  .booking-summary > p:not(.eyebrow, .muted) {
+    margin-bottom: 0.5rem;
+  }
+  .booking-summary-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.75rem;
+    padding-top: 0.65rem;
+  }
+  .booking-summary-details span {
+    font-size: 0.82rem;
+  }
+  .booking-summary-details span:first-child {
+    font-size: 1rem;
+  }
+  .booking-panel {
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .booking-panel .field input,
+  .booking-panel .field select,
+  .booking-form .field input {
+    width: 100%;
+    min-height: 3rem;
+    box-sizing: border-box;
+    font-size: 16px;
+    scroll-margin-block: 1rem;
+  }
+  .booking-form .field {
+    font-size: 0.95rem;
+  }
+  .booking-contact {
+    gap: 0.8rem;
+  }
+  .loading-message {
+    width: 100%;
+    justify-self: stretch;
+    padding: 0.85rem 1rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+  .app-loading-card {
+    width: min(calc(100% - 2rem), 20rem);
+    gap: 0.7rem;
+    padding: 1rem;
+  }
+  .app-loading-card > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: left;
+    line-height: 1.4;
+  }
+  .receipt-card {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1.4rem 1.1rem;
+  }
+  .pwa-install-prompt {
+    position: fixed;
+    z-index: 15;
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.85);
+    border-radius: 1rem;
+    padding: 0.75rem 0.85rem;
+    background: rgb(255 255 255 / 0.96);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 0.18);
+  }
+  .pwa-install-prompt p {
+    min-width: 0;
+    margin: 0;
+    color: #334155;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+  .pwa-install-prompt button {
+    min-height: 2.5rem;
+    flex: none;
+    border: 0;
+    border-radius: 0.7rem;
+    padding: 0.4rem 0.65rem;
+    background: #ea1d2c;
+    color: white;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+  }
+  .pwa-install-prompt .pwa-install-dismiss {
+    width: 2rem;
+    min-height: 2.5rem;
+    padding: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 1.35rem;
+  }
+  .pwa-install-backdrop {
+    position: fixed;
+    z-index: 40;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(15 23 42 / 0.58);
+  }
+  .pwa-install-dialog {
+    position: relative;
+    width: min(100%, 24rem);
+    box-sizing: border-box;
+    border-radius: 1rem;
+    padding: 1.5rem 1.25rem;
+    background: white;
+    color: #334155;
+    line-height: 1.5;
+  }
+  .pwa-install-dialog h2 {
+    margin: 0 2rem 0.6rem 0;
+    font-size: 1.25rem;
+  }
+  .pwa-install-dialog p {
+    margin: 0 0 0.5rem;
+  }
+  .pwa-install-dialog ol {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding-left: 1.3rem;
+  }
+  .pwa-install-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.6rem;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 1.35rem;
+  }
   .company-hero {
     align-items: flex-start;
   }

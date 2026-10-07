@@ -7,13 +7,23 @@ import type {
 } from '../interfaces/company.interface';
 
 export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | null> {
-  const businesses = await getDocs(
-    query(
-      collection(db, 'public_businesses'),
-      where('slug', '==', slug),
-      where('published', '==', true),
+  const [businesses, products] = await Promise.all([
+    getDocs(
+      query(
+        collection(db, 'public_businesses'),
+        where('slug', '==', slug),
+        where('published', '==', true),
+      ),
     ),
-  );
+    getDocs(
+      query(
+        collection(db, 'public_products'),
+        where('businessSlug', '==', slug),
+        where('active', '==', true),
+        where('published', '==', true),
+      ),
+    ),
+  ]);
   const businessDoc = businesses.docs[0];
 
   if (!businessDoc) return null;
@@ -32,17 +42,8 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
     logoUrl: rawBusiness.logoUrl as string | undefined,
   };
 
-  const products = await getDocs(
-    query(
-      collection(db, 'public_products'),
-      where('businessSlug', '==', business.slug),
-      where('tenantId', '==', tenantId),
-      where('active', '==', true),
-      where('published', '==', true),
-    ),
-  );
-
   const visibleProducts: PublicProductSummary[] = products.docs
+    .filter((snapshot) => snapshot.data().tenantId === tenantId)
     .map((snapshot) => {
       const data = snapshot.data();
       return {
@@ -56,7 +57,8 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
     })
     .filter(
       (product) =>
-        Number.isInteger(product.priceCents) && Number.isInteger(product.durationMinutes),
+        Number.isInteger(product.priceCents) &&
+        Number.isInteger(product.durationMinutes),
     );
   return { business, products: visibleProducts };
 }

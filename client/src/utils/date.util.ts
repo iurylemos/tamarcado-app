@@ -24,6 +24,23 @@ export function getNextBookableDate(now = new Date(), timezone = 'America/Sao_Pa
   return `${candidate.getUTCFullYear()}-${String(candidate.getUTCMonth() + 1).padStart(2, '0')}-${String(candidate.getUTCDate()).padStart(2, '0')}`;
 }
 
+export function addDaysToDate(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+
+  if (
+    !year ||
+    !month ||
+    !day ||
+    !Number.isInteger(days) ||
+    new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) !== date
+  ) {
+    throw new Error('Invalid date or day offset');
+  }
+
+  const candidate = new Date(Date.UTC(year, month - 1, day + days));
+  return `${candidate.getUTCFullYear()}-${String(candidate.getUTCMonth() + 1).padStart(2, '0')}-${String(candidate.getUTCDate()).padStart(2, '0')}`;
+}
+
 export function formatTimeRange(slot: AvailableSlot | BookingReceipt): string {
   const formatTime = (value: string): string =>
     new Intl.DateTimeFormat('pt-BR', {

@@ -1,20 +1,33 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { StrictMode, type JSX } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import { LoadingProvider } from './contexts/LoadingContext';
+import { companyCatalogQueryKey, queryClient } from './services/query-client';
 import './styles/index.css';
 
 const root = document.getElementById('root');
 
 if (!root) throw new Error('Root element not found.');
 
-createRoot(root).render(
+const ssrData = window.__TAMARCADO_SSR__;
+
+if (ssrData) {
+  queryClient.setQueryData(companyCatalogQueryKey(ssrData.catalog.business.slug), ssrData.catalog);
+}
+
+const app: JSX.Element = (
   <StrictMode>
-    <LoadingProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </LoadingProvider>
-  </StrictMode>,
+    <QueryClientProvider client={queryClient}>
+      <LoadingProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </LoadingProvider>
+    </QueryClientProvider>
+  </StrictMode>
 );
+
+if (ssrData) hydrateRoot(root, app);
+else createRoot(root).render(app);
