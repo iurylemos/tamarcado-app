@@ -1,9 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 
 export const companyCatalogQueryKey = (slug: string) => ['company-catalog', slug] as const;
-export const publicCompaniesQueryKey = (segment?: string) =>
-  ['public-companies', segment ?? 'all'] as const;
-export const publicProductsQueryKey = ['public-products'] as const;
 export const availabilityQueryKey = (businessSlug: string, productId: string, date: string) =>
   ['availability', businessSlug, productId, date] as const;
 

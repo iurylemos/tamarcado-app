@@ -1,3 +1,5 @@
+import { isValidBusinessSlug } from '../utils/business-slug.util.js';
+
 export type PwaManifest = {
   id: string;
   name: string;
@@ -17,22 +19,28 @@ export type PwaManifest = {
   }>;
 };
 
-export function createCompanyPwaManifest(slug: string, origin: string): PwaManifest {
-  if (!slug.trim()) throw new Error('A company slug is required to create its PWA manifest.');
+export function createCompanyPwaManifest(
+  business: { slug: string; name: string; description?: string },
+  origin: string,
+): PwaManifest {
+  if (!isValidBusinessSlug(business.slug)) {
+    throw new Error('A valid company slug is required to create its PWA manifest.');
+  }
 
-  const startUrl = new URL(`/empresa/${encodeURIComponent(slug)}`, origin).toString();
+  const businessPath = `/empresa/${encodeURIComponent(business.slug)}/`;
+  const startUrl = new URL(businessPath, origin).toString();
 
   return {
     id: startUrl,
-    name: 'Tá Marcado',
-    short_name: 'Tá Marcado',
-    description: 'Encontre empresas e agende serviços pelo Tá Marcado.',
+    name: `${business.name} | Tá Marcado`,
+    short_name: business.name,
+    description: business.description ?? `Agende serviços com ${business.name}.`,
     lang: 'pt-BR',
     theme_color: '#4f46e5',
     background_color: '#fff7ed',
     display: 'standalone',
     start_url: startUrl,
-    scope: new URL('/', origin).toString(),
+    scope: new URL(businessPath, origin).toString(),
     icons: [
       {
         src: new URL('/pwa-icon.svg', origin).toString(),

@@ -1,4 +1,4 @@
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCompanyCatalog } from './services/catalog.service';
@@ -7,8 +7,6 @@ import { App } from './App';
 import { renderWithQueryClient } from './test/render';
 
 vi.mock('./services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
-vi.mock('./services/company.service', () => ({ listPublicCompanies: vi.fn(async () => []) }));
-vi.mock('./services/product.service', () => ({ listPublicProducts: vi.fn(async () => []) }));
 vi.mock('./services/availability.service', () => ({ listAvailability: vi.fn(async () => []) }));
 
 afterEach(cleanup);
@@ -86,12 +84,14 @@ describe('App routes', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      await screen.findByRole('heading', { name: 'Seu próximo momento começa aqui.' }),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Seu próximo momento começa aqui.' }),
+      ).toBeInTheDocument(),
+    );
   });
 
-  it('keeps the general app entry at company discovery', async () => {
+  it('shows neutral guidance at the root without company or service discovery', async () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/']}>
         <App />
@@ -99,7 +99,30 @@ describe('App routes', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { name: /Agende o que você precisa/ }),
+      await screen.findByRole('heading', { name: 'Acesse o catálogo do seu negócio' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(getCompanyCatalog).not.toHaveBeenCalled();
+  });
+
+  it('does not offer to install an unscoped app from the neutral root', async () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'iPhone',
+      platform: 'iPhone',
+      maxTouchPoints: 1,
+      standalone: false,
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Acesse o catálogo do seu negócio' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Adicionar app' })).not.toBeInTheDocument();
   });
 });

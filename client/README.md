@@ -1,35 +1,42 @@
-# Tamarcado - experiência do cliente
+# Tamarcado - catálogos públicos
 
-O Tamarcado quer tornar o agendamento simples e acessível para qualquer tipo de
-empresa. Um circo, um lava-jato, um estúdio de estética ou qualquer outro negócio
-deve poder divulgar seu catálogo, organizar seus horários e, no futuro, controlar
-suas finanças em um só lugar.
+O Tamarcado permite que cada negócio divulgue seu próprio catálogo digital e
+compartilhe um site/PWA com seus clientes. A experiência pública é individual por
+negócio: o visitante acessa o catálogo pelo link daquele negócio, consulta seus
+serviços e pode solicitar um agendamento.
 
-## Visão do projeto
+## Visão deste aplicativo
 
-Queremos que cada empresa possa começar a usar a plataforma gratuitamente e
-compartilhar seus serviços com seus clientes. O Tamarcado conecta empresas e
-pessoas: ajuda o público a encontrar, conhecer e agendar serviços, enquanto abre
-caminho para que os negócios acompanhem seus resultados e entendam o que seus
-clientes consideram positivo ou precisa melhorar.
+O aplicativo `client` deve oferecer:
 
-A ideia é divulgar a plataforma para que empresas de diferentes segmentos possam
-experimentá-la sem custo inicial. Se essa proposta gerar valor e conquistar
-usuários, o Tamarcado poderá crescer de forma sustentável como um negócio de
-sucesso.
+- um catálogo público identificado pelo slug do negócio, em uma URL como
+  `/empresa/nome-do-negocio`;
+- uma experiência independente para cada negócio, sem uma vitrine central para
+  procurar empresas ou serviços;
+- agendamento de serviços dentro do contexto do catálogo acessado;
+- um PWA associado ao catálogo do negócio, cuja abertura inicia diretamente
+  naquele catálogo;
+- uma página neutra na raiz (`/`) que orienta o visitante a acessar o link do
+  negócio, sem exibir um catálogo geral.
 
-## Este aplicativo
+A especificação da evolução está em
+[`specs/004-saass-catalog-platform/spec.md`](../specs/004-saass-catalog-platform/spec.md).
+Ela define o comportamento esperado; a criação desta documentação não implementa
+nem altera o comportamento da aplicação.
 
-Este projeto contém a experiência pública usada pelos clientes para:
+O catálogo deve ser acolhedor, claro e fácil de usar em celulares e computadores.
+Informações de preço, duração, disponibilidade e consentimento devem ser
+apresentadas com transparência durante o agendamento.
 
-- descobrir empresas e serviços;
-- consultar o catálogo de cada estabelecimento;
-- escolher um profissional, uma data e um horário disponível;
-- solicitar um agendamento e receber um resumo da solicitação.
+## Rotas públicas e instalação
 
-O aplicativo deve ser acolhedor, claro e fácil de usar em celulares e
-computadores. As informações de preço, duração, disponibilidade e consentimento
-devem ser apresentadas com transparência durante o agendamento.
+- A raiz (`/`) explica que o visitante deve pedir o link diretamente ao negócio;
+  ela não permite pesquisar ou listar catálogos.
+- Cada negócio compartilha seu catálogo pelo slug, em `/empresa/{slug}`. Os links
+  de agendamento permanecem dentro desse mesmo slug.
+- A instalação do PWA fica disponível no catálogo publicado e identifica o
+  negócio. Ao reabrir o app, o cliente retorna diretamente ao catálogo daquele
+  negócio, com o escopo limitado às suas rotas de catálogo e agendamento.
 
 ## Arquitetura
 
@@ -39,7 +46,7 @@ backend. Cada frontend é uma aplicação de primeiro nível, com seu próprio
 
 ```text
 tamarcado/
-├── client/         # experiência pública para clientes
+├── client/         # catálogos públicos individuais e agendamento
 ├── collaborator/   # agenda e ferramentas de colaboradores
 ├── backoffice/     # administração das empresas
 ├── functions/      # backend Firebase Cloud Functions
@@ -68,6 +75,9 @@ client/src/
 ├── utils/          # funções utilitárias do cliente
 └── styles/         # tokens e estilos próprios desta aplicação
 ```
+
+As páginas públicas e os requisitos de isolamento por negócio, navegação e PWA
+estão especificados em `../specs/004-saass-catalog-platform/`.
 
 Os níveis de Atomic Design são convenções de composição: átomos formam
 moléculas, moléculas e outros componentes formam organismos, e estes são

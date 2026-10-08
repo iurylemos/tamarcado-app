@@ -14,10 +14,18 @@ export default function CompanyCatalogPage(): JSX.Element {
   });
 
   const catalog = catalogQuery.data ?? null;
+  const isUnavailable =
+    catalogQuery.error !== null &&
+    typeof catalogQuery.error === 'object' &&
+    'code' in catalogQuery.error &&
+    (catalogQuery.error.code === 'unavailable' ||
+      catalogQuery.error.code === 'firestore/unavailable');
   const status = catalogQuery.isPending
     ? 'loading'
     : catalogQuery.isError
-      ? 'error'
+      ? isUnavailable
+        ? 'unavailable'
+        : 'error'
       : catalog
         ? 'ready'
         : 'not-found';

@@ -1,8 +1,11 @@
 import { useEffect, useState, type JSX } from 'react';
 
 type NavigatorWithStandalone = Navigator & { standalone?: boolean };
+type PwaInstallPromptProps = { businessName: string };
 
-export default function PwaInstallPrompt(): JSX.Element | null {
+export default function PwaInstallPrompt({
+  businessName,
+}: Readonly<PwaInstallPromptProps>): JSX.Element | null {
   const [isInstallableOnIos, setIsInstallableOnIos] = useState<boolean>(false);
   const [promptDismissed, setPromptDismissed] = useState<boolean>(false);
   const [instructionsOpen, setInstructionsOpen] = useState<boolean>(false);
@@ -23,8 +26,11 @@ export default function PwaInstallPrompt(): JSX.Element | null {
 
   return (
     <>
-      <aside className="pwa-install-prompt" aria-label="Instalar Tá Marcado">
-        <p>Tenha o Tá Marcado na tela inicial do seu iPhone.</p>
+      <aside
+        className="pwa-install-prompt"
+        aria-label={`Instalar catálogo de ${businessName}`}
+      >
+        <p>Tenha o catálogo de {businessName} na tela inicial do seu iPhone.</p>
         <button type="button" onClick={() => setInstructionsOpen(true)}>
           Adicionar app
         </button>
@@ -57,8 +63,8 @@ export default function PwaInstallPrompt(): JSX.Element | null {
             >
               ×
             </button>
-            <h2 id="pwa-install-title">Adicione à tela inicial</h2>
-            <p>Para usar o Tá Marcado como app no iPhone:</p>
+            <h2 id="pwa-install-title">Adicione {businessName} à tela inicial</h2>
+            <p>Para usar este catálogo como app no iPhone:</p>
             <ol>
               <li>Abra esta página no Safari e toque em Compartilhar.</li>
               <li>Role as opções e escolha “Adicionar à Tela de Início”.</li>

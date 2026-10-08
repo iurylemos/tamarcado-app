@@ -94,7 +94,149 @@ describe('BookingPage professional selection', () => {
     expect(screen.getByText('Preparando horários disponíveis...')).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--booking')).toHaveLength(0);
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(4);
-    expect(container.querySelector('.app-loading-overlay')).not.toBeInTheDocument();
+  });
+
+  it('offers an actionable catalog link when business validation fails', async () => {
+    vi.mocked(getCompanyCatalog).mockRejectedValue(new Error('network error'));
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar os dados do serviço.',
+    );
+    expect(screen.getByRole('link', { name: 'Voltar ao catálogo' })).toHaveAttribute(
+      'href',
+      '/empresa/studio-aurora',
+    );
+  });
+
+  it('revalidates the business catalog before loading availability', async () => {
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(listAvailability).toHaveBeenCalled());
+    expect(getCompanyCatalog).toHaveBeenCalledTimes(2);
+    expect(listAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ businessSlug: 'studio-aurora', productId: 'service-corte' }),
+    );
+  });
+
+  it('does not load availability if the service is no longer in the business catalog', async () => {
+    const catalog = vi.mocked(getCompanyCatalog);
+    catalog
+      .mockResolvedValueOnce({
+        business: {
+          id: 'tenant-aurora',
+          name: 'Studio Aurora',
+          slug: 'studio-aurora',
+          segment: 'beauty',
+        },
+        products: [
+          {
+            id: 'service-corte',
+            name: 'Corte',
+            imageUrl: '/corte.jpg',
+            priceCents: 12000,
+            durationMinutes: 120,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        business: {
+          id: 'tenant-aurora',
+          name: 'Studio Aurora',
+          slug: 'studio-aurora',
+          segment: 'beauty',
+        },
+        products: [],
+      });
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
+    expect(getCompanyCatalog).toHaveBeenCalledTimes(2);
+    expect(listAvailability).not.toHaveBeenCalled();
+  });
+
+  it('does not submit when the service disappears from the latest business catalog', async () => {
+    const catalog = {
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty' as const,
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+        },
+      ],
+    };
+    vi.mocked(getCompanyCatalog)
+      .mockReset()
+      .mockResolvedValueOnce(catalog)
+      .mockResolvedValueOnce(catalog)
+      .mockResolvedValueOnce({ ...catalog, products: [] });
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: '09:00 - 11:00' }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), {
+      target: { value: 'Maria Silva' },
+    });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+
+    expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
+    expect(getCompanyCatalog).toHaveBeenCalledTimes(3);
+    expect(createAppointment).not.toHaveBeenCalled();
   });
 
   it('shows time skeletons instead of visible progress copy while searching for a later date', async () => {
@@ -198,7 +340,11 @@ describe('BookingPage professional selection', () => {
     );
     await waitFor(() =>
       expect(createAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({ whatsappOptIn: true }),
+        expect.objectContaining({
+          businessSlug: 'studio-aurora',
+          productId: 'service-corte',
+          whatsappOptIn: true,
+        }),
       ),
     );
     await waitFor(() => expect(listAvailability).toHaveBeenCalledTimes(2));

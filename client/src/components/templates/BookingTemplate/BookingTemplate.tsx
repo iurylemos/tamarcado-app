@@ -123,10 +123,13 @@ export default function BookingTemplate(props: Readonly<BookingTemplateState>): 
     return (
       <>
         <MarketBackground />
-        <main className="page market-page">
+        <main className="page stack market-page">
           <p role="alert" className="error state-card">
             {props.error}
           </p>
+          <Link className="market-back-link" to={`/empresa/${props.slug}`}>
+            Voltar ao catálogo
+          </Link>
         </main>
       </>
     );

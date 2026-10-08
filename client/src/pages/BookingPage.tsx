@@ -33,7 +33,10 @@ export default function BookingPage(): JSX.Element {
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
   const queryClient = useQueryClient();
 
-  const product = catalog?.products.find((item) => item.id === productId);
+  const product =
+    catalog?.business.slug === slug
+      ? catalog.products.find((item) => item.id === productId)
+      : undefined;
 
   const selectDate = useCallback((selectedDate: string): void => {
     setAvailabilityLoading(true);
@@ -47,6 +50,7 @@ export default function BookingPage(): JSX.Element {
       .fetchQuery({
         queryKey: companyCatalogQueryKey(slug),
         queryFn: () => getCompanyCatalog(slug),
+        staleTime: 0,
       })
       .then((result) => {
         if (current) setCatalog(result);
@@ -74,19 +78,39 @@ export default function BookingPage(): JSX.Element {
     setSelectedStartsAt('');
     setSlots([]);
 
-    queryClient
-      .fetchQuery({
+    const loadAvailability = async (): Promise<void> => {
+      const currentCatalog = await queryClient.fetchQuery({
+        queryKey: companyCatalogQueryKey(slug),
+        queryFn: () => getCompanyCatalog(slug),
+        staleTime: 0,
+      });
+
+      if (!current) return;
+
+      const currentProduct =
+        currentCatalog?.business.slug === slug
+          ? currentCatalog.products.find((item) => item.id === productId)
+          : undefined;
+
+      if (!currentProduct) {
+        setCatalog(currentCatalog);
+        return;
+      }
+
+      const result = await queryClient.fetchQuery({
         queryKey: availabilityQueryKey(slug, productId, date),
         queryFn: () => listAvailability({ businessSlug: slug, productId, date }),
         staleTime: 15_000,
-      })
-      .then((result) => {
-        if (current) {
-          setSlots(result);
-          const choices = eligibleProfessionals(result);
-          setSelectedProfessionalId(choices[0]?.id ?? '');
-        }
-      })
+      });
+
+      if (current) {
+        setSlots(result);
+        const choices = eligibleProfessionals(result);
+        setSelectedProfessionalId(choices[0]?.id ?? '');
+      }
+    };
+
+    void loadAvailability()
       .catch((error: unknown) => {
         if (current) {
           setError(
@@ -195,6 +219,22 @@ export default function BookingPage(): JSX.Element {
         setError('Escolha novamente um horário disponível antes de continuar.');
         return;
       }
+      const currentCatalog = await queryClient.fetchQuery({
+        queryKey: companyCatalogQueryKey(slug),
+        queryFn: () => getCompanyCatalog(slug),
+        staleTime: 0,
+      });
+      const currentProduct =
+        currentCatalog?.business.slug === slug
+          ? currentCatalog.products.find((item) => item.id === productId)
+          : undefined;
+
+      if (!currentProduct) {
+        setCatalog(currentCatalog);
+        setError('Este serviço não está mais disponível neste catálogo. Volte ao catálogo e escolha outro serviço.');
+        return;
+      }
+
       const result = await createAppointment({
         businessSlug: slug,
         productId,

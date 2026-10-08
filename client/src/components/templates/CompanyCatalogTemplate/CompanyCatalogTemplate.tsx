@@ -3,10 +3,11 @@ import { formatBrl } from '../../../../../shared/domain/money.js';
 import type { CompanyCatalog } from '../../../interfaces/company.interface.js';
 import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
+import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.js';
 
 type CompanyCatalogTemplateProps = {
   catalog: CompanyCatalog | null;
-  status: 'loading' | 'error' | 'not-found' | 'ready';
+  status: 'loading' | 'error' | 'unavailable' | 'not-found' | 'ready';
 };
 
 export default function CompanyCatalogTemplate({
@@ -24,17 +25,38 @@ export default function CompanyCatalogTemplate({
       document.head.append(manifestLink);
     }
 
-    const manifest = createCompanyPwaManifest(catalog.business.slug, window.location.origin);
+    const manifest = createCompanyPwaManifest(catalog.business, window.location.origin);
     const manifestUrl = URL.createObjectURL(
       new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }),
     );
     const originalHref = manifestLink.getAttribute('href');
+    const originalTitle = document.title;
+    const metadata = [
+      ['meta[name="apple-mobile-web-app-title"]', catalog.business.name],
+      ['meta[name="description"]', `Agende serviços com ${catalog.business.name}.`],
+      ['meta[property="og:title"]', `${catalog.business.name} | Tá Marcado`],
+      ['meta[property="og:description"]', `Conheça os serviços de ${catalog.business.name}.`],
+    ] as const;
+    const originalMetadata = metadata.map(([selector]) => {
+      const element = document.querySelector<HTMLMetaElement>(selector);
+      return { element, content: element?.getAttribute('content') ?? null };
+    });
+    document.title = `${catalog.business.name} | Tá Marcado`;
+    metadata.forEach(([selector, content]) => {
+      document.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', content);
+    });
     manifestLink.href = manifestUrl;
 
     return () => {
       if (addedManifestLink) manifestLink.remove();
       else if (originalHref === null) manifestLink.removeAttribute('href');
       else manifestLink.setAttribute('href', originalHref);
+      document.title = originalTitle;
+      originalMetadata.forEach(({ element, content }) => {
+        if (!element) return;
+        if (content === null) element.removeAttribute('content');
+        else element.setAttribute('content', content);
+      });
       URL.revokeObjectURL(manifestUrl);
     };
   }, [catalog, status]);
@@ -61,6 +83,13 @@ export default function CompanyCatalogTemplate({
           </p>
         </main>
       )}
+      {status === 'unavailable' && (
+        <main className="page market-page">
+          <p role="status" className="state-card">
+            Este catálogo está temporariamente indisponível. Tente novamente.
+          </p>
+        </main>
+      )}
       {status === 'not-found' && (
         <main className="page market-page">
           <p role="status" className="state-card">
@@ -70,9 +99,6 @@ export default function CompanyCatalogTemplate({
       )}
       {status === 'ready' && catalog && (
         <main className="page stack market-page catalog-page">
-          <a className="market-back-link" href="/">
-            ← Todas as empresas
-          </a>
           <header className="company-hero">
             <div className="company-identity">
               {catalog.business.logoUrl ? (
@@ -137,6 +163,7 @@ export default function CompanyCatalogTemplate({
             <img src="/pwa-icon.svg" alt="" width="24" height="24" loading="lazy" />
             <span>Agendamentos online com Tá Marcado</span>
           </footer>
+          <PwaInstallPrompt businessName={catalog.business.name} />
         </main>
       )}
     </>
