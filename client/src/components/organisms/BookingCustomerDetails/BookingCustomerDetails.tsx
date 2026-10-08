@@ -18,6 +18,7 @@ export default function BookingCustomerDetails({
 }: Readonly<BookingCustomerDetailsProps>): JSX.Element {
   const contactRef = useRef<HTMLDivElement>(null);
   const previousSelectedStartsAt = useRef('');
+  const shouldScrollToContact = useRef(false);
 
   useEffect(() => {
     const wasUnselected = !previousSelectedStartsAt.current;
@@ -25,6 +26,13 @@ export default function BookingCustomerDetails({
 
     if (!selectedStartsAt || !wasUnselected) return;
 
+    shouldScrollToContact.current = true;
+  }, [selectedStartsAt]);
+
+  const scrollToContactAfterExpand = (): void => {
+    if (!shouldScrollToContact.current) return;
+
+    shouldScrollToContact.current = false;
     const contactElement = contactRef.current;
     if (typeof contactElement?.scrollIntoView !== 'function') return;
 
@@ -33,7 +41,7 @@ export default function BookingCustomerDetails({
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
       block: 'center',
     });
-  }, [selectedStartsAt]);
+  };
 
   return (
     <AnimatePresence initial={false}>
@@ -44,6 +52,7 @@ export default function BookingCustomerDetails({
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
+          onAnimationComplete={scrollToContactAfterExpand}
         >
           <div className="section-heading">
             <div>

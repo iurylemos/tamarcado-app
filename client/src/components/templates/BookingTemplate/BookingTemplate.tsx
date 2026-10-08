@@ -18,7 +18,13 @@ import BookingReceiptDialog from '../../organisms/BookingReceiptDialog/BookingRe
 import BookingServiceSummary from '../../organisms/BookingServiceSummary/BookingServiceSummary';
 
 type BookingTemplateState =
-  | { status: 'loading'; slug: string }
+  | {
+      status: 'loading';
+      slug: string;
+      date: string;
+      minimumDate: string;
+      onDateChange: (date: string) => void;
+    }
   | { status: 'error'; slug: string; error: string }
   | { status: 'not-found'; slug: string }
   | {
@@ -56,37 +62,55 @@ export default function BookingTemplate(props: Readonly<BookingTemplateState>): 
       <>
         <MarketBackground />
         <main className="page stack market-page booking-page">
-          <p className="skeleton-status" role="status">
-            Carregando serviço...
-          </p>
-          <header className="booking-hero booking-loading-hero" aria-hidden="true">
-            <div>
-              <Skeleton className="booking-loading-eyebrow" width="30%" />
-              <Skeleton className="booking-loading-title" width="78%" />
-              <Skeleton className="booking-loading-copy" width="52%" />
-            </div>
-          </header>
+          <Link className="market-back-link" to={`/empresa/${props.slug}`}>
+            ← Voltar ao catálogo
+          </Link>
+
+          <BookingHero />
+
           <div className="booking-layout">
-            <SkeletonCard variant="booking" />
-            <section className="booking-panel booking-loading-panel" aria-hidden="true">
-              <div className="booking-loading-heading">
-                <Skeleton className="booking-loading-eyebrow" width="42%" />
-                <Skeleton className="booking-loading-title" width="65%" />
+            <aside className="booking-summary booking-summary-loading" aria-busy="true">
+              <p className="eyebrow">RESUMO DO SERVIÇO</p>
+              <span className="booking-summary-icon" aria-hidden="true">
+                ✂
+              </span>
+              <div className="booking-summary-loading-content" aria-hidden="true">
+                <Skeleton className="booking-summary-loading-business" />
+                <Skeleton className="booking-summary-loading-title" />
+                <Skeleton className="booking-summary-loading-description" />
               </div>
-              <div className="booking-loading-field">
-                <Skeleton className="booking-loading-field-label" width="38%" />
-                <Skeleton className="booking-loading-field-input" />
+              <div className="booking-summary-details" aria-hidden="true">
+                <Skeleton className="booking-summary-loading-price" />
+                <Skeleton className="booking-summary-loading-duration" />
               </div>
-              <div className="slot-grid">
-                {Array.from({ length: 4 }, (_, index) => (
-                  <SkeletonCard key={`booking-loading-time-${index}`} variant="time" />
-                ))}
+            </aside>
+
+            <section className="booking-panel" aria-label="Escolha seu horário">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">1. ESCOLHA A DATA E O HORÁRIO</p>
+                  <h2>Quando você quer vir?</h2>
+                </div>
               </div>
-              <div className="booking-loading-contact">
-                <Skeleton className="booking-loading-eyebrow" width="28%" />
-                <Skeleton className="booking-loading-title" width="46%" />
-                <Skeleton className="booking-loading-field-input" />
-                <Skeleton className="booking-loading-field-input" />
+              <label className="field" htmlFor="booking-date">
+                Data do atendimento
+                <input
+                  id="booking-date"
+                  type="date"
+                  value={props.date}
+                  min={props.minimumDate}
+                  onChange={(event) => props.onDateChange(event.target.value)}
+                />
+              </label>
+              <div aria-busy="true">
+                <p className="skeleton-status" role="status">
+                  Preparando horários disponíveis...
+                </p>
+                <div className="slot-grid" aria-label="Carregando horários disponíveis">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <SkeletonCard key={`booking-loading-time-${index}`} variant="time" />
+                  ))}
+                </div>
               </div>
             </section>
           </div>
@@ -158,20 +182,7 @@ function BookingReadyTemplate({
           ← Voltar ao catálogo
         </Link>
 
-        <motion.header
-          className="booking-hero"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div>
-            <p className="eyebrow">AGENDAMENTO ONLINE</p>
-            <h1>Seu próximo momento começa aqui.</h1>
-            <p>Escolha um horário e deixe o resto com a gente.</p>
-          </div>
-          <div className="booking-hero-mark" aria-hidden="true">
-            ✦
-          </div>
-        </motion.header>
+        <BookingHero />
 
         <div className="booking-layout">
           <BookingServiceSummary catalog={catalog} product={product} />
@@ -215,5 +226,24 @@ function BookingReadyTemplate({
         />
       </main>
     </>
+  );
+}
+
+function BookingHero(): JSX.Element {
+  return (
+    <motion.header
+      className="booking-hero"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div>
+        <p className="eyebrow">AGENDAMENTO ONLINE</p>
+        <h1>Seu próximo momento começa aqui.</h1>
+        <p>Escolha um horário e deixe o resto com a gente.</p>
+      </div>
+      <div className="booking-hero-mark" aria-hidden="true">
+        ✦
+      </div>
+    </motion.header>
   );
 }

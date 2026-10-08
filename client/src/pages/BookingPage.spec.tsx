@@ -69,7 +69,7 @@ describe('BookingPage professional selection', () => {
     expect(container.querySelectorAll('.skeleton-card')).toHaveLength(4);
   });
 
-  it('shows the default booking skeleton cards while the catalog request is pending', () => {
+  it('keeps static booking content visible while catalog-backed summary data loads', () => {
     vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderWithQueryClient(
@@ -80,8 +80,19 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent('Carregando serviço...');
-    expect(container.querySelectorAll('.skeleton-card--booking')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: '← Voltar ao catálogo' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Seu próximo momento começa aqui.' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('RESUMO DO SERVIÇO')).toBeInTheDocument();
+    expect(container.querySelector('.booking-summary-loading')).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(screen.getByLabelText('Data do atendimento')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quando você quer vir?' })).toBeInTheDocument();
+    expect(screen.getByText('Preparando horários disponíveis...')).toBeInTheDocument();
+    expect(container.querySelectorAll('.skeleton-card--booking')).toHaveLength(0);
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(4);
     expect(container.querySelector('.app-loading-overlay')).not.toBeInTheDocument();
   });
@@ -423,8 +434,12 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const dateInput = await screen.findByLabelText('Data do atendimento');
-    const oldDate = (dateInput as HTMLInputElement).value;
+    await screen.findByLabelText('Data do atendimento');
+    const oldDate = getNextBookableDate();
+    await waitFor(() =>
+      expect(listAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: oldDate })),
+    );
+    const dateInput = screen.getByLabelText('Data do atendimento');
     fireEvent.change(dateInput, { target: { value: selectedDate } });
     await waitFor(() => expect(results.has(oldDate) && results.has(selectedDate)).toBe(true));
 
@@ -462,6 +477,7 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
+    expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('link', { name: /Voltar ao catálogo/ }));
     expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
   });

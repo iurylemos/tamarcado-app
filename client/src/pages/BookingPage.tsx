@@ -299,7 +299,17 @@ export default function BookingPage(): JSX.Element {
   );
 
   if (!catalog) {
-    if (loading) return <BookingTemplate status="loading" slug={slug} />;
+    if (loading) {
+      return (
+        <BookingTemplate
+          status="loading"
+          slug={slug}
+          date={date}
+          minimumDate={getNextBookableDate(new Date(Date.now() - 86_400_000))}
+          onDateChange={selectDate}
+        />
+      );
+    }
     if (error) return <BookingTemplate status="error" slug={slug} error={error} />;
     return <CompanyCatalogPage />;
   }
