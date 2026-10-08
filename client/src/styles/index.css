@@ -554,6 +554,7 @@ select {
 .booking-panel {
   display: grid;
   gap: 1.3rem;
+  min-width: 0;
   padding: clamp(1.2rem, 3vw, 2rem);
 }
 .booking-panel > .field {
@@ -565,6 +566,7 @@ select {
 .booking-panel > .field input[type='date'] {
   width: 100%;
   min-width: 0;
+  max-width: 100%;
   box-sizing: border-box;
 }
 .booking-panel .field input,
@@ -865,7 +867,7 @@ select {
 }
 @media (max-width: 720px) {
   .booking-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .booking-summary {
     position: static;
