@@ -14,24 +14,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['pwa-icon.svg'],
-      manifest: {
-        name: 'Tá Marcado',
-        short_name: 'Tá Marcado',
-        description: 'Encontre empresas e agende serviços pelo Tá Marcado.',
-        lang: 'pt-BR',
-        theme_color: '#4f46e5',
-        background_color: '#fff7ed',
-        display: 'standalone',
-        start_url: '/',
-        icons: [
-          {
-            src: '/pwa-icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
-        ],
-      },
+      manifest: false,
       workbox: {
         navigateFallback: '/index.html',
         runtimeCaching: [],

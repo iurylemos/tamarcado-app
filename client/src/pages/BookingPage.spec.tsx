@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
+import CompanyCatalogPage from './CompanyCatalogPage';
 import { addDaysToDate, getNextBookableDate } from '../utils/date.util';
 import BookingPage from './BookingPage';
 import { renderWithQueryClient } from '../test/render';
@@ -17,6 +18,19 @@ afterEach(cleanup);
 describe('BookingPage professional selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('scrollTo', vi.fn());
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:company-manifest'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
     vi.mocked(getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
@@ -36,6 +50,60 @@ describe('BookingPage professional selection', () => {
     });
   });
 
+  it('shows booking detail and time-card skeletons while requests are pending', async () => {
+    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
+    expect(screen.getByText('RESUMO DO SERVIÇO')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quando você quer vir?' })).toBeInTheDocument();
+    expect(screen.getByText('Buscando horários disponíveis...')).toBeInTheDocument();
+    expect(screen.getByText('Buscando horários disponíveis...')).toHaveClass('skeleton-status');
+    expect(container.querySelectorAll('.skeleton-card')).toHaveLength(4);
+  });
+
+  it('shows the default booking skeleton cards while the catalog request is pending', () => {
+    vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando serviço...');
+    expect(container.querySelectorAll('.skeleton-card--booking')).toHaveLength(1);
+    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(4);
+    expect(container.querySelector('.app-loading-overlay')).not.toBeInTheDocument();
+  });
+
+  it('shows time skeletons instead of visible progress copy while searching for a later date', async () => {
+    vi.mocked(listAvailability)
+      .mockResolvedValueOnce([])
+      .mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const searchingMessage = await screen.findByText('Procurando o próximo dia com horários...');
+    expect(searchingMessage).toHaveClass('skeleton-status');
+    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(2);
+  });
+
   it('shows complete appointment ranges through the end of a two-hour service day', async () => {
     vi.mocked(listAvailability).mockResolvedValue([
       {
@@ -52,7 +120,7 @@ describe('BookingPage professional selection', () => {
       },
     ]);
 
-    renderWithQueryClient(
+    const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
@@ -64,6 +132,7 @@ describe('BookingPage professional selection', () => {
 
     expect(screen.getByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '17:20 - 19:20' })).toBeInTheDocument();
+    expect(container.querySelector('.skeleton-card')).not.toBeInTheDocument();
   });
 
   it('shows a booking receipt after the customer submits a request', async () => {
@@ -124,6 +193,70 @@ describe('BookingPage professional selection', () => {
     await waitFor(() => expect(listAvailability).toHaveBeenCalledTimes(2));
     expect(screen.getByRole('radio', { name: '11:00 - 13:00' })).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
+  });
+
+  it('scrolls the customer details into view once after selecting a time without focusing it', async () => {
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+      {
+        startsAt: '2030-02-04T13:00:00.000Z',
+        endsAt: '2030-02-04T15:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const scrollSpy = vi.mocked(HTMLElement.prototype.scrollIntoView);
+    fireEvent.click(await screen.findByRole('radio', { name: '09:00 - 11:00' }));
+
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalledOnce());
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByText('2. SEUS DADOS')).toBeInTheDocument();
+    expect(screen.getByLabelText('Seu nome')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: '10:00 - 12:00' }));
+    expect(scrollSpy).toHaveBeenCalledOnce();
+  });
+
+  it('uses immediate scrolling when reduced motion is preferred', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const scrollSpy = vi.mocked(HTMLElement.prototype.scrollIntoView);
+    fireEvent.click(await screen.findByRole('radio', { name: '09:00 - 11:00' }));
+
+    await waitFor(() =>
+      expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'auto', block: 'center' }),
+    );
+    expect(document.activeElement).toBe(document.body);
   });
 
   it('shows a customer-friendly message when the booking request fails internally', async () => {
@@ -195,7 +328,7 @@ describe('BookingPage professional selection', () => {
 
   it('shows an empty eligibility state when no professional can serve the selected service', async () => {
     vi.mocked(listAvailability).mockResolvedValue([]);
-    renderWithQueryClient(
+    const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
@@ -205,16 +338,32 @@ describe('BookingPage professional selection', () => {
     expect(
       await screen.findByText('Não há profissionais disponíveis para este serviço.'),
     ).toBeInTheDocument();
+    expect(container.querySelector('.skeleton-card')).not.toBeInTheDocument();
   });
 
-  it('suggests the next date with available hours when the selected date is empty', async () => {
+  it('shows the availability error after removing loading skeletons', async () => {
+    vi.mocked(listAvailability).mockRejectedValue(new Error('network error'));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('network error')).toBeInTheDocument();
+    expect(container.querySelector('.skeleton-card')).not.toBeInTheDocument();
+  });
+
+  it('automatically selects the nearest date with available hours when the selected date is empty', async () => {
     const nextAvailableDate = addDaysToDate(getNextBookableDate(), 3);
     vi.mocked(listAvailability).mockImplementation(async ({ date }) =>
       date === nextAvailableDate
         ? [
             {
-              startsAt: '2030-02-07T12:00:00.000Z',
-              endsAt: '2030-02-07T14:00:00.000Z',
+              startsAt: `${nextAvailableDate}T12:00:00.000Z`,
+              endsAt: `${nextAvailableDate}T14:00:00.000Z`,
               professionalId: 'ana',
               professionalName: 'Ana Souza',
             },
@@ -230,10 +379,90 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      await screen.findByRole('button', { name: 'Ver horários' }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ver horários' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Data do atendimento')).toHaveValue(nextAvailableDate),
+    );
     expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
+  });
+
+  it('shows clear guidance when no times are available in the 30-day search range', async () => {
+    vi.mocked(listAvailability).mockResolvedValue([]);
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText('Não encontramos horários nos próximos 30 dias. Escolha outra data.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Data do atendimento')).toBeInTheDocument();
+  });
+
+  it('ignores availability results for a date that is no longer selected', async () => {
+    const selectedDate = addDaysToDate(getNextBookableDate(), 2);
+    const results = new Map<
+      string,
+      (value: Awaited<ReturnType<typeof listAvailability>>) => void
+    >();
+    vi.mocked(listAvailability).mockImplementation(
+      ({ date }) =>
+        new Promise((resolve) => {
+          results.set(date, resolve);
+        }),
+    );
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const dateInput = await screen.findByLabelText('Data do atendimento');
+    const oldDate = (dateInput as HTMLInputElement).value;
+    fireEvent.change(dateInput, { target: { value: selectedDate } });
+    await waitFor(() => expect(results.has(oldDate) && results.has(selectedDate)).toBe(true));
+
+    results.get(oldDate)?.([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+    results.get(selectedDate)?.([
+      {
+        startsAt: '2030-02-06T12:00:00.000Z',
+        endsAt: '2030-02-06T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+
+    expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
+    expect(dateInput).toHaveValue(selectedDate);
+    expect(listAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: selectedDate }));
+  });
+
+  it('returns to the matching catalog after one activation', async () => {
+    vi.mocked(listAvailability).mockResolvedValue([]);
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('link', { name: /Voltar ao catálogo/ }));
+    expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
   });
 });

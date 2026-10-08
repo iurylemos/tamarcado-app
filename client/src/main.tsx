@@ -3,7 +3,6 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
-import { LoadingProvider } from './contexts/LoadingContext';
 import { companyCatalogQueryKey, queryClient } from './services/query-client';
 import './styles/index.css';
 
@@ -20,11 +19,9 @@ if (ssrData) {
 const app: JSX.Element = (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <LoadingProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </LoadingProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>
 );

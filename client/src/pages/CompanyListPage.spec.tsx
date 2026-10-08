@@ -1,6 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listPublicCompanies } from '../services/company.service';
 import CompanyListPage from './CompanyListPage';
 import { renderWithQueryClient } from '../test/render';
@@ -8,6 +8,8 @@ import { useCatalogFiltersStore } from '../stores/catalog-filters.store';
 
 vi.mock('../services/company.service', () => ({ listPublicCompanies: vi.fn() }));
 vi.mock('../services/product.service', () => ({ listPublicProducts: vi.fn(async () => []) }));
+
+afterEach(cleanup);
 
 const companies = [
   {
@@ -48,5 +50,42 @@ describe('CompanyListPage', () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(listPublicCompanies).toHaveBeenLastCalledWith('fitness'));
   });
-});
 
+  it('shows card skeletons while discovery queries are pending', async () => {
+    let resolveCompanies: ((value: typeof companies) => void) | undefined;
+    vi.mocked(listPublicCompanies).mockReturnValue(
+      new Promise((resolve) => {
+        resolveCompanies = resolve;
+      }),
+    );
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <CompanyListPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Carregando...')).toBeInTheDocument();
+    expect(screen.getByText('Carregando...')).toHaveClass('skeleton-status');
+    expect(container.querySelectorAll('.skeleton-card')).toHaveLength(6);
+
+    resolveCompanies?.(companies);
+    expect(await screen.findByText('Nenhum produto encontrado.')).toBeInTheDocument();
+    expect(container.querySelector('.skeleton-card')).not.toBeInTheDocument();
+  });
+
+  it('shows the error state instead of skeletons when discovery fails', async () => {
+    vi.mocked(listPublicCompanies).mockRejectedValue(new Error('network error'));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <CompanyListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar a vitrine.',
+    );
+    expect(container.querySelector('.skeleton-card')).not.toBeInTheDocument();
+  });
+});

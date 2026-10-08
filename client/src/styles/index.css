@@ -228,7 +228,6 @@ select {
 .market-back-link:hover {
   color: #ea1d2c;
 }
-.loading-message,
 .state-card {
   display: flex;
   align-items: center;
@@ -243,22 +242,81 @@ select {
   background: rgb(255 255 255 / 0.9);
   box-shadow: 0 8px 24px rgb(15 23 42 / 0.08);
 }
-.loading-message::before {
-  width: 1.15rem;
-  height: 1.15rem;
-  flex: none;
-  border: 2px solid #fed7aa;
-  border-top-color: #ea1d2c;
-  border-radius: 50%;
-  content: '';
-  animation: market-spin 0.8s linear infinite;
-}
 .state-card-compact {
   margin: 0;
 }
-@keyframes market-spin {
+.skeleton {
+  display: block;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #f1f5f9 20%, #e2e8f0 38%, #f1f5f9 56%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+.skeleton-card {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.85);
+  border-radius: 1.1rem;
+  background: white;
+  box-shadow: 0 2px 10px rgb(15 23 42 / 0.08);
+}
+.skeleton-card__image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+}
+.skeleton-card--product .skeleton-card__image {
+  aspect-ratio: 1 / 1;
+}
+.skeleton-card--store .skeleton-card__image {
+  aspect-ratio: 16 / 10;
+}
+.skeleton-card__body {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+.skeleton-card__title {
+  height: 1rem;
+}
+.skeleton-card__metadata {
+  height: 0.75rem;
+}
+.skeleton-card--booking {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.4rem;
+}
+.skeleton-card__eyebrow {
+  height: 0.65rem;
+}
+.skeleton-card--booking .skeleton-card__title {
+  height: 1.5rem;
+}
+.skeleton-card--time {
+  padding: 0.5rem;
+}
+.skeleton-card__time {
+  height: 2.4rem;
+  border-radius: 0.75rem;
+}
+.skeleton-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+@keyframes skeleton-shimmer {
   to {
-    transform: rotate(360deg);
+    background-position-x: -220%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
   }
 }
 .eyebrow {
@@ -414,6 +472,54 @@ select {
   grid-template-columns: minmax(15rem, 0.72fr) minmax(0, 1.45fr);
   align-items: start;
   gap: 1.1rem;
+}
+.booking-loading-hero {
+  min-height: 10rem;
+  box-sizing: border-box;
+  background: white;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.08);
+}
+.booking-loading-hero > div,
+.booking-loading-heading,
+.booking-loading-field,
+.booking-loading-contact {
+  display: grid;
+  gap: 0.75rem;
+}
+.booking-loading-eyebrow {
+  height: 0.65rem;
+}
+.booking-loading-title {
+  height: 1.5rem;
+}
+.booking-loading-copy {
+  height: 0.9rem;
+}
+.booking-layout > .skeleton-card--booking {
+  min-height: 16rem;
+  box-sizing: border-box;
+}
+.booking-loading-panel {
+  align-content: start;
+}
+.booking-loading-heading {
+  gap: 0.5rem;
+}
+.booking-loading-field {
+  max-width: 22rem;
+  gap: 0.5rem;
+}
+.booking-loading-field-label {
+  height: 0.8rem;
+}
+.booking-loading-field-input {
+  width: 100%;
+  height: 2.9rem;
+  border-radius: 0.75rem;
+}
+.booking-loading-contact {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 1rem;
 }
 .booking-summary,
 .booking-panel {
@@ -636,30 +742,9 @@ select {
   color: #64748b;
   cursor: not-allowed;
 }
-.app-loading-overlay {
-  position: fixed;
-  z-index: 20;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgb(15 23 42 / 0.2);
-  backdrop-filter: blur(4px);
-}
-.app-loading-card {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  width: min(calc(100% - 2rem), 24rem);
-  box-sizing: border-box;
-  justify-content: center;
-  justify-self: center;
-  border: 1px solid rgb(255 255 255 / 0.8);
-  border-radius: 1.1rem;
-  padding: 1.1rem 1.4rem;
-  background: white;
-  box-shadow: 0 16px 45px rgb(15 23 42 / 0.18);
-  color: #334155;
-  font-weight: 700;
+.booking-submit-skeleton {
+  width: min(65%, 12rem);
+  height: 1rem;
 }
 .pwa-install-prompt {
   display: none;
@@ -678,14 +763,6 @@ select {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 0.4rem;
-}
-.app-loading-spinner {
-  width: 1.45rem;
-  height: 1.45rem;
-  flex: none;
-  border: 3px solid #ffedd5;
-  border-top-color: #ea1d2c;
-  border-radius: 50%;
 }
 .receipt-backdrop {
   position: fixed;
@@ -865,24 +942,6 @@ select {
   }
   .booking-contact {
     gap: 0.8rem;
-  }
-  .loading-message {
-    width: 100%;
-    justify-self: stretch;
-    padding: 0.85rem 1rem;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-  }
-  .app-loading-card {
-    width: min(calc(100% - 2rem), 20rem);
-    gap: 0.7rem;
-    padding: 1rem;
-  }
-  .app-loading-card > span:last-child {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    text-align: left;
-    line-height: 1.4;
   }
   .receipt-card {
     max-height: calc(100dvh - 2rem);
