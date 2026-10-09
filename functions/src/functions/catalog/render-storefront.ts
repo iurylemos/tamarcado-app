@@ -125,11 +125,24 @@ export const renderStorefront = onRequest(
       const catalog: CompanyCatalog = {
         business: publicBusiness,
         products: productRecords.map(
-          ({ id, name, description, imageUrl, priceCents, durationMinutes }): PublicProductSummary => ({
+          ({
             id,
             name,
             description,
             imageUrl,
+            customizationAttributes,
+            defaultImages,
+            imageGalleries,
+            priceCents,
+            durationMinutes,
+          }): PublicProductSummary => ({
+            id,
+            name,
+            description,
+            imageUrl,
+            ...(customizationAttributes ? { customizationAttributes } : {}),
+            ...(defaultImages ? { defaultImages } : {}),
+            ...(imageGalleries ? { imageGalleries } : {}),
             priceCents,
             durationMinutes,
           }),

@@ -140,7 +140,11 @@ export default function BackofficeWorkspace(): JSX.Element {
             <CompanySettingsPage company={workspace.company} onSaved={refreshWorkspace} />
           )}
           {section === 'products' && (
-            <ProductsPage products={workspace.products} onSaved={refreshWorkspace} />
+            <ProductsPage
+              tenantId={workspace.company.id}
+              products={workspace.products}
+              onSaved={refreshWorkspace}
+            />
           )}
           {section === 'professionals' && (
             <ProfessionalsPage

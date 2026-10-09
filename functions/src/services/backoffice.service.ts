@@ -1,11 +1,22 @@
 ﻿import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import type { BusinessSegment } from '../../../shared/domain/interfaces/tenant.interface';
-import type { CommissionType } from '../../../shared/domain/interfaces/product.interface';
+import type {
+  CommissionType,
+  ProductCustomizationAttribute,
+  ProductCustomizationSelection,
+  ProductImage,
+  ProductImageGallery,
+} from '../../../shared/domain/interfaces/product.interface';
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { collections } from '../config/collections';
 import type { BlockedPeriodDocument, WorkingHoursDocument } from '../model/availability.model';
 import type { ProductDocument } from '../model/product.model';
+import {
+  productGalleryCombinationKey,
+  productGalleryDocumentId,
+  type ProductGalleryDocument,
+} from '../model/product-gallery.model';
 import type {
   ProfessionalDocument,
   ProfessionalProductDocument,
@@ -96,6 +107,8 @@ export interface ProductInput {
   name: string;
   description?: string;
   imageUrl: string;
+  customizationAttributes?: ProductCustomizationAttribute[];
+  defaultImages?: ProductImage[];
   priceCents: number;
   durationMinutes: number;
   commissionType: CommissionType;
@@ -103,12 +116,112 @@ export interface ProductInput {
   active: boolean;
 }
 
+function stableIdentifier(value: unknown, label: string): string {
+  const identifier = requiredText(value, label, 100);
+  if (!/^[A-Za-z0-9_-]+$/.test(identifier)) {
+    throw new HttpsError('invalid-argument', `${label} inválido.`);
+  }
+  return identifier;
+}
+
+function validateCustomizationAttributes(value: unknown): ProductCustomizationAttribute[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    throw new HttpsError('invalid-argument', 'As opções de personalização são inválidas.');
+  }
+
+  const attributeIds = new Set<string>();
+  return value.map((rawAttribute) => {
+    const attribute = inputObject(rawAttribute);
+    const id = stableIdentifier(attribute.id, 'Identificador do atributo');
+    const label = requiredText(attribute.label, 'Nome do atributo', 80);
+    if (attributeIds.has(id)) {
+      throw new HttpsError('invalid-argument', 'Os identificadores dos atributos devem ser únicos.');
+    }
+    attributeIds.add(id);
+
+    if (!Array.isArray(attribute.options) || attribute.options.length < 2) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Cada atributo deve ter pelo menos duas opções.',
+      );
+    }
+
+    const optionIds = new Set<string>();
+    const optionLabels = new Set<string>();
+    const options = attribute.options.map((rawOption) => {
+      const option = inputObject(rawOption);
+      const optionId = stableIdentifier(option.id, 'Identificador da opção');
+      const optionLabel = requiredText(option.label, 'Nome da opção', 80);
+      const normalizedLabel = optionLabel.toLocaleLowerCase('pt-BR');
+      if (optionIds.has(optionId) || optionLabels.has(normalizedLabel)) {
+        throw new HttpsError(
+          'invalid-argument',
+          'As opções de cada atributo devem ter identificadores e nomes únicos.',
+        );
+      }
+      optionIds.add(optionId);
+      optionLabels.add(normalizedLabel);
+      return { id: optionId, label: optionLabel };
+    });
+    const defaultOptionId = stableIdentifier(
+      attribute.defaultOptionId,
+      'Opção padrão',
+    );
+    if (!optionIds.has(defaultOptionId)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'A opção padrão deve pertencer ao atributo.',
+      );
+    }
+    return { id, label, options, defaultOptionId };
+  });
+}
+
+function validateProductImages(value: unknown): ProductImage[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 10) {
+    throw new HttpsError(
+      'invalid-argument',
+      'A galeria padrão deve conter de uma a dez imagens.',
+    );
+  }
+  const ids = new Set<string>();
+  return value.map((rawImage) => {
+    const image = inputObject(rawImage);
+    const id = stableIdentifier(image.id, 'Identificador da imagem');
+    if (ids.has(id)) {
+      throw new HttpsError('invalid-argument', 'Os identificadores das imagens devem ser únicos.');
+    }
+    ids.add(id);
+    const storagePath =
+      image.id === 'legacy-image' && image.storagePath === ''
+        ? ''
+        : requiredText(image.storagePath, 'Caminho da imagem', 1024);
+    if (
+      storagePath.startsWith('/') ||
+      storagePath.split('/').some((part) => part === '.' || part === '..')
+    ) {
+      throw new HttpsError('invalid-argument', 'O caminho da imagem é inválido.');
+    }
+    const downloadUrl = validUrl(
+      requiredText(image.downloadUrl, 'Endereço da imagem', 2048),
+      'Endereço da imagem',
+    );
+    return { id, storagePath, downloadUrl };
+  });
+}
+
 export function validateProductInput(rawInput: unknown): ProductInput {
   const input = inputObject(rawInput);
   const id = optionalDocumentId(input.id);
   const name = requiredText(input.name, 'Nome do serviço', 80);
   const description = optionalText(input.description, 'Descrição', 600);
-  const imageUrl = validUrl(requiredText(input.imageUrl, 'Imagem', 2048), 'Imagem');
+  const customizationAttributes = validateCustomizationAttributes(input.customizationAttributes);
+  const defaultImages = validateProductImages(input.defaultImages);
+  const imageUrl = defaultImages
+    ? defaultImages[0]!.downloadUrl
+    : validUrl(requiredText(input.imageUrl, 'Imagem', 2048), 'Imagem');
   const priceCents = requiredInteger(
     input.priceCents,
     'Preço em centavos',
@@ -137,6 +250,8 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     name,
     ...(description ? { description } : {}),
     imageUrl,
+    ...(customizationAttributes !== undefined ? { customizationAttributes } : {}),
+    ...(defaultImages !== undefined ? { defaultImages } : {}),
     priceCents,
     durationMinutes,
     commissionType,
@@ -160,7 +275,8 @@ export interface BackofficeWorkspace {
     | 'active'
   > & { id: string };
   collaboratorEmails: Record<string, string>;
-  products: Array<ProductDocument & { id: string }>;
+  products: Array<ProductDocument & { id: string; imageGalleries?: ProductImageGallery[] }>;
+  productGalleries: ProductGalleryDocument[];
   professionals: Array<ProfessionalDocument & { id: string }>;
   assignments: Array<ProfessionalProductDocument & { id: string }>;
   workingHours: Array<WorkingHoursDocument & { id: string }>;
@@ -177,6 +293,7 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
   const [
     companySnapshot,
     productsSnapshot,
+    galleriesSnapshot,
     professionalsSnapshot,
     assignmentsSnapshot,
     hoursSnapshot,
@@ -185,6 +302,7 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
   ] = await Promise.all([
     firestore.collection(collections.tenants).doc(tenantId).get(),
     firestore.collection(collections.products).where('tenantId', '==', tenantId).get(),
+    firestore.collection(collections.productImageGalleries).where('tenantId', '==', tenantId).get(),
     firestore.collection(collections.professionals).where('tenantId', '==', tenantId).get(),
     firestore.collection(collections.professionalProducts).where('tenantId', '==', tenantId).get(),
     firestore.collection(collections.workingHours).where('tenantId', '==', tenantId).get(),
@@ -196,6 +314,21 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
 
   const byName = <T extends { name: string }>(first: T, second: T) =>
     first.name.localeCompare(second.name, 'pt-BR');
+  const productGalleries = galleriesSnapshot.docs.map(
+    (doc) => ({ ...(doc.data() as ProductGalleryDocument), id: doc.id }),
+  );
+  const galleriesByProduct = new Map<string, ProductImageGallery[]>();
+  for (const gallery of productGalleries) {
+    const galleries = galleriesByProduct.get(gallery.productId) ?? [];
+    galleries.push({
+      id: gallery.id,
+      productId: gallery.productId,
+      combinationKey: gallery.combinationKey,
+      selections: gallery.selections,
+      images: gallery.images,
+    });
+    galleriesByProduct.set(gallery.productId, galleries);
+  }
   return {
     company: {
       id: tenantId,
@@ -212,8 +345,15 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
     },
     collaboratorEmails,
     products: productsSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as ProductDocument) }))
+      .map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as ProductDocument),
+        ...(galleriesByProduct.has(doc.id)
+          ? { imageGalleries: galleriesByProduct.get(doc.id)! }
+          : {}),
+      }))
       .sort(byName),
+    productGalleries,
     professionals: professionalsSnapshot.docs
       .map((doc) => ({ id: doc.id, ...(doc.data() as ProfessionalDocument) }))
       .sort(byName),
@@ -241,17 +381,20 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
 }
 
 export async function saveProduct(tenantId: string, rawInput: unknown): Promise<{ id: string }> {
+  const raw = inputObject(rawInput);
   const {
     id,
     name,
     description,
     imageUrl,
+    customizationAttributes,
+    defaultImages,
     priceCents,
     durationMinutes,
     commissionType,
     commissionValue,
     active,
-  } = validateProductInput(rawInput);
+  } = validateProductInput(raw);
   const reference = id
     ? firestore.collection(collections.products).doc(id)
     : firestore.collection(collections.products).doc();
@@ -268,12 +411,24 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     if (id && current?.tenantId !== tenantId) {
       throw new HttpsError('not-found', 'Serviço não encontrado nesta empresa.');
     }
+    if (defaultImages) validateImageOwnership(defaultImages, tenantId, reference.id);
+    const primaryImageUrl = defaultImages?.[0]?.downloadUrl ?? current?.defaultImages?.[0]?.downloadUrl ?? imageUrl;
 
     const product: ProductDocument = {
       tenantId,
       name,
       description: description ?? '',
-      imageUrl,
+      imageUrl: primaryImageUrl,
+      ...(customizationAttributes !== undefined
+        ? { customizationAttributes }
+        : current?.customizationAttributes
+          ? { customizationAttributes: current.customizationAttributes }
+          : {}),
+      ...(defaultImages !== undefined
+        ? { defaultImages }
+        : current?.defaultImages
+          ? { defaultImages: current.defaultImages }
+          : {}),
       priceCents,
       durationMinutes,
       commissionType,
@@ -296,7 +451,17 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
         businessSlug: tenant.slug,
         name,
         description: description ?? '',
-        imageUrl,
+        imageUrl: primaryImageUrl,
+        ...(customizationAttributes !== undefined
+          ? { customizationAttributes }
+          : current?.customizationAttributes
+            ? { customizationAttributes: current.customizationAttributes }
+            : {}),
+        ...(defaultImages !== undefined
+          ? { defaultImages }
+          : current?.defaultImages
+            ? { defaultImages: current.defaultImages }
+            : {}),
         priceCents,
         durationMinutes,
         active,
@@ -306,6 +471,160 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     );
   });
   return { id: reference.id };
+}
+
+function validateImageOwnership(images: ProductImage[], tenantId: string, productId: string): void {
+  const requiredPrefix = `product-images/${tenantId}/${productId}/`;
+  if (
+    images.some(
+      ({ storagePath }) =>
+        storagePath !== '' &&
+        (!storagePath.startsWith(requiredPrefix) || storagePath.length === requiredPrefix.length),
+    )
+  ) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Cada imagem deve pertencer à galeria deste produto e desta empresa.',
+    );
+  }
+}
+
+function validateGallerySelections(
+  rawSelections: unknown,
+  attributes: ProductCustomizationAttribute[] | undefined,
+): ProductCustomizationSelection[] {
+  if (!Array.isArray(rawSelections) || !attributes?.length || rawSelections.length !== attributes.length) {
+    throw new HttpsError(
+      'invalid-argument',
+      'A galeria deve selecionar exatamente uma opção para cada atributo do serviço.',
+    );
+  }
+  const byAttribute = new Map<string, string>();
+  for (const rawSelection of rawSelections) {
+    const selection = inputObject(rawSelection);
+    const attributeId = stableIdentifier(selection.attributeId, 'Identificador do atributo');
+    const optionId = stableIdentifier(selection.optionId, 'Identificador da opção');
+    if (byAttribute.has(attributeId)) {
+      throw new HttpsError('invalid-argument', 'A seleção de atributos não pode conter duplicatas.');
+    }
+    byAttribute.set(attributeId, optionId);
+  }
+  return attributes.map((attribute) => {
+    const optionId = byAttribute.get(attribute.id);
+    if (!optionId || !attribute.options.some((option) => option.id === optionId)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'A galeria contém uma opção inválida para este serviço.',
+      );
+    }
+    return { attributeId: attribute.id, optionId };
+  });
+}
+
+function validateGalleryImages(
+  value: unknown,
+  tenantId: string,
+  productId: string,
+): ProductImage[] {
+  const images = validateProductImages(value);
+  if (!images) {
+    throw new HttpsError('invalid-argument', 'Informe as imagens da galeria.');
+  }
+  if (images.some(({ storagePath }) => !storagePath)) {
+    throw new HttpsError('invalid-argument', 'Galerias de variação exigem imagens no Storage.');
+  }
+  validateImageOwnership(images, tenantId, productId);
+  return images;
+}
+
+export async function saveProductGallery(
+  tenantId: string,
+  rawInput: unknown,
+): Promise<{ id: string; combinationKey: string }> {
+  const input = inputObject(rawInput);
+  const productId = requiredText(input.productId, 'Serviço', 150);
+  if (productId.includes('/')) throw new HttpsError('invalid-argument', 'Serviço inválido.');
+  const reference = firestore.collection(collections.products).doc(productId);
+  let savedId = '';
+  let savedCombinationKey = '';
+
+  await firestore.runTransaction(async (transaction) => {
+    const productSnapshot = await transaction.get(reference);
+    const product = documentData<ProductDocument>(productSnapshot);
+    if (!product || product.tenantId !== tenantId) {
+      throw new HttpsError('not-found', 'Serviço não encontrado nesta empresa.');
+    }
+    const selections = validateGallerySelections(input.selections, product.customizationAttributes);
+    const images = validateGalleryImages(input.images, tenantId, productId);
+    const combinationKey = productGalleryCombinationKey(selections);
+    const id = productGalleryDocumentId(productId, combinationKey);
+    const galleryReference = firestore.collection(collections.productImageGalleries).doc(id);
+    const publicReference = firestore.collection(collections.publicProductGalleries).doc(id);
+    const gallery: ProductGalleryDocument = {
+      id,
+      productId,
+      combinationKey,
+      selections,
+      images,
+      tenantId,
+      businessSlug: (await transaction.get(
+        firestore.collection(collections.tenants).doc(tenantId),
+      )).data()?.slug as string,
+      published: true,
+    };
+    if (!gallery.businessSlug) {
+      throw new HttpsError('not-found', 'Empresa não encontrada.');
+    }
+    transaction.set(galleryReference, {
+      ...gallery,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    transaction.set(publicReference, {
+      id,
+      productId,
+      combinationKey,
+      selections,
+      images,
+      tenantId,
+      businessSlug: gallery.businessSlug,
+      published: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    savedId = id;
+    savedCombinationKey = combinationKey;
+  });
+  return { id: savedId, combinationKey: savedCombinationKey };
+}
+
+export async function deleteProductGallery(
+  tenantId: string,
+  rawInput: unknown,
+): Promise<{ deleted: true; storagePaths: string[] }> {
+  const input = inputObject(rawInput);
+  const productId = requiredText(input.productId, 'Serviço', 150);
+  const galleryId = requiredText(input.galleryId, 'Galeria', 150);
+  if (productId.includes('/')) throw new HttpsError('invalid-argument', 'Serviço inválido.');
+  const reference = firestore.collection(collections.products).doc(productId);
+  let storagePaths: string[] = [];
+
+  await firestore.runTransaction(async (transaction) => {
+    const productSnapshot = await transaction.get(reference);
+    const product = documentData<ProductDocument>(productSnapshot);
+    if (!product || product.tenantId !== tenantId) {
+      throw new HttpsError('not-found', 'Serviço não encontrado nesta empresa.');
+    }
+    const galleryReference = firestore.collection(collections.productImageGalleries).doc(galleryId);
+    const publicReference = firestore.collection(collections.publicProductGalleries).doc(galleryId);
+    const gallerySnapshot = await transaction.get(galleryReference);
+    const gallery = documentData<ProductGalleryDocument>(gallerySnapshot);
+    if (!gallery || gallery.tenantId !== tenantId || gallery.productId !== productId) {
+      throw new HttpsError('not-found', 'Galeria não encontrada neste serviço.');
+    }
+    storagePaths = gallery.images.map((image) => image.storagePath);
+    transaction.delete(galleryReference);
+    transaction.delete(publicReference);
+  });
+  return { deleted: true, storagePaths };
 }
 
 export async function saveProfessional(
@@ -638,6 +957,3 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     );
   });
 }
-
-
-

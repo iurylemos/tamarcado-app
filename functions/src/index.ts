@@ -23,6 +23,10 @@ export {
   deleteBlockedPeriodCallable as deleteBlockedPeriod,
   saveTenantSettingsCallable as saveTenantSettings,
 } from './functions/backoffice/manage-company';
+export {
+  saveProductGalleryCallable as saveProductGallery,
+  deleteProductGalleryCallable as deleteProductGallery,
+} from './functions/products/manage-product';
 export { calculateCollaboratorReportCallable as calculateCollaboratorReport } from './functions/reports/calculate-collaborator-report';
 export { calculateSalesReportCallable as calculateSalesReport } from './functions/reports/calculate-sales-report';
 export { exportSalesReportCallable as exportSalesReport } from './functions/reports/export-sales-report';

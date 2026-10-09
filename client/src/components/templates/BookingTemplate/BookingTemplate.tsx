@@ -8,6 +8,10 @@ import type {
   PublicProductSummary,
 } from '../../../interfaces/company.interface';
 import type { BookingFormValues } from '../../../interfaces/booking.interface';
+import type {
+  ProductCustomizationSelection,
+  ProductImage,
+} from '@shared/interfaces/product.interface';
 import type { EligibleProfessional } from '../../../interfaces/professional.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
@@ -32,6 +36,11 @@ type BookingTemplateState =
       slug: string;
       catalog: CompanyCatalog;
       product: PublicProductSummary;
+      customizationSelections: ProductCustomizationSelection[];
+      onCustomizationChange: (attributeId: string, optionId: string) => void;
+      effectiveImages: ProductImage[];
+      selectedImageId: string;
+      onImageSelect: (imageId: string) => void;
       date: string;
       minimumDate: string;
       onDateChange: (date: string) => void;
@@ -154,6 +163,11 @@ function BookingReadyTemplate({
   slug,
   catalog,
   product,
+  customizationSelections,
+  onCustomizationChange,
+  effectiveImages,
+  selectedImageId,
+  onImageSelect,
   date,
   minimumDate,
   onDateChange,
@@ -188,7 +202,15 @@ function BookingReadyTemplate({
         <BookingHero />
 
         <div className="booking-layout">
-          <BookingServiceSummary catalog={catalog} product={product} />
+          <BookingServiceSummary
+            catalog={catalog}
+            product={product}
+            customizationSelections={customizationSelections}
+            onCustomizationChange={onCustomizationChange}
+            images={effectiveImages}
+            selectedImageId={selectedImageId}
+            onImageSelect={onImageSelect}
+          />
 
           <section className="booking-panel" aria-label="Escolha seu horário">
             <BookingAvailability

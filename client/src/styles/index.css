@@ -496,6 +496,55 @@ select {
   color: var(--color-muted);
   font-size: 0.9rem;
 }
+.product-image-gallery {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.8rem 0 1rem;
+}
+.product-image-gallery__main {
+  width: 100%;
+  max-height: 20rem;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.85rem;
+  object-fit: cover;
+}
+.product-image-gallery__controls,
+.product-image-gallery__thumbnails {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.product-image-gallery__controls button,
+.product-image-gallery__thumbnails button {
+  border: 1px solid var(--color-border);
+  border-radius: 0.55rem;
+  background: white;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+.product-image-gallery__thumbnails button {
+  padding: 0.15rem;
+}
+.product-image-gallery__thumbnails button[aria-pressed='true'] {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 2px rgb(185 28 28 / 0.2);
+}
+.product-image-gallery__thumbnails img {
+  display: block;
+  width: 3.5rem;
+  height: 2.6rem;
+  border-radius: 0.35rem;
+  object-fit: cover;
+}
+.booking-summary-customizations {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.8rem 0;
+  padding-left: 1.2rem;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
 .booking-summary-details {
   display: grid;
   gap: 0.6rem;

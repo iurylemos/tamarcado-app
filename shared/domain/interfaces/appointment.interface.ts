@@ -1,5 +1,9 @@
 import type { CommissionType } from './product.interface.js';
 import type { AppointmentStatus } from '../appointment-status.js';
+import type {
+  ProductCustomizationSelection,
+  ProductCustomizationSnapshot,
+} from './product.interface.js';
 
 export interface Appointment {
   id: string;
@@ -15,6 +19,7 @@ export interface Appointment {
   status: AppointmentStatus;
   productNameSnapshot: string;
   productImageUrlSnapshot?: string;
+  customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;
@@ -33,4 +38,6 @@ export interface CreatePublicAppointmentInput {
   customerPhone: string;
   customerName: string;
   whatsappOptIn?: boolean;
+  customizationSelections?: ProductCustomizationSelection[];
+  selectedImageId?: string;
 }

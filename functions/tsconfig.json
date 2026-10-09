@@ -7,6 +7,8 @@
     "moduleResolution": "nodenext",
     "jsx": "react-jsx",
     "paths": {
+      "@shared/interfaces/product.interface": ["../shared/domain/interfaces/product.interface.ts"],
+      "@shared/interfaces/*": ["../shared/domain/interfaces/*"],
       "@shared/*": ["../shared/domain/*"]
     },
     "rootDir": "..",

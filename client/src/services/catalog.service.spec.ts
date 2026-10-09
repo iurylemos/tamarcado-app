@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDocs } from 'firebase/firestore';
 import { getCompanyCatalog } from './catalog.service';
 
@@ -7,17 +7,45 @@ vi.mock('firebase/firestore', () => ({
   getDocs: vi.fn(),
   query: vi.fn((source, ...constraints) => ({ source, constraints })),
   where: vi.fn((field: string, _operator: string, value: unknown) => ({ field, value })),
+  limit: vi.fn((value: number) => ({ limit: value })),
 }));
 
 vi.mock('../config/firebase.config', () => ({ db: {} }));
 
 describe('getCompanyCatalog', () => {
-  it('starts business and service reads in parallel', () => {
-    vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
+  beforeEach(() => vi.clearAllMocks());
 
-    void getCompanyCatalog('studio-aurora');
+  it('loads product and gallery metadata in parallel after resolving the business', async () => {
+    vi.mocked(getDocs)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'tenant-aurora',
+            data: () => ({ tenantId: 'tenant-aurora' }),
+          },
+        ],
+      } as never)
+      .mockResolvedValue({ docs: [] } as never);
 
-    expect(getDocs).toHaveBeenCalledTimes(2);
+    await getCompanyCatalog('studio-aurora');
+
+    expect(getDocs).toHaveBeenCalledTimes(3);
+    expect(getDocs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ source: 'public_products' }),
+    );
+    expect(getDocs).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        source: 'public_product_galleries',
+        constraints: expect.arrayContaining([
+          { field: 'tenantId', value: 'tenant-aurora' },
+          { field: 'businessSlug', value: 'studio-aurora' },
+          { field: 'published', value: true },
+          { limit: 500 },
+        ]),
+      }),
+    );
   });
 
   it('returns only active public products owned by the business matched by the slug', async () => {
@@ -58,7 +86,8 @@ describe('getCompanyCatalog', () => {
             }),
           },
         ],
-      } as never);
+      } as never)
+      .mockResolvedValueOnce({ docs: [] } as never);
 
     const catalog = await getCompanyCatalog('studio-aurora');
 

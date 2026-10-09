@@ -359,6 +359,134 @@ describe('BookingPage professional selection', () => {
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
   });
 
+  it('selects defaults, shows values, switches exact-match galleries, and submits stable IDs', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/default.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          customizationAttributes: [
+            {
+              id: 'color',
+              label: 'Cor',
+              options: [
+                { id: 'natural', label: 'Natural' },
+                { id: 'black', label: 'Preto' },
+              ],
+              defaultOptionId: 'natural',
+            },
+            {
+              id: 'fabric',
+              label: 'Tecido',
+              options: [
+                { id: 'cotton', label: 'Algodão' },
+                { id: 'silk', label: 'Seda' },
+              ],
+              defaultOptionId: 'cotton',
+            },
+          ],
+          defaultImages: [
+            { id: 'default-1', storagePath: '', downloadUrl: '/default.jpg' },
+            { id: 'default-2', storagePath: '', downloadUrl: '/default-2.jpg' },
+          ],
+          imageGalleries: [
+            {
+              id: 'gallery-black-silk',
+              productId: 'service-corte',
+              combinationKey: 'color:black|fabric:silk',
+              selections: [
+                { attributeId: 'color', optionId: 'black' },
+                { attributeId: 'fabric', optionId: 'silk' },
+              ],
+              images: [
+                { id: 'variant-1', storagePath: '', downloadUrl: '/variant-1.jpg' },
+                { id: 'variant-2', storagePath: '', downloadUrl: '/variant-2.jpg' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    vi.mocked(listAvailability)
+      .mockResolvedValueOnce([
+        {
+          startsAt: '2030-02-04T12:00:00.000Z',
+          endsAt: '2030-02-04T14:00:00.000Z',
+          professionalId: 'ana',
+          professionalName: 'Ana Souza',
+        },
+      ])
+      .mockReturnValue(new Promise(() => undefined));
+    vi.mocked(createAppointment).mockResolvedValue({
+      appointmentId: 'appointment-customized',
+      status: 'pending',
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const colorSelect = await screen.findByLabelText('Cor');
+    const fabricSelect = screen.getByLabelText('Tecido');
+    expect(colorSelect).toHaveValue('natural');
+    expect(fabricSelect).toHaveValue('cotton');
+    expect(screen.getByText('Natural')).toBeInTheDocument();
+    expect(screen.getByText('Algodão')).toBeInTheDocument();
+    expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
+      'src',
+      '/default.jpg',
+    );
+
+    fireEvent.change(colorSelect, { target: { value: 'black' } });
+    expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
+      'src',
+      '/default.jpg',
+    );
+    fireEvent.change(fabricSelect, { target: { value: 'silk' } });
+    expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
+      'src',
+      '/variant-1.jpg',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima imagem' }));
+    expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
+      'src',
+      '/variant-2.jpg',
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: /09:00/ }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+
+    await waitFor(() =>
+      expect(createAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customizationSelections: [
+            { attributeId: 'color', optionId: 'black' },
+            { attributeId: 'fabric', optionId: 'silk' },
+          ],
+          selectedImageId: 'variant-2',
+        }),
+      ),
+    );
+  });
+
   it('scrolls the customer details into view once after selecting a time without focusing it', async () => {
     vi.mocked(listAvailability).mockResolvedValue([
       {

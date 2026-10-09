@@ -141,7 +141,11 @@ export default function CompanyCatalogTemplate({
                       href={`/empresa/${encodeURIComponent(catalog.business.slug)}/agendar/${encodeURIComponent(product.id)}`}
                     >
                       <div className="media">
-                        <img src={product.imageUrl} alt={product.name} loading="lazy" />
+                        <img
+                          src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
+                          alt={product.name}
+                          loading="lazy"
+                        />
                         <span className="price">{formatBrl(product.priceCents)}</span>
                       </div>
                       <div className="body">

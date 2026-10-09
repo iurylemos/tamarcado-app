@@ -14,6 +14,10 @@ import type {
 } from '../interfaces/collaborator.interface';
 import type { InputBlockedPeriod } from '../interfaces/period.interface';
 import type { InputCompany } from '../interfaces/company.interface';
+import type {
+  ProductCustomizationSelection,
+  ProductImage,
+} from '@shared/interfaces/product.interface';
 
 async function callable<TInput, TOutput>(name: string, data?: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;
@@ -37,6 +41,22 @@ export function saveProduct(
   product: Omit<ProductRecord, 'tenantId'>,
 ): Promise<Pick<GenericAdmin, 'id'>> {
   return callable('saveProduct', product);
+}
+
+export function saveProductGallery(input: {
+  productId: string;
+  galleryId?: string;
+  selections: ProductCustomizationSelection[];
+  images: ProductImage[];
+}): Promise<{ id: string }> {
+  return callable('saveProductGallery', input);
+}
+
+export function deleteProductGallery(input: {
+  productId: string;
+  galleryId: string;
+}): Promise<{ storagePaths: string[] }> {
+  return callable('deleteProductGallery', input);
 }
 
 export function saveProfessional(input: InputProfessional): Promise<Pick<GenericAdmin, 'id'>> {

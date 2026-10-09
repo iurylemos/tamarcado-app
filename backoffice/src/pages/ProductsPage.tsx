@@ -4,11 +4,13 @@ import ProductEditor from '../components/organisms/ProductEditor/ProductEditor';
 import { CurrencyUtil } from '../utils/currency.util';
 
 type ProductsPageProps = {
+  tenantId: string;
   products: ProductRecord[];
   onSaved: () => Promise<void>;
 };
 
 export default function ProductsPage({
+  tenantId,
   products,
   onSaved,
 }: Readonly<ProductsPageProps>): JSX.Element {
@@ -108,7 +110,12 @@ export default function ProductsPage({
         </div>
       )}
       {editorOpen && (
-        <ProductEditor product={selected} onClose={() => setEditorOpen(false)} onSaved={onSaved} />
+        <ProductEditor
+          product={selected}
+          tenantId={tenantId}
+          onClose={() => setEditorOpen(false)}
+          onSaved={onSaved}
+        />
       )}
     </section>
   );

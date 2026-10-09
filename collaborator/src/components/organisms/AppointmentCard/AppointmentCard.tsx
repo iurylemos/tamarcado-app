@@ -54,6 +54,15 @@ export default function AppointmentCard({
           {CurrencyUtil.formatPrice(appointment.productPriceCentsSnapshot)} ·{' '}
           {appointment.professionalNameSnapshot}
         </p>
+        {appointment.customizationSnapshot && appointment.customizationSnapshot.length > 0 && (
+          <ul className="appointment-card__customizations">
+            {appointment.customizationSnapshot.map((selection) => (
+              <li key={selection.attributeId}>
+                <strong>{selection.attributeLabel}:</strong> {selection.optionLabel}
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="appointment-card__actions">
           {appointment.status === 'pending' && (
             <>

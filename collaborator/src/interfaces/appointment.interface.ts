@@ -1,4 +1,5 @@
 import type { AppointmentStatus } from '@shared/appointment-status';
+import type { ProductCustomizationSnapshot } from '@shared/interfaces/product.interface';
 
 export interface CollaboratorAppointment {
   id: string;
@@ -14,6 +15,7 @@ export interface CollaboratorAppointment {
   status: AppointmentStatus;
   productNameSnapshot: string;
   productImageUrlSnapshot?: string;
+  customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
   whatsappOptIn: boolean;
 }

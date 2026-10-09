@@ -25,13 +25,28 @@ export const getPublicCatalog = onCall(callableOptionsPublic, async (request) =>
       description: business.description,
       logoUrl: business.logoUrl,
     },
-    products: products.map(({ id, name, description, imageUrl, priceCents, durationMinutes }) => ({
+    products: products.map(
+      ({
+        id,
+        name,
+        description,
+        imageUrl,
+        customizationAttributes,
+        defaultImages,
+        imageGalleries,
+        priceCents,
+        durationMinutes,
+      }) => ({
       id,
       name,
       description,
       imageUrl,
+      ...(customizationAttributes ? { customizationAttributes } : {}),
+      ...(defaultImages ? { defaultImages } : {}),
+      ...(imageGalleries ? { imageGalleries } : {}),
       priceCents,
       durationMinutes,
-    })),
+      }),
+    ),
   };
 });
