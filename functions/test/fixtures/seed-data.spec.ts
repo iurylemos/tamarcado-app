@@ -111,8 +111,20 @@ describe('shared seed data', () => {
           email: 'rafael@casanativa.test',
           tenantId: 'tenant-casa-nativa',
         }),
+        expect.objectContaining({
+          uid: 'test-backoffice-vitoria-moura-beauty',
+          email: 'admin@vitoriamourabeauty.com',
+          tenantId: 'tenant-vitoria-moura-beauty',
+          role: 'backoffice',
+        }),
       ]),
     );
+    expect(findDocument('users', 'test-backoffice-vitoria-moura-beauty')?.data).toMatchObject({
+      tenantId: 'tenant-vitoria-moura-beauty',
+      role: 'backoffice',
+      email: 'admin@vitoriamourabeauty.com',
+      active: true,
+    });
   });
 
   it('seeds four Vitória Moura Beauty products with complete variant prices', () => {

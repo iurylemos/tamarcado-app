@@ -648,6 +648,17 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       },
     },
     {
+      collection: 'users',
+      id: 'test-backoffice-vitoria-moura-beauty',
+      data: {
+        tenantId: 'tenant-vitoria-moura-beauty',
+        role: 'backoffice',
+        name: 'Gestor Vitória Moura Beauty',
+        email: 'admin@vitoriamourabeauty.com',
+        active: true,
+      },
+    },
+    {
       collection: 'connections',
       id: 'connection-aurora',
       data: { tenantId: 'tenant-aurora', provider: 'emulator-test-double', status: 'active' },
@@ -711,6 +722,12 @@ export const seedUsers = [
     tenantId: 'tenant-casa-nativa',
     role: 'collaborator',
     professionalId: 'professional-casa-nativa',
+  },
+  {
+    uid: 'test-backoffice-vitoria-moura-beauty',
+    email: 'admin@vitoriamourabeauty.com',
+    tenantId: 'tenant-vitoria-moura-beauty',
+    role: 'backoffice',
   },
 ] as const;
 
