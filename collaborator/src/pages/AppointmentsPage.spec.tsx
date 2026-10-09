@@ -34,6 +34,14 @@ const appointments: CollaboratorAppointment[] = [
     status: 'pending',
     productNameSnapshot: 'Corte',
     productImageUrlSnapshot: 'https://example.test/corte.jpg',
+    customizationSnapshot: [
+      {
+        attributeId: 'color',
+        attributeLabel: 'Cor',
+        optionId: 'brown',
+        optionLabel: 'Castanho',
+      },
+    ],
     productPriceCentsSnapshot: 12000,
     whatsappOptIn: false,
   },
@@ -80,6 +88,8 @@ describe('AppointmentsPage', () => {
     renderPage();
     expect(await screen.findByText('Cliente Um')).toBeInTheDocument();
     expect(screen.getByText('Cliente Dois')).toBeInTheDocument();
+    expect(screen.getByText('Castanho').closest('li')).toHaveTextContent('Cor: Castanho');
+    expect(screen.queryByText(/Tecido:/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Marcar como concluído' })).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Reagendar' })).toHaveLength(2);

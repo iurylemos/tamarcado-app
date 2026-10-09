@@ -15,6 +15,10 @@ import { eligibleProfessionals } from '../services/professional.service';
 import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import type { BookingFormValues } from '../interfaces/booking.interface';
+import type {
+  ProductCustomizationSelection,
+  ProductImage,
+} from '@shared/interfaces/product.interface';
 import type { EligibleProfessional } from '../interfaces/professional.interface';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
@@ -35,6 +39,10 @@ export default function BookingPage(): JSX.Element {
   const [error, setError] = useState<string>('');
   const [shareError, setShareError] = useState<string>('');
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
+  const [customizationSelections, setCustomizationSelections] = useState<
+    ProductCustomizationSelection[]
+  >([]);
+  const [selectedImageId, setSelectedImageId] = useState<string>('');
   const queryClient = useQueryClient();
   const skipSearchForDate = useRef<string | null>(null);
   const selectedDateRef = useRef(date);
@@ -43,6 +51,69 @@ export default function BookingPage(): JSX.Element {
     catalog?.business.slug === slug
       ? catalog.products.find((item) => item.id === productId)
       : undefined;
+  const effectiveImageGallery = useMemo(
+    () =>
+      product?.imageGalleries?.find(
+        (gallery) =>
+          gallery.selections.length === (product.customizationAttributes?.length ?? 0) &&
+          gallery.selections.every((selection) =>
+            customizationSelections.some(
+              (current) =>
+                current.attributeId === selection.attributeId &&
+                current.optionId === selection.optionId,
+            ),
+          ) &&
+          customizationSelections.every((selection) =>
+            gallery.selections.some(
+              (current) =>
+                current.attributeId === selection.attributeId &&
+                current.optionId === selection.optionId,
+            ),
+          ),
+      ),
+    [customizationSelections, product],
+  );
+  const effectiveImages: ProductImage[] = useMemo(
+    () => {
+      if (!product) return [];
+      if ((product.customizationAttributes?.length ?? 0) > 0) {
+        return effectiveImageGallery?.images.filter((image) => image.downloadUrl) ?? [];
+      }
+      return product.defaultImages?.length
+        ? product.defaultImages.filter((image) => image.downloadUrl)
+        : [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }];
+    },
+    [effectiveImageGallery, product],
+  );
+  const effectiveSelectedImageId = effectiveImages.some((image) => image.id === selectedImageId)
+    ? selectedImageId
+    : (effectiveImages[0]?.id ?? '');
+
+  useEffect(() => {
+    const attributes = product?.customizationAttributes ?? [];
+    setCustomizationSelections((current) => {
+      const next = attributes.map((attribute) => {
+        const selected = current.find((selection) => selection.attributeId === attribute.id);
+        return selected && attribute.options.some((option) => option.id === selected.optionId)
+          ? selected
+          : { attributeId: attribute.id, optionId: attribute.defaultOptionId };
+      });
+      const unchanged =
+        next.length === current.length &&
+        next.every(
+          (selection, index) =>
+            selection.attributeId === current[index]?.attributeId &&
+            selection.optionId === current[index]?.optionId,
+        );
+      return unchanged ? current : next;
+    });
+  }, [product]);
+
+  useEffect(() => {
+    if (!effectiveImages.some((image) => image.id === selectedImageId)) {
+      setSelectedImageId(effectiveImages[0]?.id ?? '');
+    }
+  }, [effectiveImages, selectedImageId]);
 
   const selectDate = useCallback((selectedDate: string): void => {
     setAvailabilityLoading(true);
@@ -211,6 +282,8 @@ export default function BookingPage(): JSX.Element {
         customerName: values.customerName,
         customerPhone: values.customerPhone,
         whatsappOptIn: values.whatsappOptIn,
+        ...(customizationSelections.length > 0 ? { customizationSelections } : {}),
+        ...(effectiveSelectedImageId ? { selectedImageId: effectiveSelectedImageId } : {}),
       });
 
       setReceipt({
@@ -336,6 +409,16 @@ export default function BookingPage(): JSX.Element {
       slug={slug}
       catalog={catalog}
       product={product}
+      customizationSelections={customizationSelections}
+      onCustomizationChange={(attributeId, optionId) =>
+        setCustomizationSelections((current) => [
+          ...current.filter((selection) => selection.attributeId !== attributeId),
+          { attributeId, optionId },
+        ])
+      }
+      effectiveImages={effectiveImages}
+      selectedImageId={effectiveSelectedImageId}
+      onImageSelect={setSelectedImageId}
       date={date}
       minimumDate={getNextBookableDate(new Date(Date.now() - 86_400_000))}
       onDateChange={selectDate}

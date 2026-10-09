@@ -14,6 +14,8 @@ export const collections = {
   messages: 'messages',
   publicBusinesses: 'public_businesses',
   publicProducts: 'public_products',
+  productImageGalleries: 'product_image_galleries',
+  publicProductGalleries: 'public_product_galleries',
   providerWebhookEvents: 'provider_webhook_events',
   providerOutbox: 'provider_outbox',
   appointmentNotificationJobs: 'appointment_notification_jobs',

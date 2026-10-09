@@ -240,8 +240,7 @@ select {
   min-height: 100vh;
   place-items: center;
   background:
-    radial-gradient(ellipse at 15% 0%, #e8e8ff 0, transparent 42%),
-    var(--color-background);
+    radial-gradient(ellipse at 15% 0%, #e8e8ff 0, transparent 42%), var(--color-background);
   padding: 1.5rem;
 }
 
@@ -360,6 +359,13 @@ select {
 .appointment-card__service {
   margin: 0;
   font-weight: 700;
+}
+
+.appointment-card__customizations {
+  margin: 0.5rem 0;
+  padding-left: 1.1rem;
+  color: var(--color-muted);
+  font-size: 0.9rem;
 }
 
 .status-badge {

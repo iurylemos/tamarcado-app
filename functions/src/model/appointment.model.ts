@@ -1,6 +1,9 @@
 import type { Timestamp } from 'firebase-admin/firestore';
 import type { AppointmentStatus } from '../../../shared/domain/appointment-status';
-import type { CommissionType } from '../../../shared/domain/interfaces/product.interface';
+import type {
+  CommissionType,
+  ProductCustomizationSnapshot,
+} from '../../../shared/domain/interfaces/product.interface';
 
 export interface AppointmentDocument {
   tenantId: string;
@@ -15,6 +18,7 @@ export interface AppointmentDocument {
   status: AppointmentStatus;
   productNameSnapshot: string;
   productImageUrlSnapshot?: string;
+  customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;

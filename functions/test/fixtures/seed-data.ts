@@ -1,8 +1,190 @@
+import type {
+  ProductCustomizationAttribute,
+  ProductVariantPrice,
+} from '../../../shared/domain/interfaces/product.interface';
+
 export type SeedDocument = {
   collection: string;
   id: string;
   data: Record<string, unknown>;
 };
+
+const sofaAttributes: ProductCustomizationAttribute[] = [
+  {
+    id: 'fabric',
+    label: 'Tecido',
+    options: [
+      { id: 'fabric-linen', label: 'Linho Areia' },
+      { id: 'fabric-suede', label: 'Suede Grafite' },
+      { id: 'fabric-velvet', label: 'Veludo Verde' },
+    ],
+    defaultOptionId: 'fabric-suede',
+  },
+  {
+    id: 'seats',
+    label: 'Lugares',
+    options: [
+      { id: 'seats-two', label: '2 lugares' },
+      { id: 'seats-three', label: '3 lugares' },
+      { id: 'seats-four', label: '4 lugares' },
+    ],
+    defaultOptionId: 'seats-three',
+  },
+];
+
+const headboardAttributes: ProductCustomizationAttribute[] = [
+  {
+    id: 'fabric',
+    label: 'Tecido',
+    options: [
+      { id: 'fabric-linen', label: 'Linho Natural' },
+      { id: 'fabric-suede', label: 'Suede Marrom' },
+      { id: 'fabric-velvet', label: 'Veludo Azul' },
+    ],
+    defaultOptionId: 'fabric-linen',
+  },
+  {
+    id: 'size',
+    label: 'Tamanho',
+    options: [
+      { id: 'size-double', label: 'Casal' },
+      { id: 'size-queen', label: 'Queen' },
+      { id: 'size-king', label: 'King' },
+    ],
+    defaultOptionId: 'size-queen',
+  },
+];
+
+const beautyBrows = [
+  { id: 'design', name: 'Design', priceCents: 2500 },
+  { id: 'design-henna', name: 'Design + Henna', priceCents: 4000 },
+  { id: 'design-tintura', name: 'Design + Tintura', priceCents: 5000 },
+  { id: 'brow-lamination', name: 'Brow Lamination', priceCents: 8000 },
+] as const;
+
+const beautyLashes = [
+  { id: 'lash-lifting', name: 'Lash Lifting', priceCents: 10000 },
+  { id: 'volume-express', name: 'Volume Express', priceCents: 9000 },
+  { id: 'volume-brasileiro', name: 'Volume Brasileiro', priceCents: 12000 },
+  { id: 'volume-intermediario', name: 'Volume intermediário', priceCents: 12000 },
+  { id: 'volume-ingles', name: 'Volume Inglês', priceCents: 14000 },
+  { id: 'volume-fox', name: 'Volume Fox', priceCents: 14000 },
+] as const;
+
+const beautyMaintenance = [
+  { id: 'volume-brasileiro', name: 'Volume Brasileiro', priceCents: 8500 },
+  { id: 'volume-intermediario', name: 'Volume intermediário', priceCents: 8500 },
+  { id: 'volume-ingles', name: 'Volume Inglês', priceCents: 9500 },
+  { id: 'volume-fox', name: 'Volume Fox', priceCents: 10000 },
+] as const;
+
+const beautyComboLashes = beautyLashes.filter((lash) => lash.id !== 'lash-lifting');
+const beautyProductImageUrl =
+  'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=85';
+
+type BeautyProductSeed = {
+  id: string;
+  name: string;
+  priceCents: number;
+  durationMinutes: number;
+  customizationAttributes: ProductCustomizationAttribute[];
+  variantPrices: ProductVariantPrice[];
+};
+
+const beautyProducts: BeautyProductSeed[] = [
+  {
+    id: 'service-vitoria-brows',
+    name: 'Sobrancelhas',
+    priceCents: beautyBrows[0].priceCents,
+    durationMinutes: 60,
+    customizationAttributes: [
+      {
+        id: 'brow-service',
+        label: 'Procedimento',
+        options: beautyBrows.map(({ id, name }) => ({ id, label: name })),
+        defaultOptionId: beautyBrows[0].id,
+      },
+    ],
+    variantPrices: beautyBrows.map(({ id, priceCents }) => ({
+      selections: [{ attributeId: 'brow-service', optionId: id }],
+      priceCents,
+    })),
+  },
+  {
+    id: 'service-vitoria-lashes',
+    name: 'Cílios',
+    priceCents: beautyLashes[0].priceCents,
+    durationMinutes: 120,
+    customizationAttributes: [
+      {
+        id: 'lash-service',
+        label: 'Procedimento',
+        options: beautyLashes.map(({ id, name }) => ({ id, label: name })),
+        defaultOptionId: beautyLashes[0].id,
+      },
+    ],
+    variantPrices: beautyLashes.map(({ id, priceCents }) => ({
+      selections: [{ attributeId: 'lash-service', optionId: id }],
+      priceCents,
+    })),
+  },
+  {
+    id: 'service-vitoria-maintenance',
+    name: 'Manutenção',
+    priceCents: beautyMaintenance[0].priceCents,
+    durationMinutes: 60,
+    customizationAttributes: [
+      {
+        id: 'maintenance-service',
+        label: 'Procedimento',
+        options: beautyMaintenance.map(({ id, name }) => ({ id, label: name })),
+        defaultOptionId: beautyMaintenance[0].id,
+      },
+    ],
+    variantPrices: beautyMaintenance.map(({ id, priceCents }) => ({
+      selections: [{ attributeId: 'maintenance-service', optionId: id }],
+      priceCents,
+    })),
+  },
+  {
+    id: 'service-vitoria-combo',
+    name: 'Cílios + Sobrancelhas',
+    priceCents: beautyBrows[0].priceCents + beautyComboLashes[0]!.priceCents,
+    durationMinutes: 180,
+    customizationAttributes: [
+      {
+        id: 'brow-service',
+        label: 'Sobrancelhas',
+        options: beautyBrows.map(({ id, name }) => ({ id, label: name })),
+        defaultOptionId: beautyBrows[0].id,
+      },
+      {
+        id: 'lash-service',
+        label: 'Cílios',
+        options: beautyComboLashes.map(({ id, name }) => ({ id, label: name })),
+        defaultOptionId: beautyComboLashes[0]!.id,
+      },
+    ],
+    variantPrices: beautyBrows.flatMap((brow) =>
+      beautyComboLashes.map((lash) => ({
+        selections: [
+          { attributeId: 'brow-service', optionId: brow.id },
+          { attributeId: 'lash-service', optionId: lash.id },
+        ],
+        priceCents: brow.priceCents + lash.priceCents,
+      })),
+    ),
+  },
+];
+
+const retiredBeautyProductIds = [
+  ...beautyBrows.map((service) => `service-vitoria-brow-${service.id}`),
+  ...beautyLashes.map((service) => `service-vitoria-lash-${service.id}`),
+  ...beautyMaintenance.map((service) => `service-vitoria-maintenance-${service.id}`),
+  ...beautyBrows.flatMap((brow) =>
+    beautyComboLashes.map((lash) => `service-vitoria-combo-${brow.id}-${lash.id}`),
+  ),
+];
 
 const fixedDate = (daysFromNow: number, hour = 10) => {
   const date = new Date();
@@ -39,6 +221,36 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         description: 'Atendimento próximo e acolhedor.',
         timezone: 'America/Sao_Paulo',
         bookingIntervalMinutes: 30,
+        active: true,
+      },
+    },
+    {
+      id: 'tenant-casa-nativa',
+      data: {
+        name: 'Casa Nativa Móveis',
+        slug: 'casa-nativa-moveis',
+        segment: 'home',
+        description: 'Sofás e cabeceiras feitos para deixar a casa com a sua cara.',
+        logoUrl:
+          'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=640&q=80',
+        emailDomain: 'casanativa.test',
+        timezone: 'America/Sao_Paulo',
+        bookingIntervalMinutes: 30,
+        active: true,
+      },
+    },
+    {
+      id: 'tenant-vitoria-moura-beauty',
+      data: {
+        name: 'Vitória Moura Beauty',
+        slug: 'vitoria-moura-beauty',
+        segment: 'beauty',
+        description: 'Brilhe através do Seu olhar',
+        logoUrl:
+          'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?auto=format&fit=crop&w=640&q=80',
+        emailDomain: 'vitoriamourabeauty.test',
+        timezone: 'America/Sao_Paulo',
+        bookingIntervalMinutes: 15,
         active: true,
       },
     },
@@ -80,7 +292,32 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       photoUrl:
         'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=256&q=80',
     },
+    {
+      id: 'professional-casa-nativa',
+      tenantId: 'tenant-casa-nativa',
+      name: 'Rafael Costa',
+      active: true,
+      phoneE164: '+5511999990005',
+      photoUrl:
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+    },
+    {
+      id: 'professional-vitoria-moura',
+      tenantId: 'tenant-vitoria-moura-beauty',
+      name: 'Vitória Moura',
+      active: true,
+      photoUrl:
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+    },
   ];
+  const seededBeautyProducts = beautyProducts.map((service) => ({
+    ...service,
+    tenantId: 'tenant-vitoria-moura-beauty',
+    imageUrl: beautyProductImageUrl,
+    commissionType: 'percentage' as const,
+    commissionValue: 3500,
+    active: true,
+  }));
   const products = [
     {
       id: 'service-corte',
@@ -133,6 +370,35 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       commissionValue: 5000,
       active: true,
     },
+    {
+      id: 'product-sofa-modular',
+      tenantId: 'tenant-casa-nativa',
+      name: 'Sofá modular Nativa',
+      description: 'Sofá sob medida com escolha de tecido e quantidade de lugares.',
+      imageUrl:
+        'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=900&q=85',
+      customizationAttributes: sofaAttributes,
+      priceCents: 389900,
+      durationMinutes: 30,
+      commissionType: 'percentage',
+      commissionValue: 5000,
+      active: true,
+    },
+    {
+      id: 'product-headboard-upholstered',
+      tenantId: 'tenant-casa-nativa',
+      name: 'Cabeceira estofada Nativa',
+      description: 'Cabeceira estofada disponível em diferentes tecidos e tamanhos.',
+      imageUrl:
+        'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=85',
+      customizationAttributes: headboardAttributes,
+      priceCents: 149900,
+      durationMinutes: 30,
+      commissionType: 'percentage',
+      commissionValue: 5000,
+      active: true,
+    },
+    ...seededBeautyProducts,
   ];
   const documents: SeedDocument[] = [];
 
@@ -180,9 +446,41 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         priceCents: product.priceCents,
         durationMinutes: product.durationMinutes,
         active: product.active,
+        ...('customizationAttributes' in product
+          ? { customizationAttributes: product.customizationAttributes }
+          : {}),
+        ...('variantPrices' in product ? { variantPrices: product.variantPrices } : {}),
         published: true,
       },
     });
+  }
+  for (const productId of retiredBeautyProductIds) {
+    documents.push(
+      {
+        collection: 'products',
+        id: productId,
+        data: { tenantId: 'tenant-vitoria-moura-beauty', active: false },
+      },
+      {
+        collection: 'public_products',
+        id: productId,
+        data: {
+          tenantId: 'tenant-vitoria-moura-beauty',
+          active: false,
+          published: false,
+        },
+      },
+      {
+        collection: 'professional_products',
+        id: ['tenant-vitoria-moura-beauty', 'professional-vitoria-moura', productId].join('__'),
+        data: {
+          tenantId: 'tenant-vitoria-moura-beauty',
+          professionalId: 'professional-vitoria-moura',
+          productId,
+          active: false,
+        },
+      },
+    );
   }
 
   const assignments = [
@@ -191,6 +489,12 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
     ['tenant-aurora', 'professional-ana', 'service-coloracao', true],
     ['tenant-aurora', 'professional-inactive', 'service-corte', true],
     ['tenant-horizonte', 'professional-horizonte', 'service-consulta', true],
+    ['tenant-casa-nativa', 'professional-casa-nativa', 'product-sofa-modular', true],
+    ['tenant-casa-nativa', 'professional-casa-nativa', 'product-headboard-upholstered', true],
+    ...seededBeautyProducts.map(
+      (product) =>
+        ['tenant-vitoria-moura-beauty', 'professional-vitoria-moura', product.id, true] as const,
+    ),
   ] as const;
   for (const [tenantId, professionalId, productId, active] of assignments) {
     const id = [tenantId, professionalId, productId].join('__');
@@ -206,6 +510,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
     ['tenant-aurora', 'professional-bruna'],
     ['tenant-aurora', 'professional-inactive'],
     ['tenant-horizonte', 'professional-horizonte'],
+    ['tenant-casa-nativa', 'professional-casa-nativa'],
+    ['tenant-vitoria-moura-beauty', 'professional-vitoria-moura'],
   ] as const;
   for (const [tenantId, professionalId] of hours) {
     for (let dayOfWeek = 1; dayOfWeek <= 6; dayOfWeek += 1) {
@@ -317,6 +623,42 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       },
     },
     {
+      collection: 'users',
+      id: 'test-backoffice-casa-nativa',
+      data: {
+        tenantId: 'tenant-casa-nativa',
+        role: 'backoffice',
+        name: 'Gestor Casa Nativa',
+        phoneE164: '+5511999990011',
+        email: 'admin@casanativa.test',
+        active: true,
+      },
+    },
+    {
+      collection: 'users',
+      id: 'test-collaborator-casa-nativa',
+      data: {
+        tenantId: 'tenant-casa-nativa',
+        role: 'collaborator',
+        professionalId: 'professional-casa-nativa',
+        name: 'Rafael Costa',
+        phoneE164: '+5511999990005',
+        email: 'rafael@casanativa.test',
+        active: true,
+      },
+    },
+    {
+      collection: 'users',
+      id: 'test-backoffice-vitoria-moura-beauty',
+      data: {
+        tenantId: 'tenant-vitoria-moura-beauty',
+        role: 'backoffice',
+        name: 'Gestor Vitória Moura Beauty',
+        email: 'admin@vitoriamourabeauty.com',
+        active: true,
+      },
+    },
+    {
       collection: 'connections',
       id: 'connection-aurora',
       data: { tenantId: 'tenant-aurora', provider: 'emulator-test-double', status: 'active' },
@@ -366,6 +708,25 @@ export const seedUsers = [
     uid: 'test-backoffice-horizonte',
     email: 'admin@horizonte.test',
     tenantId: 'tenant-horizonte',
+    role: 'backoffice',
+  },
+  {
+    uid: 'test-backoffice-casa-nativa',
+    email: 'admin@casanativa.test',
+    tenantId: 'tenant-casa-nativa',
+    role: 'backoffice',
+  },
+  {
+    uid: 'test-collaborator-casa-nativa',
+    email: 'rafael@casanativa.test',
+    tenantId: 'tenant-casa-nativa',
+    role: 'collaborator',
+    professionalId: 'professional-casa-nativa',
+  },
+  {
+    uid: 'test-backoffice-vitoria-moura-beauty',
+    email: 'admin@vitoriamourabeauty.com',
+    tenantId: 'tenant-vitoria-moura-beauty',
     role: 'backoffice',
   },
 ] as const;

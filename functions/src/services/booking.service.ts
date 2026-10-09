@@ -7,13 +7,25 @@ import type { CreatePublicAppointmentInput } from '../../../shared/domain/interf
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { fiveMinuteBucketStarts } from '../../../shared/domain/interval';
 import { calculateCommissionCents } from '../../../shared/domain/money';
+import { resolveProductPriceCents } from '../../../shared/domain/product-price';
 import { getZonedDateTimeParts, isValidDateString } from '../../../shared/domain/timezone';
 import { DomainError } from '../../../shared/domain/errors';
+import type {
+  ProductCustomizationAttribute,
+  ProductCustomizationSelection,
+  ProductImage,
+} from '../../../shared/domain/interfaces/product.interface';
 import { collections } from '../config/collections';
 import { firestore, professionalProductId } from './firestore.service';
 import { findBookableProduct, findPublicBusiness } from './public-catalog.service';
 import { isRequestedSlotAvailable } from './availability.service';
 import { isFirestoreIndexUnavailableError } from './firestore-error.service';
+import {
+  defaultProductImages,
+  productGalleryCombinationKey,
+  productGalleryDocumentId,
+  type ProductGalleryDocument,
+} from '../model/product-gallery.model';
 
 let bookingColdStart = true;
 
@@ -36,6 +48,35 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   ) {
     throw new HttpsError('invalid-argument', 'Revise os dados do agendamento e tente novamente.');
   }
+  let customizationSelections: ProductCustomizationSelection[] | undefined;
+  if (input.customizationSelections !== undefined) {
+    if (!Array.isArray(input.customizationSelections)) {
+      throw new HttpsError('invalid-argument', 'As opções selecionadas são inválidas.');
+    }
+    customizationSelections = input.customizationSelections.map((value) => {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new HttpsError('invalid-argument', 'As opções selecionadas são inválidas.');
+      }
+      const selection = value as Record<string, unknown>;
+      if (
+        typeof selection.attributeId !== 'string' ||
+        !selection.attributeId.trim() ||
+        typeof selection.optionId !== 'string' ||
+        !selection.optionId.trim()
+      ) {
+        throw new HttpsError('invalid-argument', 'As opções selecionadas são inválidas.');
+      }
+      return { attributeId: selection.attributeId, optionId: selection.optionId };
+    });
+  }
+  if (
+    input.selectedImageId !== undefined &&
+    (typeof input.selectedImageId !== 'string' ||
+      !input.selectedImageId.trim() ||
+      input.selectedImageId.length > 100)
+  ) {
+    throw new HttpsError('invalid-argument', 'A imagem selecionada é inválida.');
+  }
   return {
     businessSlug: input.businessSlug,
     productId: input.productId,
@@ -44,8 +85,117 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
     customerPhone: input.customerPhone,
     customerName: input.customerName.trim(),
     whatsappOptIn: input.whatsappOptIn === true,
+    ...(customizationSelections !== undefined ? { customizationSelections } : {}),
+    ...(input.selectedImageId !== undefined ? { selectedImageId: input.selectedImageId } : {}),
   };
 };
+
+function validateCustomizationSelections(
+  attributes: ProductCustomizationAttribute[] | undefined,
+  selections: ProductCustomizationSelection[] | undefined,
+): {
+  selections: ProductCustomizationSelection[];
+  snapshot?: Array<{
+    attributeId: string;
+    attributeLabel: string;
+    optionId: string;
+    optionLabel: string;
+  }>;
+} {
+  if (!attributes?.length) {
+    if (selections?.length) {
+      throw new HttpsError('invalid-argument', 'Este serviço não possui opções de personalização.');
+    }
+    return { selections: [] };
+  }
+  if (!selections || selections.length !== attributes.length) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Selecione exatamente uma opção para cada atributo do serviço.',
+    );
+  }
+  const selectionByAttribute = new Map<string, string>();
+  for (const selection of selections) {
+    if (selectionByAttribute.has(selection.attributeId)) {
+      throw new HttpsError('invalid-argument', 'A seleção não pode conter atributos duplicados.');
+    }
+    selectionByAttribute.set(selection.attributeId, selection.optionId);
+  }
+  const snapshot = attributes.map((attribute) => {
+    const optionId = selectionByAttribute.get(attribute.id);
+    const option = attribute.options.find((candidate) => candidate.id === optionId);
+    if (!option) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Uma ou mais opções não pertencem ao serviço selecionado.',
+      );
+    }
+    return {
+      attributeId: attribute.id,
+      attributeLabel: attribute.label,
+      optionId: option.id,
+      optionLabel: option.label,
+    };
+  });
+  return {
+    selections: snapshot.map(({ attributeId, optionId }) => ({ attributeId, optionId })),
+    snapshot,
+  };
+}
+
+function isProductImage(value: unknown): value is ProductImage {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const image = value as Record<string, unknown>;
+  return (
+    typeof image.id === 'string' &&
+    typeof image.storagePath === 'string' &&
+    typeof image.downloadUrl === 'string' &&
+    (image.downloadUrl.startsWith('https://') || image.downloadUrl.startsWith('http://'))
+  );
+}
+
+async function resolveEffectiveGallery(
+  business: { tenantId: string },
+  product: Awaited<ReturnType<typeof findBookableProduct>>,
+  selections: ProductCustomizationSelection[],
+): Promise<ProductImage[]> {
+  const defaults = defaultProductImages(product);
+  if (
+    defaults.length < 1 ||
+    defaults.length > 10 ||
+    !defaults.every(isProductImage)
+  ) {
+    throw new HttpsError('internal', 'A galeria padrão do serviço está inválida.');
+  }
+  if (selections.length === 0) return defaults;
+
+  const combinationKey = productGalleryCombinationKey(selections);
+  const galleryId = productGalleryDocumentId(product.id, combinationKey);
+  const gallerySnapshot = await firestore
+    .collection(collections.productImageGalleries)
+    .doc(galleryId)
+    .get();
+  const gallery = gallerySnapshot.data() as ProductGalleryDocument | undefined;
+  if (
+    !gallerySnapshot.exists ||
+    !gallery ||
+    gallery.tenantId !== business.tenantId ||
+    gallery.productId !== product.id ||
+    gallery.combinationKey !== combinationKey ||
+    gallery.published !== true
+  ) {
+    return defaults;
+  }
+  if (
+    !Array.isArray(gallery.images) ||
+    gallery.images.length < 1 ||
+    gallery.images.length > 10 ||
+    !gallery.images.every(isProductImage)
+  ) {
+    throw new HttpsError('internal', 'A galeria de imagens do serviço está inválida.');
+  }
+  return gallery.images;
+}
 
 export function reservationDocumentId(
   tenantId: string,
@@ -117,6 +267,35 @@ export async function createPublicAppointment(
       throw new HttpsError(
         'failed-precondition',
         'Este profissional não atende o serviço selecionado.',
+      );
+    }
+    const customization = validateCustomizationSelections(
+      product.customizationAttributes,
+      input.customizationSelections,
+    );
+    const priceCents = resolveProductPriceCents(
+      product.priceCents,
+      product.variantPrices,
+      customization.selections,
+    );
+    if (priceCents === undefined) {
+      throw new HttpsError(
+        'failed-precondition',
+        'O preço desta combinação de opções não está disponível.',
+      );
+    }
+    const effectiveImages = await resolveEffectiveGallery(
+      business,
+      product,
+      customization.selections,
+    );
+    const selectedImage = input.selectedImageId
+      ? effectiveImages.find((image) => image.id === input.selectedImageId)
+      : effectiveImages[0];
+    if (!selectedImage) {
+      throw new HttpsError(
+        'invalid-argument',
+        'A imagem selecionada não pertence à galeria deste serviço.',
       );
     }
     logger.info('booking.performance', {
@@ -203,7 +382,7 @@ export async function createPublicAppointment(
       const createdAt = Timestamp.now();
 
       const commissionAmountCents = calculateCommissionCents(
-        product.priceCents,
+        priceCents,
         product.commissionType,
         product.commissionValue,
       );
@@ -220,8 +399,9 @@ export async function createPublicAppointment(
         durationMinutes: product.durationMinutes,
         status: 'pending',
         productNameSnapshot: product.name,
-        productImageUrlSnapshot: product.imageUrl,
-        productPriceCentsSnapshot: product.priceCents,
+        productImageUrlSnapshot: selectedImage.downloadUrl,
+        ...(customization.snapshot ? { customizationSnapshot: customization.snapshot } : {}),
+        productPriceCentsSnapshot: priceCents,
         commissionTypeSnapshot: product.commissionType,
         commissionValueSnapshot: product.commissionValue,
         commissionAmountCentsSnapshot: commissionAmountCents,

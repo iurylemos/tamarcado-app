@@ -1,0 +1,23 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function activeBackoffice(tenantId) {
+      let userPath = /databases/(default)/documents/users/$(request.auth.uid);
+      return request.auth != null
+        && request.auth.token.role == 'backoffice'
+        && request.auth.token.active == true
+        && request.auth.token.tenantId == tenantId
+        && firestore.get(userPath).data.active == true
+        && firestore.get(userPath).data.role == 'backoffice'
+        && firestore.get(userPath).data.tenantId == tenantId;
+    }
+
+    match /product-images/{tenantId}/{productId}/{imageId} {
+      allow read: if true;
+      allow create, update: if activeBackoffice(tenantId)
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if activeBackoffice(tenantId);
+    }
+  }
+}

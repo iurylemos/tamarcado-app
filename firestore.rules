@@ -33,6 +33,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /public_product_galleries/{galleryId} {
+      allow read: if resource.data.published == true;
+      allow write: if false;
+    }
+
     match /tenants/{tenantId} {
       allow read, write: if false;
     }

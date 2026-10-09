@@ -1,6 +1,7 @@
 import { applicationDefault, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { createSeedDocuments, seedUserClaims, seedUsers } from './seed-data';
 
 function parseProjectId(args: string[]): string {
@@ -35,116 +36,82 @@ function parseProjectId(args: string[]): string {
   return projectId;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isUserNotFound(error: unknown): boolean {
-  return isRecord(error) && error.code === 'auth/user-not-found';
-}
-
-type SeedUser = (typeof seedUsers)[number];
-
-function readSeedPasswords(usersToCreate: readonly SeedUser[]): Record<string, string> {
-  if (usersToCreate.length === 0) return {};
-
-  const rawPasswords = process.env.SEED_USER_PASSWORDS_JSON;
-  if (!rawPasswords) {
-    throw new Error(
-      'Set SEED_USER_PASSWORDS_JSON with a unique password for each seed user to create.',
-    );
+function readSeedPassword(): string {
+  const password = process.env.SEED_USER_PASSWORD ?? '@Admin123';
+  if (password.length < 6) {
+    throw new Error('SEED_USER_PASSWORD must contain at least 6 characters.');
   }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawPasswords);
-  } catch {
-    throw new Error('SEED_USER_PASSWORDS_JSON must contain a valid JSON object keyed by user UID.');
-  }
-
-  if (!isRecord(parsed) || Array.isArray(parsed)) {
-    throw new Error('SEED_USER_PASSWORDS_JSON must contain a JSON object keyed by user UID.');
-  }
-
-  const passwords: Record<string, string> = {};
-  const uniquePasswords = new Set<string>();
-  for (const user of usersToCreate) {
-    const password = parsed[user.uid];
-    if (typeof password !== 'string' || password.length < 16) {
-      throw new Error(
-        `Provide a unique password of at least 16 characters for seed user "${user.uid}" in SEED_USER_PASSWORDS_JSON.`,
-      );
-    }
-    if (uniquePasswords.has(password)) {
-      throw new Error('Each production seed user must have a different password.');
-    }
-    uniquePasswords.add(password);
-    passwords[user.uid] = password;
-  }
-
-  return passwords;
+  return password;
 }
 
 async function seedProduction(): Promise<void> {
   const projectId = parseProjectId(process.argv.slice(2));
-  if (process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+  if (
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    process.env.FIREBASE_STORAGE_EMULATOR_HOST
+  ) {
     throw new Error('Unset Firebase emulator host variables before running the production seed.');
   }
+  const password = readSeedPassword();
   const app = initializeApp(
     { credential: applicationDefault(), projectId },
     `production-seed-${projectId}`,
   );
   const db = getFirestore(app);
   const auth = getAuth(app);
+  const storage = getStorage(app);
+  const bucketName =
+    process.env.VITE_FIREBASE_STORAGE_BUCKET ??
+    process.env.FIREBASE_STORAGE_BUCKET ??
+    `${projectId}.appspot.com`;
 
-  const existingUserIds = new Set<string>();
-  for (const user of seedUsers) {
-    try {
-      const existingUser = await auth.getUser(user.uid);
-      if (existingUser.email !== user.email) {
-        throw new Error(
-          `Seed UID "${user.uid}" already belongs to a different email; refusing to modify it.`,
-        );
-      }
-      existingUserIds.add(user.uid);
-    } catch (error: unknown) {
-      if (!isUserNotFound(error)) throw error;
-      try {
-        const existingEmail = await auth.getUserByEmail(user.email);
-        throw new Error(
-          `Seed email "${user.email}" already belongs to UID "${existingEmail.uid}".`,
-        );
-      } catch (emailError: unknown) {
-        if (!isUserNotFound(emailError)) throw emailError;
-      }
-    }
+  await storage.bucket(bucketName).deleteFiles({ force: true });
+
+  for (const collection of await db.listCollections()) {
+    await db.recursiveDelete(collection);
   }
 
-  const usersToCreate = seedUsers.filter((user) => !existingUserIds.has(user.uid));
-  const passwords = readSeedPasswords(usersToCreate);
-  for (const user of seedUsers) {
-    if (!existingUserIds.has(user.uid)) {
-      await auth.createUser({
-        uid: user.uid,
-        email: user.email,
-        password: passwords[user.uid],
-        emailVerified: true,
-      });
+  let pageToken: string | undefined;
+  do {
+    const page = await auth.listUsers(1_000, pageToken);
+    for (let offset = 0; offset < page.users.length; offset += 1_000) {
+      const usersToDelete = page.users.slice(offset, offset + 1_000);
+      const result = await auth.deleteUsers(usersToDelete.map((user) => user.uid));
+      if (result.failureCount > 0) {
+        throw new Error(
+          `Failed to clear ${result.failureCount} Firebase Auth users: ${result.errors
+            .map(
+              (error) => `${usersToDelete[error.index]?.uid ?? error.index} (${error.error.code})`,
+            )
+            .join(', ')}`,
+        );
+      }
     }
-    await auth.setCustomUserClaims(user.uid, seedUserClaims(user));
-  }
+    pageToken = page.pageToken;
+  } while (pageToken);
 
   const documents = createSeedDocuments();
   for (let offset = 0; offset < documents.length; offset += 450) {
     const batch = db.batch();
     for (const item of documents.slice(offset, offset + 450)) {
-      batch.set(db.collection(item.collection).doc(item.id), item.data, { merge: true });
+      batch.set(db.collection(item.collection).doc(item.id), item.data);
     }
     await batch.commit();
   }
 
+  for (const user of seedUsers) {
+    await auth.createUser({
+      uid: user.uid,
+      email: user.email,
+      password,
+      emailVerified: true,
+    });
+    await auth.setCustomUserClaims(user.uid, seedUserClaims(user));
+  }
+
   console.info(
-    `Seeded ${documents.length} documents and ${seedUsers.length} users in ${projectId}. Existing user passwords were not changed.`,
+    `Reset Auth, Firestore, and Storage; seeded ${documents.length} documents and ${seedUsers.length} users in ${projectId}.`,
   );
 }
 

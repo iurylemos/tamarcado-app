@@ -1,4 +1,10 @@
 import type { BusinessSegment } from '../../../shared/domain/interfaces/tenant.interface.js';
+import type {
+  ProductCustomizationAttribute,
+  ProductImage,
+  ProductImageGallery,
+  ProductVariantPrice,
+} from '@shared/interfaces/product.interface';
 
 export interface CompanySummary {
   id: string;
@@ -19,6 +25,10 @@ export interface PublicProductSummary {
   name: string;
   description?: string;
   imageUrl: string;
+  customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
+  defaultImages?: ProductImage[];
+  imageGalleries?: ProductImageGallery[];
   priceCents: number;
   durationMinutes: number;
 }

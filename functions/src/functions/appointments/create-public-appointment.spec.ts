@@ -17,6 +17,11 @@ import {
   WhatsAppProviderError,
   type WhatsAppProvider,
 } from '../../services/whatsapp-provider.interface';
+import {
+  createProductCustomizationTestDocuments,
+  customizationTestProductId,
+  customizationTestSelections,
+} from '../../../test/fixtures/product-customization-data';
 
 const emulatorOnly = describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
 let db: Firestore;
@@ -38,7 +43,7 @@ async function resetFirestore() {
     await batch.commit();
   }
   const batch = db.batch();
-  createSeedDocuments().forEach((document) => {
+  [...createSeedDocuments(), ...createProductCustomizationTestDocuments()].forEach((document) => {
     batch.set(db.collection(document.collection).doc(document.id), document.data);
   });
   await batch.commit();
@@ -61,6 +66,168 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     await expect(findBookableProduct(business, 'service-consulta')).rejects.toThrow(
       'Serviço não encontrado para esta empresa.',
     );
+  });
+
+  it('validates current selections and snapshots server-derived labels and the selected gallery URL', async () => {
+    const slots = await listAvailableSlots({
+      businessSlug: 'studio-aurora',
+      productId: customizationTestProductId,
+      professionalId: 'professional-ana',
+      date: nextOpenDate(),
+    });
+    const slot = slots[0];
+    expect(slot).toBeDefined();
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: customizationTestProductId,
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      customizationSelections: customizationTestSelections.map((selection) => ({
+        ...selection,
+        attributeLabel: 'client label is ignored',
+        optionLabel: 'client option is ignored',
+      })) as typeof customizationTestSelections,
+      selectedImageId: 'variant-image-2',
+      productImageUrlSnapshot: 'https://untrusted.example/client-url',
+    });
+    const appointment = (
+      await db.collection('appointments').doc(result.appointmentId).get()
+    ).data();
+    expect(appointment).toMatchObject({
+      productImageUrlSnapshot: 'https://images.example.test/variant-2.jpg',
+      customizationSnapshot: [
+        {
+          attributeId: 'color',
+          attributeLabel: 'Cor',
+          optionId: 'color-brown',
+          optionLabel: 'Castanho',
+        },
+        {
+          attributeId: 'size',
+          attributeLabel: 'Tamanho',
+          optionId: 'size-couple',
+          optionLabel: 'Casal',
+        },
+      ],
+    });
+    expect(appointment?.productImageUrlSnapshot).not.toBe('https://untrusted.example/client-url');
+  });
+
+  it('uses the selected variant price for the appointment snapshot and commission', async () => {
+    const slots = await listAvailableSlots({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      professionalId: 'professional-vitoria-moura',
+      date: nextOpenDate(),
+    });
+    const slot = slots[0];
+    expect(slot).toBeDefined();
+
+    const result = await createPublicAppointment({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      professionalId: 'professional-vitoria-moura',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      customizationSelections: [
+        { attributeId: 'lash-service', optionId: 'volume-brasileiro' },
+      ],
+    });
+    const appointment = (
+      await db.collection('appointments').doc(result.appointmentId).get()
+    ).data();
+
+    expect(appointment).toMatchObject({
+      productPriceCentsSnapshot: 12000,
+      commissionAmountCentsSnapshot: 4200,
+      customizationSnapshot: [
+        {
+          attributeId: 'lash-service',
+          optionId: 'volume-brasileiro',
+          optionLabel: 'Volume Brasileiro',
+        },
+      ],
+    });
+  });
+
+  it.each([
+    ['missing', []],
+    [
+      'duplicate attribute',
+      [
+        { attributeId: 'color', optionId: 'color-brown' },
+        { attributeId: 'color', optionId: 'color-standard' },
+      ],
+    ],
+    [
+      'unknown option',
+      [
+        { attributeId: 'color', optionId: 'size-king' },
+        { attributeId: 'size', optionId: 'size-couple' },
+      ],
+    ],
+    [
+      'extra attribute',
+      [
+        { attributeId: 'color', optionId: 'color-brown' },
+        { attributeId: 'size', optionId: 'size-couple' },
+        { attributeId: 'unknown', optionId: 'unknown-option' },
+      ],
+    ],
+  ])('rejects %s customization selections', async (_label, customizationSelections) => {
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        customizationSelections,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(
+      (await db.collection('appointments').where('productId', '==', customizationTestProductId).get())
+        .docs,
+    ).toHaveLength(0);
+  });
+
+  it('rejects an image ID outside the exact or fallback effective gallery', async () => {
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        customizationSelections: customizationTestSelections,
+        selectedImageId: 'not-in-gallery',
+      }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect(
+      (await db.collection('appointments').where('productId', '==', customizationTestProductId).get())
+        .docs,
+    ).toHaveLength(0);
   });
 
   it('excludes blocked and occupied periods and returns only active eligible professionals', async () => {

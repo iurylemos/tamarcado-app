@@ -1,5 +1,11 @@
 import type { BusinessSegment } from '@shared/interfaces/tenant.interface';
 import type { CommissionType } from '@shared/interfaces/product.interface';
+import type {
+  ProductCustomizationAttribute,
+  ProductImage,
+  ProductImageGallery,
+  ProductVariantPrice,
+} from '@shared/interfaces/product.interface';
 
 export interface CompanyRecord {
   id: string;
@@ -21,6 +27,10 @@ export interface ProductRecord {
   name: string;
   description?: string;
   imageUrl: string;
+  customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
+  defaultImages?: ProductImage[];
+  imageGalleries?: ProductImageGallery[];
   priceCents: number;
   durationMinutes: number;
   commissionType: CommissionType;
