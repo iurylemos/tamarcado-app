@@ -2,7 +2,9 @@
 export { listPublicBusinesses } from './functions/catalog/list-public-businesses';
 export { getPublicCatalog } from './functions/catalog/get-public-catalog';
 export { listAvailability } from './functions/appointments/list-availability';
+export { searchAvailabilityCallable as searchAvailability } from './functions/appointments/search-availability';
 export { createPublicAppointmentCallable as createPublicAppointment } from './functions/appointments/create-public-appointment';
+export { processAppointmentNotificationCreated as processAppointmentNotification } from './functions/appointments/process-appointment-notification';
 export { listAppointmentsCallable as listAppointments } from './functions/appointments/list-appointments';
 export { updateAppointmentStatusCallable as updateAppointmentStatus } from './functions/appointments/update-appointment-status';
 export {

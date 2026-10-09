@@ -1,6 +1,8 @@
 ﻿import { createHash } from 'node:crypto';
 import { Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import { performance } from 'node:perf_hooks';
 import type { CreatePublicAppointmentInput } from '../../../shared/domain/interfaces/appointment.interface';
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { fiveMinuteBucketStarts } from '../../../shared/domain/interval';
@@ -10,9 +12,10 @@ import { DomainError } from '../../../shared/domain/errors';
 import { collections } from '../config/collections';
 import { firestore, professionalProductId } from './firestore.service';
 import { findBookableProduct, findPublicBusiness } from './public-catalog.service';
-import { listAvailableSlots } from './availability.service';
-import { loadAppointment, notifyAppointmentRequested } from './appointment-notification.service';
+import { isRequestedSlotAvailable } from './availability.service';
 import { isFirestoreIndexUnavailableError } from './firestore-error.service';
+
+let bookingColdStart = true;
 
 const validName = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length <= 100;
@@ -70,7 +73,12 @@ export async function createPublicAppointment(
     throw new HttpsError('invalid-argument', 'Escolha um horário válido para o agendamento.');
   }
 
+  const requestStartedAt = performance.now();
+  const requestColdStart = bookingColdStart;
+  bookingColdStart = false;
+
   try {
+    const resolutionStartedAt = performance.now();
     const business = await findPublicBusiness(input.businessSlug);
     const [tenantSnapshot, product, professionalSnapshot] = await Promise.all([
       firestore.collection(collections.tenants).doc(business.tenantId).get(),
@@ -111,8 +119,22 @@ export async function createPublicAppointment(
         'Este profissional não atende o serviço selecionado.',
       );
     }
+    logger.info('booking.performance', {
+      operation: 'appointment_registration',
+      stage: 'shared_data_resolution',
+      durationMs: Math.round(performance.now() - resolutionStartedAt),
+      coldStart: requestColdStart,
+    });
 
     const timezone = String(tenant.timezone);
+    const bookingIntervalMinutes = Number(tenant.bookingIntervalMinutes);
+    if (
+      !Number.isInteger(bookingIntervalMinutes) ||
+      bookingIntervalMinutes < 5 ||
+      bookingIntervalMinutes % 5 !== 0
+    ) {
+      throw new HttpsError('internal', 'O intervalo de agendamento da empresa é inválido.');
+    }
     const local = getZonedDateTimeParts(startsAt, timezone);
     const localDate = `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
 
@@ -120,16 +142,17 @@ export async function createPublicAppointment(
       throw new HttpsError('invalid-argument', 'A data escolhida não é válida.');
     }
 
-    const availableSlots = await listAvailableSlots({
-      businessSlug: input.businessSlug,
-      productId: input.productId,
+    const slotAvailable = await isRequestedSlotAvailable({
+      tenantId: business.tenantId,
       professionalId: input.professionalId,
-      date: localDate,
+      startsAt,
+      durationMinutes: product.durationMinutes,
+      timezone,
+      bookingIntervalMinutes,
+      coldStart: requestColdStart,
     });
 
-    const slot = availableSlots.find((item) => item.startsAt === startsAt.toISOString());
-
-    if (!slot) {
+    if (!slotAvailable) {
       throw new HttpsError(
         'already-exists',
         'Este horário não está mais disponível. Escolha outro horário.',
@@ -160,7 +183,11 @@ export async function createPublicAppointment(
     );
 
     const appointmentRef = firestore.collection(collections.appointments).doc(appointmentId);
+    const notificationJobRef = firestore
+      .collection(collections.appointmentNotificationJobs)
+      .doc(appointmentId);
 
+    const transactionStartedAt = performance.now();
     await firestore.runTransaction(async (transaction: Transaction): Promise<void> => {
       const reservations = await Promise.all(
         reservationRefs.map((reference) => transaction.get(reference)),
@@ -212,10 +239,21 @@ export async function createPublicAppointment(
           createdAt,
         });
       });
+      transaction.create(notificationJobRef, {
+        appointmentId,
+        tenantId: business.tenantId,
+        status: 'pending',
+        createdAt,
+        updatedAt: createdAt,
+      });
     });
 
-    const created = await loadAppointment(appointmentId);
-    if (created) await notifyAppointmentRequested(appointmentId, created);
+    logger.info('booking.performance', {
+      operation: 'appointment_registration',
+      stage: 'transaction',
+      durationMs: Math.round(performance.now() - transactionStartedAt),
+      coldStart: requestColdStart,
+    });
     return { appointmentId, status: 'pending' };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
@@ -237,6 +275,13 @@ export async function createPublicAppointment(
       throw new HttpsError(code, error.message);
     }
     throw error;
+  } finally {
+    logger.info('booking.performance', {
+      operation: 'appointment_registration',
+      stage: 'total',
+      durationMs: Math.round(performance.now() - requestStartedAt),
+      coldStart: requestColdStart,
+    });
   }
 }
 
@@ -261,7 +306,8 @@ export function isLocalStartOnBookingInterval(
   if (date !== businessDate) return false;
 
   const [openingHour, openingMinute] = openingTime.split(':').map(Number);
-  const offset = local.hour * 60 + local.minute - (openingHour ?? 0 * 60 + (openingMinute ?? 0));
+  const openingMinutes = (openingHour ?? 0) * 60 + (openingMinute ?? 0);
+  const offset = local.hour * 60 + local.minute - openingMinutes;
 
   return offset >= 0 && offset % intervalMinutes === 0;
 }

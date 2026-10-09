@@ -2,14 +2,17 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '../services/appointment.service';
-import { listAvailability } from '../services/availability.service';
+import { listAvailability, searchAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import { addDaysToDate, getNextBookableDate } from '../utils/date.util';
 import BookingPage from './BookingPage';
 import { renderWithQueryClient } from '../test/render';
 
-vi.mock('../services/availability.service', () => ({ listAvailability: vi.fn() }));
+vi.mock('../services/availability.service', () => ({
+  listAvailability: vi.fn(),
+  searchAvailability: vi.fn(),
+}));
 vi.mock('../services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
 vi.mock('../services/appointment.service', () => ({ createAppointment: vi.fn() }));
 
@@ -18,6 +21,10 @@ afterEach(cleanup);
 describe('BookingPage professional selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(searchAvailability).mockImplementation(async (input) => {
+      const slots = await vi.mocked(listAvailability)(input);
+      return { date: slots.length > 0 ? input.date : null, slots };
+    });
     vi.stubGlobal('scrollTo', vi.fn());
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
       configurable: true,
@@ -239,10 +246,8 @@ describe('BookingPage professional selection', () => {
     expect(createAppointment).not.toHaveBeenCalled();
   });
 
-  it('shows time skeletons instead of visible progress copy while searching for a later date', async () => {
-    vi.mocked(listAvailability)
-      .mockResolvedValueOnce([])
-      .mockReturnValue(new Promise(() => undefined));
+  it('keeps the search loading state while the bounded availability request is pending', async () => {
+    vi.mocked(searchAvailability).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -252,9 +257,9 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const searchingMessage = await screen.findByText('Procurando o próximo dia com horários...');
+    const searchingMessage = await screen.findByText('Buscando horários disponíveis...');
     expect(searchingMessage).toHaveClass('skeleton-status');
-    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(2);
+    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(4);
   });
 
   it('shows complete appointment ranges through the end of a two-hour service day', async () => {
@@ -303,7 +308,7 @@ describe('BookingPage professional selection', () => {
     };
     vi.mocked(listAvailability)
       .mockResolvedValueOnce([bookedSlot, remainingSlot])
-      .mockResolvedValueOnce([remainingSlot]);
+      .mockReturnValue(new Promise(() => undefined));
     vi.mocked(createAppointment).mockResolvedValue({
       appointmentId: 'appointment-12345678',
       status: 'pending',
@@ -348,6 +353,8 @@ describe('BookingPage professional selection', () => {
       ),
     );
     await waitFor(() => expect(listAvailability).toHaveBeenCalledTimes(2));
+    expect(searchAvailability).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Buscando horários disponíveis...')).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '11:00 - 13:00' })).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
   });
@@ -513,20 +520,48 @@ describe('BookingPage professional selection', () => {
     expect(container.querySelector('.skeleton-card')).not.toBeInTheDocument();
   });
 
+  it('clears previously displayed slots when a newly selected date search fails', async () => {
+    const staleSlot = {
+      startsAt: '2030-02-04T12:00:00.000Z',
+      endsAt: '2030-02-04T14:00:00.000Z',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+    };
+    vi.mocked(searchAvailability)
+      .mockResolvedValueOnce({ date: getNextBookableDate(), slots: [staleSlot] })
+      .mockRejectedValueOnce(new Error('network error'));
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
+    const nextDate = addDaysToDate(getNextBookableDate(), 1);
+    fireEvent.change(screen.getByLabelText('Data do atendimento'), {
+      target: { value: nextDate },
+    });
+
+    expect(await screen.findByText('network error')).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
+  });
+
   it('automatically selects the nearest date with available hours when the selected date is empty', async () => {
     const nextAvailableDate = addDaysToDate(getNextBookableDate(), 3);
-    vi.mocked(listAvailability).mockImplementation(async ({ date }) =>
-      date === nextAvailableDate
-        ? [
-            {
-              startsAt: `${nextAvailableDate}T12:00:00.000Z`,
-              endsAt: `${nextAvailableDate}T14:00:00.000Z`,
-              professionalId: 'ana',
-              professionalName: 'Ana Souza',
-            },
-          ]
-        : [],
-    );
+    vi.mocked(searchAvailability).mockResolvedValue({
+      date: nextAvailableDate,
+      slots: [
+        {
+          startsAt: `${nextAvailableDate}T12:00:00.000Z`,
+          endsAt: `${nextAvailableDate}T14:00:00.000Z`,
+          professionalId: 'ana',
+          professionalName: 'Ana Souza',
+        },
+      ],
+    });
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -540,10 +575,12 @@ describe('BookingPage professional selection', () => {
       expect(screen.getByLabelText('Data do atendimento')).toHaveValue(nextAvailableDate),
     );
     expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
+    expect(searchAvailability).toHaveBeenCalledTimes(1);
+    expect(listAvailability).not.toHaveBeenCalled();
   });
 
   it('shows clear guidance when no times are available in the 30-day search range', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([]);
+    vi.mocked(searchAvailability).mockResolvedValue({ date: null, slots: [] });
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -563,9 +600,9 @@ describe('BookingPage professional selection', () => {
     const selectedDate = addDaysToDate(getNextBookableDate(), 2);
     const results = new Map<
       string,
-      (value: Awaited<ReturnType<typeof listAvailability>>) => void
+      (value: Awaited<ReturnType<typeof searchAvailability>>) => void
     >();
-    vi.mocked(listAvailability).mockImplementation(
+    vi.mocked(searchAvailability).mockImplementation(
       ({ date }) =>
         new Promise((resolve) => {
           results.set(date, resolve);
@@ -583,32 +620,40 @@ describe('BookingPage professional selection', () => {
     await screen.findByLabelText('Data do atendimento');
     const oldDate = getNextBookableDate();
     await waitFor(() =>
-      expect(listAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: oldDate })),
+      expect(searchAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: oldDate })),
     );
     const dateInput = screen.getByLabelText('Data do atendimento');
     fireEvent.change(dateInput, { target: { value: selectedDate } });
     await waitFor(() => expect(results.has(oldDate) && results.has(selectedDate)).toBe(true));
 
-    results.get(oldDate)?.([
-      {
-        startsAt: '2030-02-04T12:00:00.000Z',
-        endsAt: '2030-02-04T14:00:00.000Z',
-        professionalId: 'ana',
-        professionalName: 'Ana Souza',
-      },
-    ]);
-    results.get(selectedDate)?.([
-      {
-        startsAt: '2030-02-06T12:00:00.000Z',
-        endsAt: '2030-02-06T14:00:00.000Z',
-        professionalId: 'ana',
-        professionalName: 'Ana Souza',
-      },
-    ]);
+    results.get(oldDate)?.({
+      date: oldDate,
+      slots: [
+        {
+          startsAt: '2030-02-04T12:00:00.000Z',
+          endsAt: '2030-02-04T14:00:00.000Z',
+          professionalId: 'ana',
+          professionalName: 'Ana Souza',
+        },
+      ],
+    });
+    results.get(selectedDate)?.({
+      date: selectedDate,
+      slots: [
+        {
+          startsAt: '2030-02-06T12:00:00.000Z',
+          endsAt: '2030-02-06T14:00:00.000Z',
+          professionalId: 'ana',
+          professionalName: 'Ana Souza',
+        },
+      ],
+    });
 
     expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
     expect(dateInput).toHaveValue(selectedDate);
-    expect(listAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: selectedDate }));
+    expect(searchAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ date: selectedDate }),
+    );
   });
 
   it('returns to the matching catalog after one activation', async () => {

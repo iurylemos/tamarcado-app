@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
 import type { BookingReceipt, CompanyCatalog } from '../interfaces/company.interface';
 import { createAppointment } from '../services/appointment.service';
-import { listAvailability } from '../services/availability.service';
+import { listAvailability, searchAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
-import { availabilityQueryKey, companyCatalogQueryKey } from '../services/query-client';
+import {
+  availabilityQueryKey,
+  availabilitySearchQueryKey,
+  companyCatalogQueryKey,
+} from '../services/query-client';
 import { eligibleProfessionals } from '../services/professional.service';
-import { addDaysToDate, formatTimeRange, getNextBookableDate } from '../utils/date.util';
+import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import type { BookingFormValues } from '../interfaces/booking.interface';
 import type { EligibleProfessional } from '../interfaces/professional.interface';
@@ -32,6 +36,8 @@ export default function BookingPage(): JSX.Element {
   const [shareError, setShareError] = useState<string>('');
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
   const queryClient = useQueryClient();
+  const skipSearchForDate = useRef<string | null>(null);
+  const selectedDateRef = useRef(date);
 
   const product =
     catalog?.business.slug === slug
@@ -68,7 +74,15 @@ export default function BookingPage(): JSX.Element {
   }, [queryClient, slug]);
 
   useEffect(() => {
+    selectedDateRef.current = date;
+  }, [date]);
+
+  useEffect(() => {
     if (!product) return;
+    if (skipSearchForDate.current === date) {
+      skipSearchForDate.current = null;
+      return;
+    }
 
     let current = true;
 
@@ -98,21 +112,31 @@ export default function BookingPage(): JSX.Element {
       }
 
       const result = await queryClient.fetchQuery({
-        queryKey: availabilityQueryKey(slug, productId, date),
-        queryFn: () => listAvailability({ businessSlug: slug, productId, date }),
+        queryKey: availabilitySearchQueryKey(slug, productId, date),
+        queryFn: () => searchAvailability({ businessSlug: slug, productId, date }),
         staleTime: 15_000,
       });
 
       if (current) {
-        setSlots(result);
-        const choices = eligibleProfessionals(result);
+        setSlots(result.slots);
+        setSelectedStartsAt('');
+        const choices = eligibleProfessionals(result.slots);
         setSelectedProfessionalId(choices[0]?.id ?? '');
+        setNextDateSearchComplete(result.date === null);
+        if (result.date && result.date !== date) {
+          skipSearchForDate.current = result.date;
+          setDate(result.date);
+        }
       }
     };
 
     void loadAvailability()
       .catch((error: unknown) => {
         if (current) {
+          setSlots([]);
+          setSelectedStartsAt('');
+          setSelectedProfessionalId('');
+          setNextDateSearchComplete(false);
           setError(
             getBookingErrorMessage(
               error,
@@ -134,70 +158,9 @@ export default function BookingPage(): JSX.Element {
   }, [date, product, productId, queryClient, slug]);
 
   useEffect(() => {
-    if (availabilityLoading || error || !product || slots.length > 0) {
-      setSearchingNextDate(false);
-      setNextDateSearchComplete(false);
-      setNextDateSearchError('');
-      return;
-    }
-
-    let current = true;
-    setSearchingNextDate(true);
-    setNextDateSearchComplete(false);
+    setSearchingNextDate(false);
     setNextDateSearchError('');
-
-    const findNextAvailableDate = async (): Promise<void> => {
-      for (let offset = 1; offset <= 30; offset += 1) {
-        if (!current) return;
-        const candidateDate = addDaysToDate(date, offset);
-        const candidateSlots = await queryClient.fetchQuery({
-          queryKey: availabilityQueryKey(slug, productId, candidateDate),
-          queryFn: () =>
-            listAvailability({
-              businessSlug: slug,
-              productId,
-              date: candidateDate,
-            }),
-          staleTime: 15_000,
-        });
-
-        if (!current) return;
-        if (candidateSlots.length > 0) {
-          selectDate(candidateDate);
-          return;
-        }
-      }
-    };
-
-    void findNextAvailableDate()
-      .catch(() => {
-        if (current) {
-          setNextDateSearchError(
-            'Não foi possível localizar o próximo dia disponível. Você ainda pode escolher outra data.',
-          );
-        }
-      })
-      .finally(() => {
-        if (current) {
-          setSearchingNextDate(false);
-          setNextDateSearchComplete(true);
-        }
-      });
-
-    return () => {
-      current = false;
-    };
-  }, [
-    availabilityLoading,
-    date,
-    error,
-    product,
-    productId,
-    queryClient,
-    selectDate,
-    slug,
-    slots.length,
-  ]);
+  }, [date]);
 
   const professionals = useMemo<EligibleProfessional[]>(
     () => eligibleProfessionals(slots),
@@ -214,7 +177,10 @@ export default function BookingPage(): JSX.Element {
     setError('');
 
     try {
-      const selectedSlot = slots.find((slot) => slot.startsAt === selectedStartsAt);
+      const selectedSlot = slots.find(
+        (slot) =>
+          slot.professionalId === selectedProfessionalId && slot.startsAt === selectedStartsAt,
+      );
       if (!selectedSlot) {
         setError('Escolha novamente um horário disponível antes de continuar.');
         return;
@@ -231,7 +197,9 @@ export default function BookingPage(): JSX.Element {
 
       if (!currentProduct) {
         setCatalog(currentCatalog);
-        setError('Este serviço não está mais disponível neste catálogo. Volte ao catálogo e escolha outro serviço.');
+        setError(
+          'Este serviço não está mais disponível neste catálogo. Volte ao catálogo e escolha outro serviço.',
+        );
         return;
       }
 
@@ -252,12 +220,16 @@ export default function BookingPage(): JSX.Element {
         startsAt: selectedSlot.startsAt,
         endsAt: selectedSlot.endsAt,
       });
-      setSlots((current) => current.filter((slot) => slot.startsAt !== selectedStartsAt));
+      setSlots((current) =>
+        current.filter(
+          (slot) =>
+            slot.professionalId !== selectedProfessionalId || slot.startsAt !== selectedStartsAt,
+        ),
+      );
       setSelectedStartsAt('');
 
-      setLoading(true);
-      setAvailabilityLoading(true);
-      try {
+      const bookedDate = date;
+      const refreshAvailability = async (): Promise<void> => {
         const queryKey = availabilityQueryKey(slug, productId, date);
         await queryClient.invalidateQueries({ queryKey });
         const refreshedSlots = await queryClient.fetchQuery({
@@ -265,6 +237,7 @@ export default function BookingPage(): JSX.Element {
           queryFn: () => listAvailability({ businessSlug: slug, productId, date }),
           staleTime: 0,
         });
+        if (selectedDateRef.current !== bookedDate) return;
         const currentSlots = refreshedSlots.filter(
           (slot) =>
             slot.professionalId !== selectedProfessionalId ||
@@ -277,14 +250,15 @@ export default function BookingPage(): JSX.Element {
             ? current
             : (availableProfessionals[0]?.id ?? ''),
         );
-      } catch {
-        setError(
-          'Seu agendamento foi enviado, mas não foi possível atualizar os horários. Atualize a página para consultar a disponibilidade.',
-        );
-      } finally {
-        setLoading(false);
-        setAvailabilityLoading(false);
-      }
+      };
+      void refreshAvailability().catch(() => {
+        if (selectedDateRef.current === bookedDate) {
+          setSlots([]);
+          setError(
+            'Seu agendamento foi enviado, mas não foi possível atualizar os horários. Atualize a página para consultar a disponibilidade.',
+          );
+        }
+      });
     } catch (error: unknown) {
       setError(
         getBookingErrorMessage(

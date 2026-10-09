@@ -1,18 +1,27 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPublicAppointment, reservationDocumentId } from '../../services/booking.service';
-import { listAvailableSlots } from '../../services/availability.service';
+import { listAvailableSlots, searchAvailability } from '../../services/availability.service';
 import {
   findBookableProduct,
   findPublicBusiness,
   listPublicProductRecords,
 } from '../../services/public-catalog.service';
 import { createSeedDocuments } from '../../../test/fixtures/seed-data';
-import { getZonedDateTimeParts } from '../../../../shared/domain/timezone';
+import { Timestamp } from 'firebase-admin/firestore';
+import { getZonedDateTimeParts, localDateTimeToUtc } from '../../../../shared/domain/timezone';
+import { logger } from 'firebase-functions';
+import { processAppointmentNotification } from '../../services/appointment-notification.service';
+import {
+  WhatsAppProviderError,
+  type WhatsAppProvider,
+} from '../../services/whatsapp-provider.interface';
 
 const emulatorOnly = describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
 let db: Firestore;
+
+afterEach(() => vi.restoreAllMocks());
 
 function nextOpenDate(): string {
   const now = getZonedDateTimeParts(new Date(), 'America/Sao_Paulo');
@@ -98,6 +107,298 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     ).toBe(true);
   });
 
+  it('returns the earliest available date within the bounded 31-date window', async () => {
+    const finalDate = nextOpenDate();
+    const date = new Date(`${finalDate}T12:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() - 30);
+    const startDate = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+
+    await db
+      .collection('blocked_periods')
+      .doc('window-block')
+      .set({
+        tenantId: 'tenant-aurora',
+        startsAt: Timestamp.fromDate(localDateTimeToUtc(startDate, '00:00', 'America/Sao_Paulo')),
+        endsAt: Timestamp.fromDate(localDateTimeToUtc(finalDate, '00:00', 'America/Sao_Paulo')),
+      });
+
+    const result = await searchAvailability({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      date: startDate,
+    });
+
+    expect(result.date).toBe(finalDate);
+    expect(result.slots.length).toBeGreaterThan(0);
+    expect(result.slots.every((slot) => slot.startsAt.startsWith(finalDate))).toBe(true);
+  });
+
+  it('excludes slots overlapped by an appointment that starts before the slot', async () => {
+    const date = nextOpenDate();
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date,
+      })
+    )[0];
+    expect(slot).toBeDefined();
+    const slotStart = new Date(slot!.startsAt);
+    await db
+      .collection('appointments')
+      .doc('overlapping-appointment')
+      .set({
+        tenantId: 'tenant-aurora',
+        professionalId: 'professional-ana',
+        status: 'confirmed',
+        startsAt: Timestamp.fromMillis(slotStart.getTime() - 15 * 60_000),
+        endsAt: Timestamp.fromMillis(slotStart.getTime() + 15 * 60_000),
+      });
+
+    const result = await searchAvailability({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      date,
+    });
+
+    expect(
+      result.slots.some(
+        (candidate) =>
+          candidate.professionalId === 'professional-ana' && candidate.startsAt === slot!.startsAt,
+      ),
+    ).toBe(false);
+  });
+
+  it('returns an empty result when the entire 31-date window is blocked', async () => {
+    const startDate = nextOpenDate();
+    const end = new Date(`${startDate}T12:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 31);
+    const endDate = `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, '0')}-${String(end.getUTCDate()).padStart(2, '0')}`;
+    await db
+      .collection('blocked_periods')
+      .doc('window-block')
+      .set({
+        tenantId: 'tenant-aurora',
+        startsAt: Timestamp.fromDate(localDateTimeToUtc(startDate, '00:00', 'America/Sao_Paulo')),
+        endsAt: Timestamp.fromDate(localDateTimeToUtc(endDate, '00:00', 'America/Sao_Paulo')),
+      });
+    await expect(
+      searchAvailability({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        date: startDate,
+      }),
+    ).resolves.toEqual({ date: null, slots: [] });
+  });
+
+  it('rejects a selected slot that becomes blocked before registration', async () => {
+    const date = nextOpenDate();
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date,
+      })
+    )[0];
+    expect(slot).toBeDefined();
+    await db
+      .collection('blocked_periods')
+      .doc('new-slot-block')
+      .set({
+        tenantId: 'tenant-aurora',
+        professionalId: 'professional-ana',
+        startsAt: Timestamp.fromDate(new Date(slot!.startsAt)),
+        endsAt: Timestamp.fromDate(new Date(slot!.endsAt)),
+      });
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        whatsappOptIn: false,
+      }),
+    ).rejects.toThrow('Este horário não está mais disponível.');
+    expect((await db.collection('appointment_notification_jobs').get()).docs).toHaveLength(0);
+  });
+
+  it('records notification outcomes and skips completed jobs on redelivery', async () => {
+    const date = nextOpenDate();
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date,
+      })
+    )[0];
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      whatsappOptIn: false,
+    });
+    const sendTemplate = vi.fn().mockResolvedValue({ providerMessageId: 'message-1' });
+    const provider: WhatsAppProvider = {
+      name: 'test',
+      sendTemplate,
+      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-1' }),
+    };
+
+    await processAppointmentNotification(result.appointmentId, provider);
+    await processAppointmentNotification(result.appointmentId, provider);
+
+    expect(sendTemplate).toHaveBeenCalledOnce();
+    const completedJob = await db
+      .collection('appointment_notification_jobs')
+      .doc(result.appointmentId)
+      .get();
+    expect(completedJob.data()).toMatchObject({ status: 'completed' });
+    const appointment = await db.collection('appointments').doc(result.appointmentId).get();
+    expect(appointment.data()).toMatchObject({ status: 'pending' });
+  });
+
+  it('records a sanitized failed notification without changing the appointment', async () => {
+    const date = nextOpenDate();
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date,
+      })
+    )[0];
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      whatsappOptIn: false,
+    });
+    const provider: WhatsAppProvider = {
+      name: 'test',
+      sendTemplate: vi
+        .fn()
+        .mockRejectedValue(new WhatsAppProviderError('PROVIDER_ERROR', 'Provider delivery failed')),
+      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-1' }),
+    };
+
+    await processAppointmentNotification(result.appointmentId, provider);
+
+    const job = (
+      await db.collection('appointment_notification_jobs').doc(result.appointmentId).get()
+    ).data();
+    expect(job).toMatchObject({ status: 'failed', failureCode: 'provider_delivery_failed' });
+    expect(JSON.stringify(job)).not.toContain('+5511999990001');
+    expect(
+      (await db.collection('appointments').doc(result.appointmentId).get()).data()?.status,
+    ).toBe('pending');
+  });
+
+  it('leaves notification jobs pending when worker execution fails so the trigger can retry', async () => {
+    const date = nextOpenDate();
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date,
+      })
+    )[0];
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      whatsappOptIn: false,
+    });
+    const provider: WhatsAppProvider = {
+      name: 'test',
+      sendTemplate: vi.fn().mockRejectedValue(new Error('temporary worker failure')),
+      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-1' }),
+    };
+
+    await expect(processAppointmentNotification(result.appointmentId, provider)).rejects.toThrow(
+      'temporary worker failure',
+    );
+    const job = await db
+      .collection('appointment_notification_jobs')
+      .doc(result.appointmentId)
+      .get();
+    expect(job.data()).toMatchObject({ status: 'pending' });
+  });
+
+  it('logs distinct request stages without customer personal data', async () => {
+    const info = vi.spyOn(logger, 'info').mockImplementation(() => undefined);
+    const date = nextOpenDate();
+    const search = await searchAvailability({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      date,
+    });
+    const slot = search.slots.find((candidate) => candidate.professionalId === 'professional-ana');
+    expect(slot).toBeDefined();
+
+    const booking = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Private Customer Name',
+      customerPhone: '(11) 99999-0009',
+      whatsappOptIn: false,
+    });
+    await processAppointmentNotification(booking.appointmentId, {
+      name: 'test',
+      sendTemplate: vi.fn().mockResolvedValue({ providerMessageId: 'message-2' }),
+      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-2' }),
+    });
+
+    const entries = info.mock.calls
+      .filter(([message]) => message === 'booking.performance')
+      .map(([, fields]) => fields);
+    const stages = entries.map((fields) => (fields as { stage: string }).stage);
+    expect(stages).toEqual(
+      expect.arrayContaining([
+        'shared_data_resolution',
+        'conflict_reads',
+        'slot_evaluation',
+        'transaction',
+        'total',
+        'worker_total',
+      ]),
+    );
+    expect(
+      entries.every(
+        (fields) => typeof (fields as { durationMs?: unknown }).durationMs === 'number',
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(entries)).not.toMatch(/Private Customer Name|11999990009|message body/i);
+    info.mockRestore();
+  });
+
+  it('rejects invalid availability search dates', async () => {
+    await expect(
+      searchAvailability({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        date: '0000-02-30',
+      }),
+    ).rejects.toThrow('Informe empresa, serviço e uma data válida.');
+  });
+
   it('atomically accepts only one of two concurrent overlapping requests and snapshots the terms', async () => {
     const date = nextOpenDate();
     const slot = (
@@ -140,6 +441,14 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     expect(
       reservationDocumentId('tenant-aurora', 'professional-ana', Date.parse(slot!.startsAt)),
     ).toMatch(/^[a-f0-9]{64}$/);
+    const jobs = await db.collection('appointment_notification_jobs').get();
+    expect(jobs.docs).toHaveLength(1);
+    expect(jobs.docs[0]?.data()).toMatchObject({
+      appointmentId: accepted.value.appointmentId,
+      tenantId: 'tenant-aurora',
+      status: 'pending',
+    });
+    expect(jobs.docs[0]?.data()).not.toHaveProperty('customerPhoneE164');
   });
 });
 

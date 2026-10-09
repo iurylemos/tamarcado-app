@@ -32,9 +32,11 @@ Run the Functions integration test in a second PowerShell terminal with the emul
 
 ```powershell
 $env:FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
-$env:GCLOUD_PROJECT = 'demo-tamarcado'
+$env:GCLOUD_PROJECT = 'demo-booking-perf-20261008'
 npm --prefix functions test -- src/functions/appointments/create-public-appointment.spec.ts
 ```
+
+Use a dedicated emulator project ID as above: the fixture clears its own Firestore collections before each integration scenario. When an emulator is already running in another terminal, point the tests at it rather than starting or stopping another emulator instance.
 
 The Firestore emulator integration test must prove that concurrent overlapping requests still result in only one accepted appointment.
 
@@ -58,3 +60,15 @@ In a dedicated staging environment with representative schedules and booking vol
 5. Inspect structured stage measurements for shared-data reads, conflict reads, slot evaluation, transaction, notification processing, and cold-start indicator. Confirm no customer name, phone number, or message body is present.
 
 Emulator tests validate correctness and request behavior; production-like staging measurements are required to validate latency targets.
+
+### Staging measurement record
+
+Record the staging deployment, sample window, network conditions, cold-start classification, and the p95 for each operation before accepting the latency goals:
+
+| Operation | Samples | Cold p95 | Warm p95 | Overall p95 | Under 3 seconds |
+|---|---:|---:|---:|---:|---:|
+| Availability search | 100 minimum | Pending | Pending | Pending | Pending |
+| Successful appointment registration | 100 minimum | Pending | Pending | Pending | Pending |
+| Notification processing | 100 minimum | Pending | Pending | N/A (separate from response) | Report separately |
+
+Do not substitute emulator timings for staging results. Staging measurements remain outstanding until the deployed environment and test notification destinations are available.

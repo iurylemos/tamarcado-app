@@ -30,3 +30,14 @@ export interface ListAvailabilityInput {
   date: string;
   professionalId?: string;
 }
+
+export interface SearchAvailabilityInput {
+  businessSlug: string;
+  productId: string;
+  date: string;
+}
+
+export interface SearchAvailabilityResult {
+  date: string | null;
+  slots: AvailableSlot[];
+}
