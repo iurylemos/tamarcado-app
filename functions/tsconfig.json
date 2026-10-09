@@ -19,7 +19,13 @@
     "test/**/*.ts",
     "../shared/domain/**/*.ts",
     "../client/src/entry-server.tsx",
-    "../client/src/services/public-content-markup.ts",
-    "../client/src/interfaces/company.interface.ts"
-  ]
+    "../client/src/interfaces/company.interface.ts",
+    "../client/src/components/templates/CompanyCatalogTemplate/**/*.tsx",
+    "../client/src/components/organisms/PwaInstallPrompt/**/*.tsx",
+    "../client/src/components/molecules/SkeletonCard/**/*.tsx",
+    "../client/src/components/atoms/Skeleton/**/*.tsx",
+    "../client/src/services/pwa-manifest.service.ts",
+    "../client/src/utils/business-slug.util.ts"
+  ],
+  "exclude": ["../client/src/**/*.spec.ts", "../client/src/**/*.spec.tsx"]
 }

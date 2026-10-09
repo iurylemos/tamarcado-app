@@ -16,11 +16,11 @@ describe('PwaInstallPrompt', () => {
       standalone: false,
     });
 
-    render(<PwaInstallPrompt />);
+    render(<PwaInstallPrompt businessName="Studio Aurora" />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Adicionar app' }));
 
-    expect(screen.getByRole('dialog')).toHaveTextContent('Adicionar à Tela de Início');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Adicione Studio Aurora à tela inicial');
     expect(screen.getByText(/Abra esta página no Safari/)).toBeInTheDocument();
   });
 
@@ -32,7 +32,7 @@ describe('PwaInstallPrompt', () => {
       standalone: false,
     });
 
-    render(<PwaInstallPrompt />);
+    render(<PwaInstallPrompt businessName="Studio Aurora" />);
 
     expect(screen.queryByRole('button', { name: 'Adicionar app' })).not.toBeInTheDocument();
   });
@@ -45,7 +45,7 @@ describe('PwaInstallPrompt', () => {
       standalone: false,
     });
 
-    render(<PwaInstallPrompt />);
+    render(<PwaInstallPrompt businessName="Studio Aurora" />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Fechar aviso de instalação' }));
 

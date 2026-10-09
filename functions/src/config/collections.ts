@@ -16,6 +16,7 @@ export const collections = {
   publicProducts: 'public_products',
   providerWebhookEvents: 'provider_webhook_events',
   providerOutbox: 'provider_outbox',
+  appointmentNotificationJobs: 'appointment_notification_jobs',
 } as const;
 
 export type CollectionName = (typeof collections)[keyof typeof collections];

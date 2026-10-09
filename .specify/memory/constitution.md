@@ -1,33 +1,32 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 -> 2.0.0
+Version change: 2.0.0 -> 3.0.0
 Modified principles:
-- I. Company Catalog and Customer Booking -> I. Domain and User Flow Integrity
-- II. Reliable Appointment Lifecycle -> II. Booking and Availability Integrity
-- III. Role-Based Access and Accountability -> III. Security and Authorization
-- IV. Accurate Sales and Commission Reporting -> IV. Financial and Reporting Consistency
-- V. Privacy, Reliability, and Verifiable Quality -> V. Testability and Quality
-- Added VI. Separation of Application Boundaries
-- Added VII. User Experience and Accessibility
-- Added VIII. Maintainability and Simplicity
-Added sections: Technology and Specification Boundaries; Spec-Driven Workflow
-Removed sections: Product and Platform Constraints; Delivery and Quality Workflow
-Follow-up TODOs: none
+ - I. Domain and User Flow Integrity (redefined for business-specific SaaS catalogs)
+ - Principles II-VIII remain unchanged
+Added sections: none
+Removed sections: none
+Follow-up TODOs: None; `specs/004-saass-catalog-platform/spec.md` and its implementation tasks follow this principle.
 -->
 # Tamarcado Constitution
 
 ## Core Principles
 
 ### I. Domain and User Flow Integrity
-The platform MUST preserve the core business flow: company discovery → product catalog →
-product selection → professional selection when applicable → available time selection →
-customer contact → appointment creation.
+The client application MUST present each business as an independently addressable public
+catalog, identified by that business's public slug. Customers MUST enter a catalog through
+the business's direct link; the client MUST NOT provide a centralized directory, search, or
+marketplace for discovering businesses, products, or services. The root route MUST provide
+neutral guidance to obtain a business link and MUST NOT act as a catalog or discovery page.
+
+Within a business catalog, the platform MUST preserve the customer flow: product selection
+→ professional selection when applicable → available time selection → customer contact
+→ appointment creation. Catalog content and every booking step MUST remain associated with
+the business identified by the current slug; the client MUST NOT display or submit another
+business's data as a fallback.
 
 A product MUST belong to a company, and a professional MAY be associated with one or more
 products according to the business rules defined by the feature specification.
-
-The client application MUST allow customers to discover companies and their products without
-requiring collaborator or backoffice access.
 
 The collaborator application MUST focus on appointment management, customer management,
 professional-specific reporting, and operational actions.
@@ -38,8 +37,8 @@ availability configuration, and business reporting.
 Each application boundary MUST enforce its own responsibilities and MUST NOT expose
 administrative capabilities through client-facing flows.
 
-Rationale: Keeping the domain boundaries explicit prevents business rules from being
-duplicated or bypassed across client, collaborator, and backoffice applications.
+Rationale: Business-specific catalogs preserve each business's identity and customer
+context, while keeping booking behavior and application responsibilities explicit.
 
 ### II. Booking and Availability Integrity
 The system MUST prevent double booking of the same professional and time slot.
@@ -224,4 +223,4 @@ Versioning follows Semantic Versioning:
 Every implementation MUST preserve existing automated tests unless the related specification
 explicitly changes the expected behavior.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-02 | **Last Amended**: 2026-10-03
+**Version**: 3.0.0 | **Ratified**: 2026-10-02 | **Last Amended**: 2026-10-08

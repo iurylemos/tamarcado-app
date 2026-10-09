@@ -60,7 +60,9 @@ describe('BookingForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Informe seu nome.');
     fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
     fireEvent.submit(form);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Informe um celular válido com DDD.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Informe um celular válido com DDD.',
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -73,5 +75,17 @@ describe('BookingForm', () => {
 
     expect(document.activeElement).toBe(nameInput);
     expect(nameInput).toHaveValue('Maria Silva');
+  });
+
+  it('shows an accessible skeleton while the booking request is pending', () => {
+    const { container } = render(
+      <BookingForm onSubmit={vi.fn().mockResolvedValue(undefined)} busy />,
+    );
+    const submitButton = screen.getByRole('button', { name: 'Enviando solicitação...' });
+
+    expect(submitButton).toBeDisabled();
+    expect(submitButton).toHaveAttribute('aria-busy', 'true');
+    expect(container.querySelector('.booking-submit-skeleton')).toBeInTheDocument();
+    expect(screen.getByText('Enviando solicitação...')).toHaveClass('skeleton-status');
   });
 });

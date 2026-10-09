@@ -1,6 +1,7 @@
 import { useState, type SubmitEvent, type JSX } from 'react';
 import { formatBrazilianPhone, isValidBrazilianPhone } from '@shared/phone';
 import type { BookingFormValues } from '../../../interfaces/booking.interface';
+import Skeleton from '../../atoms/Skeleton/Skeleton';
 
 type BookingFormProps = {
   onSubmit: (values: BookingFormValues) => Promise<void>;
@@ -104,8 +105,16 @@ export default function BookingForm({
         className="button booking-submit"
         type="submit"
         disabled={busy || !nameIsValid || !whatsappOptIn || !phoneIsValid}
+        aria-busy={busy}
       >
-        {busy ? 'Enviando solicitação...' : 'Solicitar agendamento'}
+        {busy ? (
+          <>
+            <Skeleton className="booking-submit-skeleton" />
+            <span className="skeleton-status">Enviando solicitação...</span>
+          </>
+        ) : (
+          'Solicitar agendamento'
+        )}
       </button>
     </form>
   );

@@ -5,8 +5,11 @@ import type {
   CompanySummary,
   PublicProductSummary,
 } from '../interfaces/company.interface';
+import { isValidBusinessSlug } from '../utils/business-slug.util';
 
 export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | null> {
+  if (!isValidBusinessSlug(slug)) return null;
+
   const [businesses, products] = await Promise.all([
     getDocs(
       query(
