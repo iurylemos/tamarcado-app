@@ -76,6 +76,66 @@ describe('BookingPage professional selection', () => {
     expect(container.querySelectorAll('.skeleton-card')).toHaveLength(4);
   });
 
+  it('updates the booking price when the customer selects a different service variation', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-cilios',
+          name: 'Cílios',
+          imageUrl: '/cilios.jpg',
+          priceCents: 10000,
+          durationMinutes: 120,
+          customizationAttributes: [
+            {
+              id: 'lash-service',
+              label: 'Procedimento',
+              options: [
+                { id: 'lash-lifting', label: 'Lash Lifting' },
+                { id: 'volume-brasileiro', label: 'Volume Brasileiro' },
+              ],
+              defaultOptionId: 'lash-lifting',
+            },
+          ],
+          variantPrices: [
+            {
+              selections: [{ attributeId: 'lash-service', optionId: 'lash-lifting' }],
+              priceCents: 10000,
+            },
+            {
+              selections: [{ attributeId: 'lash-service', optionId: 'volume-brasileiro' }],
+              priceCents: 12000,
+            },
+          ],
+        },
+      ],
+    });
+    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-cilios']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const procedure = await screen.findByLabelText('Procedimento');
+    const summaryDetails = container.querySelector('.booking-summary-details');
+    expect(procedure).toHaveValue('lash-lifting');
+    expect(summaryDetails?.textContent).toContain('100,00');
+
+    fireEvent.change(procedure, { target: { value: 'volume-brasileiro' } });
+
+    expect(summaryDetails?.textContent).toContain('120,00');
+    expect(summaryDetails?.textContent).not.toContain('100,00');
+  });
+
   it('keeps static booking content visible while catalog-backed summary data loads', () => {
     vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
 
@@ -359,7 +419,7 @@ describe('BookingPage professional selection', () => {
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
   });
 
-  it('selects defaults, shows values, switches exact-match galleries, and submits stable IDs', async () => {
+  it('shows no-image state for combinations without a gallery and switches to exact-match galleries', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
@@ -443,19 +503,15 @@ describe('BookingPage professional selection', () => {
     const fabricSelect = screen.getByLabelText('Tecido');
     expect(colorSelect).toHaveValue('natural');
     expect(fabricSelect).toHaveValue('cotton');
-    expect(screen.getByText('Natural')).toBeInTheDocument();
-    expect(screen.getByText('Algodão')).toBeInTheDocument();
-    expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
-      'src',
-      '/default.jpg',
-    );
+    expect(screen.getByText('Imagens não disponíveis para esta combinação.')).toBeInTheDocument();
+    expect(document.querySelector('.product-image-gallery__main')).not.toBeInTheDocument();
 
     fireEvent.change(colorSelect, { target: { value: 'black' } });
-    expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
-      'src',
-      '/default.jpg',
-    );
+    expect(screen.getByText('Imagens não disponíveis para esta combinação.')).toBeInTheDocument();
     fireEvent.change(fabricSelect, { target: { value: 'silk' } });
+    expect(
+      screen.queryByText('Imagens não disponíveis para esta combinação.'),
+    ).not.toBeInTheDocument();
     expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
       'src',
       '/variant-1.jpg',
@@ -482,6 +538,93 @@ describe('BookingPage professional selection', () => {
             { attributeId: 'fabric', optionId: 'silk' },
           ],
           selectedImageId: 'variant-2',
+        }),
+      ),
+    );
+  });
+
+  it('submits every configured default when the customer leaves the options unchanged', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/default.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          customizationAttributes: [
+            {
+              id: 'color',
+              label: 'Cor',
+              options: [
+                { id: 'natural', label: 'Natural' },
+                { id: 'black', label: 'Preto' },
+              ],
+              defaultOptionId: 'natural',
+            },
+            {
+              id: 'fabric',
+              label: 'Tecido',
+              options: [
+                { id: 'cotton', label: 'Algodão' },
+                { id: 'silk', label: 'Seda' },
+              ],
+              defaultOptionId: 'cotton',
+            },
+          ],
+        },
+      ],
+    });
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+    vi.mocked(createAppointment).mockResolvedValue({
+      appointmentId: 'appointment-default-customizations',
+      status: 'pending',
+    });
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByLabelText('Cor')).toHaveValue('natural');
+    expect(screen.getByLabelText('Tecido')).toHaveValue('cotton');
+    await waitFor(() =>
+      expect(container.querySelector('.booking-summary-customizations')).toHaveTextContent(
+        'Cor: NaturalTecido: Algodão',
+      ),
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: /09:00/ }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+
+    await waitFor(() =>
+      expect(createAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customizationSelections: [
+            { attributeId: 'color', optionId: 'natural' },
+            { attributeId: 'fabric', optionId: 'cotton' },
+          ],
         }),
       ),
     );

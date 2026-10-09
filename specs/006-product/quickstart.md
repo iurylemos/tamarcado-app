@@ -20,6 +20,28 @@ npm test --workspace collaborator -- src/pages/AppointmentsPage.spec.tsx
 npm test --workspace functions -- src/functions/backoffice/manage-company.spec.ts src/functions/appointments/create-public-appointment.spec.ts
 ```
 
+When Authentication and Firestore emulators are already running alongside a
+Functions worker, use a separate demo project namespace for Firestore tests so
+test cleanup cannot race the live worker:
+
+```powershell
+$env:GCLOUD_PROJECT = "demo-tamarcado-validation"
+$env:FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099"
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
+npm test --workspace functions -- --no-file-parallelism src/functions/backoffice/manage-company.spec.ts src/functions/appointments/create-public-appointment.spec.ts
+```
+
+Run the Storage Rules tests with Authentication, Firestore, and Storage
+emulators available:
+
+```powershell
+$env:GCLOUD_PROJECT = "demo-tamarcado"
+$env:FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099"
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
+$env:FIREBASE_STORAGE_EMULATOR_HOST = "127.0.0.1:9199"
+npm test --workspace functions -- test/storage.rules.spec.ts
+```
+
 Run emulator-backed Functions tests with Authentication, Firestore, Functions,
 and Storage emulators enabled:
 
@@ -35,6 +57,23 @@ npm run build --workspace client
 npm run build --workspace collaborator
 npm run build --workspace functions
 ```
+
+## Seed data
+
+Development and production use the same document definitions in
+`functions/test/fixtures/seed-data.ts`. The sample Casa Nativa Móveis business
+includes a modular sofa and an upholstered headboard with their customization
+options. Their legacy `imageUrl` values are used as the default gallery, avoiding
+references to Storage objects that the seed does not upload.
+
+`npm run seed:emulator` clears Auth, Firestore, and Storage before loading the
+shared sample data. It refuses non-`demo-*` project IDs and non-local emulator
+hosts. This reset is specific to the emulator; the production seed continues to
+upsert the shared documents without deleting other production data.
+
+The sample backoffice login is `admin@casanativa.test`; emulator seed users use
+the password `EmulatorOnly123!`. Production seed passwords remain separately
+configured through `SEED_USER_PASSWORDS_JSON`.
 
 ## Manual end-to-end checks
 

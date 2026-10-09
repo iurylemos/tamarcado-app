@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { motion } from 'framer-motion';
 import { formatBrl } from '@shared/money';
+import { resolveProductPriceCents } from '@shared/product-price';
 import type { CompanyCatalog, PublicProductSummary } from '../../../interfaces/company.interface';
 import type {
   ProductCustomizationSelection,
@@ -27,6 +28,19 @@ export default function BookingServiceSummary({
   selectedImageId,
   onImageSelect,
 }: Readonly<BookingServiceSummaryProps>): JSX.Element {
+  const priceSelections =
+    product.customizationAttributes?.map((attribute) => ({
+      attributeId: attribute.id,
+      optionId:
+        customizationSelections.find((selection) => selection.attributeId === attribute.id)
+          ?.optionId ?? attribute.defaultOptionId,
+    })) ?? customizationSelections;
+  const selectedPriceCents = resolveProductPriceCents(
+    product.priceCents,
+    product.variantPrices,
+    priceSelections,
+  );
+
   return (
     <motion.aside
       className="booking-summary"
@@ -81,7 +95,11 @@ export default function BookingServiceSummary({
         </ul>
       )}
       <div className="booking-summary-details">
-        <span>{formatBrl(product.priceCents)}</span>
+        <span>
+          {selectedPriceCents === undefined
+            ? 'Preço indisponível'
+            : formatBrl(selectedPriceCents)}
+        </span>
         <span>{product.durationMinutes} minutos</span>
       </div>
     </motion.aside>

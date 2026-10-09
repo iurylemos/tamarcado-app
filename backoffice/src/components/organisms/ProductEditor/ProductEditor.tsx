@@ -3,7 +3,12 @@ import type {
   ProductCustomizationAttribute,
   ProductCustomizationSelection,
   ProductImage,
+  ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
+import {
+  productCustomizationCombinationKey,
+  productCustomizationCombinations,
+} from '@shared/product-variant-price';
 import type { ProductRecord } from '../../../interfaces/admin.interface';
 import {
   deleteProductGallery,
@@ -59,6 +64,17 @@ export default function ProductEditor({
       options: attribute.options.map((option) => ({ ...option })),
     })) ?? [],
   );
+  const [variantPricingEnabled, setVariantPricingEnabled] = useState<boolean>(
+    Boolean(product?.variantPrices?.length),
+  );
+  const [variantPriceDrafts, setVariantPriceDrafts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (product?.variantPrices ?? []).map((variantPrice) => [
+        productCustomizationCombinationKey(variantPrice.selections),
+        (variantPrice.priceCents / 100).toFixed(2),
+      ]),
+    ),
+  );
   const [galleryDrafts, setGalleryDrafts] = useState<GalleryDraft[]>(
     product?.imageGalleries?.map((gallery) => ({
       id: gallery.id,
@@ -82,6 +98,7 @@ export default function ProductEditor({
   const [active, setActive] = useState<boolean>(product?.active ?? true);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const customizationCombinations = productCustomizationCombinations(customizationAttributes);
 
   const addAttribute = (): void => {
     const firstOptionId = crypto.randomUUID();
@@ -132,6 +149,37 @@ export default function ProductEditor({
       setError('Informe valores numéricos válidos para preço e comissão.');
       setBusy(false);
       return;
+    }
+
+    let variantPrices: ProductVariantPrice[] | null = null;
+    if (variantPricingEnabled) {
+      if (customizationAttributes.length === 0) {
+        setError('Adicione pelo menos um atributo para cadastrar preços por combinação.');
+        setBusy(false);
+        return;
+      }
+      const parsedVariantPrices = customizationCombinations.map((selections) => {
+        const value = variantPriceDrafts[productCustomizationCombinationKey(selections)] ?? price;
+        const amount = Number(value.replace(',', '.'));
+        return {
+          selections,
+          priceCents: Math.round(amount * 100),
+          valid:
+            value.trim() !== '' &&
+            Number.isFinite(amount) &&
+            amount >= 0 &&
+            Number.isSafeInteger(Math.round(amount * 100)),
+        };
+      });
+      if (parsedVariantPrices.some((variantPrice) => !variantPrice.valid)) {
+        setError('Informe um preço válido para cada combinação de opções.');
+        setBusy(false);
+        return;
+      }
+      variantPrices = parsedVariantPrices.map(({ selections, priceCents }) => ({
+        selections,
+        priceCents,
+      }));
     }
 
     const canUseLegacyImage = !product?.defaultImages && imageUrl.trim().length > 0;
@@ -240,6 +288,7 @@ export default function ProductEditor({
         description,
         imageUrl: finalImages[0]!.downloadUrl,
         priceCents: Math.round(parsedPrice * 100),
+        variantPrices,
         durationMinutes: Number(duration),
         commissionType,
         commissionValue: Math.round(parsedCommission * 100),
@@ -505,6 +554,60 @@ export default function ProductEditor({
             </button>
           </fieldset>
           <fieldset className="form-stack">
+            <legend>Preços por combinação</legend>
+            <label className="toggle-row">
+              <span>
+                <strong>Preço varia conforme as opções</strong>
+                <small>Defina o preço final de cada combinação completa de opções.</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={variantPricingEnabled}
+                onChange={(event) => setVariantPricingEnabled(event.target.checked)}
+              />
+            </label>
+            {variantPricingEnabled &&
+              (customizationAttributes.length === 0 ? (
+                <p className="muted">Adicione um atributo para configurar os preços variáveis.</p>
+              ) : (
+                <div className="form-stack">
+                  {customizationCombinations.map((selections) => {
+                    const key = productCustomizationCombinationKey(selections);
+                    const combinationLabel = selections
+                      .map((selection) => {
+                        const attribute = customizationAttributes.find(
+                          (item) => item.id === selection.attributeId,
+                        );
+                        const option = attribute?.options.find(
+                          (item) => item.id === selection.optionId,
+                        );
+                        return `${attribute?.label || 'Atributo'}: ${option?.label || 'Opção'}`;
+                      })
+                      .join(' / ');
+                    return (
+                      <label className="form-grid" key={key}>
+                        {combinationLabel}
+                        <input
+                          aria-label={`Preço da combinação ${combinationLabel} (R$)`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={variantPriceDrafts[key] ?? price}
+                          onChange={(event) =>
+                            setVariantPriceDrafts((current) => ({
+                              ...current,
+                              [key]: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              ))}
+          </fieldset>
+          <fieldset className="form-stack">
             <legend>Galeria padrão (1 a 10 imagens)</legend>
             <div className="form-grid">
               {defaultImages.map((image, index) => (
@@ -712,7 +815,7 @@ export default function ProductEditor({
           </fieldset>
           <div className="form-grid">
             <label>
-              Preço (R$)
+              {variantPricingEnabled ? 'Preço base (R$)' : 'Preço (R$)'}
               <input
                 type="number"
                 min="0"

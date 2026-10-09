@@ -8,6 +8,7 @@ import type {
 import type {
   ProductCustomizationSelection,
   ProductImage,
+  ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
 import { isValidBusinessSlug } from '../utils/business-slug.util';
 
@@ -82,6 +83,9 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
         imageUrl: data.imageUrl as string,
         ...(Array.isArray(data.customizationAttributes)
           ? { customizationAttributes: data.customizationAttributes }
+          : {}),
+        ...(Array.isArray(data.variantPrices)
+          ? { variantPrices: data.variantPrices as ProductVariantPrice[] }
           : {}),
         ...(Array.isArray(data.defaultImages) ? { defaultImages: data.defaultImages } : {}),
         imageGalleries: publicGalleries

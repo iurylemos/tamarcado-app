@@ -4,6 +4,7 @@ import type {
   ProductCustomizationAttribute,
   ProductImage,
   ProductImageGallery,
+  ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
 
 export interface CompanyRecord {
@@ -27,6 +28,7 @@ export interface ProductRecord {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;

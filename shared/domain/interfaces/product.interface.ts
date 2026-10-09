@@ -21,6 +21,11 @@ export interface ProductCustomizationSelection {
   optionId: string;
 }
 
+export interface ProductVariantPrice {
+  selections: ProductCustomizationSelection[];
+  priceCents: number;
+}
+
 export interface ProductCustomizationSnapshot extends ProductCustomizationSelection {
   attributeLabel: string;
   optionLabel: string;
@@ -42,6 +47,7 @@ export interface PublicProduct {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;

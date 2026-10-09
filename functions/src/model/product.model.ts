@@ -3,6 +3,7 @@ import type {
   ProductCustomizationAttribute,
   ProductImageGallery,
   ProductImage,
+  ProductVariantPrice,
 } from '../../../shared/domain/interfaces/product.interface';
 
 export interface ProductDocument {
@@ -11,6 +12,7 @@ export interface ProductDocument {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
@@ -27,6 +29,7 @@ export interface PublicProductDocument {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;

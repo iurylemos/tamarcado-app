@@ -82,13 +82,19 @@ describe('product administration validation', () => {
   });
 
   it('accepts optional empty customization and rejects invalid option/default definitions', () => {
-    expect(validateProductInput({ ...validProduct, customizationAttributes: [] }))
-      .toMatchObject({ customizationAttributes: [] });
+    expect(validateProductInput({ ...validProduct, customizationAttributes: [] })).toMatchObject({
+      customizationAttributes: [],
+    });
     expect(() =>
       validateProductInput({
         ...validProduct,
         customizationAttributes: [
-          { id: 'color', label: 'Cor', options: [{ id: 'brown', label: 'Castanho' }], defaultOptionId: 'brown' },
+          {
+            id: 'color',
+            label: 'Cor',
+            options: [{ id: 'brown', label: 'Castanho' }],
+            defaultOptionId: 'brown',
+          },
         ],
       }),
     ).toThrow(/pelo menos duas opções/);
@@ -125,115 +131,237 @@ describe('product administration validation', () => {
       }),
     ).toThrow(/opção padrão deve pertencer/);
   });
+
+  it('validates a complete, unique price table for every customization combination', () => {
+    const customizationAttributes = [
+      {
+        id: 'color',
+        label: 'Cor',
+        options: [
+          { id: 'brown', label: 'Castanho' },
+          { id: 'blonde', label: 'Loiro' },
+        ],
+        defaultOptionId: 'brown',
+      },
+      {
+        id: 'fabric',
+        label: 'Tecido',
+        options: [
+          { id: 'linen', label: 'Linho' },
+          { id: 'velvet', label: 'Veludo' },
+        ],
+        defaultOptionId: 'linen',
+      },
+    ];
+    const variantPrices = [
+      {
+        selections: [
+          { attributeId: 'color', optionId: 'brown' },
+          { attributeId: 'fabric', optionId: 'linen' },
+        ],
+        priceCents: 10000,
+      },
+      {
+        selections: [
+          { attributeId: 'color', optionId: 'brown' },
+          { attributeId: 'fabric', optionId: 'velvet' },
+        ],
+        priceCents: 11000,
+      },
+      {
+        selections: [
+          { attributeId: 'color', optionId: 'blonde' },
+          { attributeId: 'fabric', optionId: 'linen' },
+        ],
+        priceCents: 12000,
+      },
+      {
+        selections: [
+          { attributeId: 'color', optionId: 'blonde' },
+          { attributeId: 'fabric', optionId: 'velvet' },
+        ],
+        priceCents: 13000,
+      },
+    ];
+
+    expect(
+      validateProductInput({ ...validProduct, customizationAttributes, variantPrices })
+        .variantPrices,
+    ).toEqual(variantPrices);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        customizationAttributes,
+        variantPrices: variantPrices.slice(0, -1),
+      }),
+    ).toThrow(/exatamente um preço/);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        customizationAttributes,
+        variantPrices: [...variantPrices.slice(0, -1), variantPrices[0]],
+      }),
+    ).toThrow(/exatamente um preço/);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        customizationAttributes,
+        variantPrices: variantPrices.map((price, index) =>
+          index === 0 ? { ...price, priceCents: -1 } : price,
+        ),
+      }),
+    ).toThrow(/Preço da combinação em centavos/);
+    expect(
+      validateProductInput({
+        ...validProduct,
+        customizationAttributes,
+        variantPrices: null,
+      }).variantPrices,
+    ).toBeNull();
+  });
 });
 
 const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
-  const testTenantId = 'product-gallery-test-tenant';
-  const testProductId = `product-gallery-test-${randomUUID()}`;
-  const galleryImages = [
+const testTenantId = 'product-gallery-test-tenant';
+const testProductId = `product-gallery-test-${randomUUID()}`;
+const galleryImages = [
+  {
+    id: 'gallery-image-1',
+    storagePath: `product-images/${testTenantId}/${testProductId}/image-1.jpg`,
+    downloadUrl: 'https://images.example.test/gallery-1.jpg',
+  },
+];
+const attributes = [
+  {
+    id: 'color',
+    label: 'Cor',
+    options: [
+      { id: 'standard', label: 'Padrão' },
+      { id: 'brown', label: 'Castanho' },
+    ],
+    defaultOptionId: 'standard',
+  },
+  {
+    id: 'fabric',
+    label: 'Tecido',
+    options: [
+      { id: 'linen', label: 'Linho' },
+      { id: 'suede', label: 'Suede' },
+    ],
+    defaultOptionId: 'linen',
+  },
+];
+const validProductInput = {
+  id: testProductId,
+  name: 'Produto com galeria',
+  description: 'Descrição mantida pelo backoffice.',
+  imageUrl: 'https://images.example.test/old.jpg',
+  defaultImages: galleryImages,
+  customizationAttributes: attributes,
+  priceCents: 12000,
+  durationMinutes: 60,
+  commissionType: 'percentage',
+  commissionValue: 3500,
+  active: true,
+  variantPrices: [
     {
-      id: 'gallery-image-1',
-      storagePath: `product-images/${testTenantId}/${testProductId}/image-1.jpg`,
-      downloadUrl: 'https://images.example.test/gallery-1.jpg',
-    },
-  ];
-  const attributes = [
-    {
-      id: 'color',
-      label: 'Cor',
-      options: [
-        { id: 'standard', label: 'Padrão' },
-        { id: 'brown', label: 'Castanho' },
+      selections: [
+        { attributeId: 'color', optionId: 'standard' },
+        { attributeId: 'fabric', optionId: 'linen' },
       ],
-      defaultOptionId: 'standard',
+      priceCents: 10000,
     },
     {
-      id: 'fabric',
-      label: 'Tecido',
-      options: [
-        { id: 'linen', label: 'Linho' },
-        { id: 'suede', label: 'Suede' },
+      selections: [
+        { attributeId: 'color', optionId: 'standard' },
+        { attributeId: 'fabric', optionId: 'suede' },
       ],
-      defaultOptionId: 'linen',
+      priceCents: 11000,
     },
-  ];
-  const validProductInput = {
-    id: testProductId,
-    name: 'Produto com galeria',
-    description: 'Descrição mantida pelo backoffice.',
-    imageUrl: 'https://images.example.test/old.jpg',
-    defaultImages: galleryImages,
-    customizationAttributes: attributes,
-    priceCents: 12000,
-    durationMinutes: 60,
-    commissionType: 'percentage',
-    commissionValue: 3500,
-    active: true,
-  };
-  const selections = [
-    { attributeId: 'color', optionId: 'brown' },
-    { attributeId: 'fabric', optionId: 'linen' },
-  ];
+    {
+      selections: [
+        { attributeId: 'color', optionId: 'brown' },
+        { attributeId: 'fabric', optionId: 'linen' },
+      ],
+      priceCents: 12000,
+    },
+    {
+      selections: [
+        { attributeId: 'color', optionId: 'brown' },
+        { attributeId: 'fabric', optionId: 'suede' },
+      ],
+      priceCents: 13000,
+    },
+  ],
+};
+const selections = [
+  { attributeId: 'color', optionId: 'brown' },
+  { attributeId: 'fabric', optionId: 'linen' },
+];
 
-  emulatorOnly('product gallery administration on Firestore emulator', () => {
-    beforeEach(async () => {
-      const galleryKey = JSON.stringify([
-        ['color', 'brown'],
-        ['fabric', 'linen'],
-      ]);
-      const galleryId = productGalleryDocumentId(testProductId, galleryKey);
-      await Promise.all([
-        firestore.collection(collections.products).doc(testProductId).delete(),
-        firestore.collection(collections.publicProducts).doc(testProductId).delete(),
-        firestore.collection(collections.productImageGalleries).doc(galleryId).delete(),
-        firestore.collection(collections.publicProductGalleries).doc(galleryId).delete(),
-      ]);
-      await firestore.collection(collections.tenants).doc(testTenantId).set({
-        name: 'Empresa isolada de teste',
-        slug: 'product-gallery-test',
-        segment: 'beauty',
-        timezone: 'America/Sao_Paulo',
-        bookingIntervalMinutes: 15,
-        active: true,
-      });
-      await firestore.collection(collections.publicBusinesses).doc(testTenantId).set({
-        tenantId: testTenantId,
-        name: 'Empresa isolada de teste',
-        slug: 'product-gallery-test',
-        segment: 'beauty',
-        published: true,
-      });
-      await firestore.collection(collections.products).doc(testProductId).set({
-        tenantId: testTenantId,
-        name: 'Produto anterior',
-        imageUrl: 'https://images.example.test/old.jpg',
-      });
-      await saveProduct(testTenantId, validProductInput);
+emulatorOnly('product gallery administration on Firestore emulator', () => {
+  beforeEach(async () => {
+    const galleryKey = JSON.stringify([
+      ['color', 'brown'],
+      ['fabric', 'linen'],
+    ]);
+    const galleryId = productGalleryDocumentId(testProductId, galleryKey);
+    await Promise.all([
+      firestore.collection(collections.products).doc(testProductId).delete(),
+      firestore.collection(collections.publicProducts).doc(testProductId).delete(),
+      firestore.collection(collections.productImageGalleries).doc(galleryId).delete(),
+      firestore.collection(collections.publicProductGalleries).doc(galleryId).delete(),
+    ]);
+    await firestore.collection(collections.tenants).doc(testTenantId).set({
+      name: 'Empresa isolada de teste',
+      slug: 'product-gallery-test',
+      segment: 'beauty',
+      timezone: 'America/Sao_Paulo',
+      bookingIntervalMinutes: 15,
+      active: true,
     });
-
-    afterAll(async () => {
-      const productId = testProductId;
-      const key = JSON.stringify([
-        ['color', 'brown'],
-        ['fabric', 'linen'],
-      ]);
-      const galleryId = productGalleryDocumentId(productId, key);
-      const batch = firestore.batch();
-      [
-        [collections.tenants, testTenantId],
-        [collections.publicBusinesses, testTenantId],
-        [collections.products, testProductId],
-        [collections.publicProducts, testProductId],
-        [collections.productImageGalleries, galleryId],
-        [collections.publicProductGalleries, galleryId],
-      ].forEach(([collection, id]) => {
-        batch.delete(firestore.collection(collection!).doc(id!));
-      });
-      await batch.commit();
+    await firestore.collection(collections.publicBusinesses).doc(testTenantId).set({
+      tenantId: testTenantId,
+      name: 'Empresa isolada de teste',
+      slug: 'product-gallery-test',
+      segment: 'beauty',
+      published: true,
     });
+    await firestore.collection(collections.products).doc(testProductId).set({
+      tenantId: testTenantId,
+      name: 'Produto anterior',
+      imageUrl: 'https://images.example.test/old.jpg',
+    });
+    await saveProduct(testTenantId, validProductInput);
+  });
 
-    itVitest('persists optional attributes and default images in the safe public projection', async () => {
-      const product = (await firestore.collection(collections.products).doc(testProductId).get()).data();
+  afterAll(async () => {
+    const productId = testProductId;
+    const key = JSON.stringify([
+      ['color', 'brown'],
+      ['fabric', 'linen'],
+    ]);
+    const galleryId = productGalleryDocumentId(productId, key);
+    const batch = firestore.batch();
+    [
+      [collections.tenants, testTenantId],
+      [collections.publicBusinesses, testTenantId],
+      [collections.products, testProductId],
+      [collections.publicProducts, testProductId],
+      [collections.productImageGalleries, galleryId],
+      [collections.publicProductGalleries, galleryId],
+    ].forEach(([collection, id]) => {
+      batch.delete(firestore.collection(collection!).doc(id!));
+    });
+    await batch.commit();
+  });
+
+  itVitest(
+    'persists optional attributes and default images in the safe public projection',
+    async () => {
+      const product = (
+        await firestore.collection(collections.products).doc(testProductId).get()
+      ).data();
       const projection = (
         await firestore.collection(collections.publicProducts).doc(testProductId).get()
       ).data();
@@ -242,6 +370,7 @@ const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)
         defaultImages: galleryImages,
         imageUrl: galleryImages[0]!.downloadUrl,
         description: 'Descrição mantida pelo backoffice.',
+        variantPrices: validProductInput.variantPrices,
       });
       expect(projection).toMatchObject({
         customizationAttributes: attributes,
@@ -249,9 +378,21 @@ const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)
         imageUrl: galleryImages[0]!.downloadUrl,
       });
       expect(projection).not.toHaveProperty('commissionValue');
-    });
+      expect(projection).toHaveProperty('variantPrices', validProductInput.variantPrices);
+    },
+  );
 
-    itVitest('validates complete option combinations, tenant ownership, and one-to-ten image references', async () => {
+  itVitest('clears variant prices when switched back to a fixed product price', async () => {
+    await saveProduct(testTenantId, { ...validProductInput, variantPrices: null });
+    const product = (
+      await firestore.collection(collections.products).doc(testProductId).get()
+    ).data();
+    expect(product).toHaveProperty('variantPrices', null);
+  });
+
+  itVitest(
+    'validates complete option combinations, tenant ownership, and one-to-ten image references',
+    async () => {
       await expect(
         saveProductGallery(testTenantId, {
           productId: testProductId,
@@ -292,9 +433,12 @@ const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)
           ],
         }),
       ).rejects.toMatchObject({ code: 'invalid-argument' });
-    });
+    },
+  );
 
-    itVitest('upserts one exact gallery, returns paths for cleanup, and removes its public projection', async () => {
+  itVitest(
+    'upserts one exact gallery, returns paths for cleanup, and removes its public projection',
+    async () => {
       const first = await saveProductGallery(testTenantId, {
         productId: testProductId,
         selections,
@@ -312,15 +456,20 @@ const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)
         (await firestore.collection(collections.publicProductGalleries).doc(id).get()).data(),
       ).toMatchObject({ id, productId: testProductId, selections, images: galleryImages });
       expect(
-        (await firestore.collection(collections.productImageGalleries).where('tenantId', '==', testTenantId).get())
-          .docs,
+        (
+          await firestore
+            .collection(collections.productImageGalleries)
+            .where('tenantId', '==', testTenantId)
+            .get()
+        ).docs,
       ).toHaveLength(1);
       expect(business.tenantId).toBe(testTenantId);
       await expect(
         deleteProductGallery(testTenantId, { productId: testProductId, galleryId: id }),
       ).resolves.toEqual({ deleted: true, storagePaths: [galleryImages[0]!.storagePath] });
-      expect((await firestore.collection(collections.publicProductGalleries).doc(id).get()).exists).toBe(
-        false,
-      );
-    });
-  });
+      expect(
+        (await firestore.collection(collections.publicProductGalleries).doc(id).get()).exists,
+      ).toBe(false);
+    },
+  );
+});

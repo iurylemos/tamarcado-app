@@ -14,7 +14,15 @@ export default function ProductImageGallery({
   onSelect,
   productName,
 }: Readonly<ProductImageGalleryProps>): JSX.Element | null {
-  if (images.length === 0) return null;
+  if (images.length === 0) {
+    return (
+      <section className="product-image-gallery" aria-label={`Imagens de ${productName}`}>
+        <div className="product-image-gallery__empty" role="status">
+          Imagens não disponíveis para esta combinação.
+        </div>
+      </section>
+    );
+  }
 
   const selectedIndex = Math.max(
     0,

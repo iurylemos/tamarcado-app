@@ -7,6 +7,7 @@ import type { CreatePublicAppointmentInput } from '../../../shared/domain/interf
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { fiveMinuteBucketStarts } from '../../../shared/domain/interval';
 import { calculateCommissionCents } from '../../../shared/domain/money';
+import { resolveProductPriceCents } from '../../../shared/domain/product-price';
 import { getZonedDateTimeParts, isValidDateString } from '../../../shared/domain/timezone';
 import { DomainError } from '../../../shared/domain/errors';
 import type {
@@ -272,6 +273,17 @@ export async function createPublicAppointment(
       product.customizationAttributes,
       input.customizationSelections,
     );
+    const priceCents = resolveProductPriceCents(
+      product.priceCents,
+      product.variantPrices,
+      customization.selections,
+    );
+    if (priceCents === undefined) {
+      throw new HttpsError(
+        'failed-precondition',
+        'O preço desta combinação de opções não está disponível.',
+      );
+    }
     const effectiveImages = await resolveEffectiveGallery(
       business,
       product,
@@ -370,7 +382,7 @@ export async function createPublicAppointment(
       const createdAt = Timestamp.now();
 
       const commissionAmountCents = calculateCommissionCents(
-        product.priceCents,
+        priceCents,
         product.commissionType,
         product.commissionValue,
       );
@@ -389,7 +401,7 @@ export async function createPublicAppointment(
         productNameSnapshot: product.name,
         productImageUrlSnapshot: selectedImage.downloadUrl,
         ...(customization.snapshot ? { customizationSnapshot: customization.snapshot } : {}),
-        productPriceCentsSnapshot: product.priceCents,
+        productPriceCentsSnapshot: priceCents,
         commissionTypeSnapshot: product.commissionType,
         commissionValueSnapshot: product.commissionValue,
         commissionAmountCentsSnapshot: commissionAmountCents,

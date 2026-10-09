@@ -74,18 +74,40 @@ export default function BookingPage(): JSX.Element {
     [customizationSelections, product],
   );
   const effectiveImages: ProductImage[] = useMemo(
-    () =>
-      product
-        ? (effectiveImageGallery?.images ??
-          (product.defaultImages?.length
-            ? product.defaultImages.filter((image) => image.downloadUrl)
-            : [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }]))
-        : [],
+    () => {
+      if (!product) return [];
+      if ((product.customizationAttributes?.length ?? 0) > 0) {
+        return effectiveImageGallery?.images.filter((image) => image.downloadUrl) ?? [];
+      }
+      return product.defaultImages?.length
+        ? product.defaultImages.filter((image) => image.downloadUrl)
+        : [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }];
+    },
     [effectiveImageGallery, product],
   );
   const effectiveSelectedImageId = effectiveImages.some((image) => image.id === selectedImageId)
     ? selectedImageId
     : (effectiveImages[0]?.id ?? '');
+
+  useEffect(() => {
+    const attributes = product?.customizationAttributes ?? [];
+    setCustomizationSelections((current) => {
+      const next = attributes.map((attribute) => {
+        const selected = current.find((selection) => selection.attributeId === attribute.id);
+        return selected && attribute.options.some((option) => option.id === selected.optionId)
+          ? selected
+          : { attributeId: attribute.id, optionId: attribute.defaultOptionId };
+      });
+      const unchanged =
+        next.length === current.length &&
+        next.every(
+          (selection, index) =>
+            selection.attributeId === current[index]?.attributeId &&
+            selection.optionId === current[index]?.optionId,
+        );
+      return unchanged ? current : next;
+    });
+  }, [product]);
 
   useEffect(() => {
     if (!effectiveImages.some((image) => image.id === selectedImageId)) {

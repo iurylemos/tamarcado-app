@@ -73,6 +73,12 @@ describe('getCompanyCatalog', () => {
               imageUrl: '/corte.jpg',
               priceCents: 12000,
               durationMinutes: 60,
+              variantPrices: [
+                {
+                  selections: [{ attributeId: 'service', optionId: 'volume-brasileiro' }],
+                  priceCents: 12000,
+                },
+              ],
             }),
           },
           {
@@ -93,6 +99,12 @@ describe('getCompanyCatalog', () => {
 
     expect(catalog?.business.slug).toBe('studio-aurora');
     expect(catalog?.products.map((product) => product.id)).toEqual(['service-aurora']);
+    expect(catalog?.products[0]?.variantPrices).toEqual([
+      {
+        selections: [{ attributeId: 'service', optionId: 'volume-brasileiro' }],
+        priceCents: 12000,
+      },
+    ]);
     expect(getDocs).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({

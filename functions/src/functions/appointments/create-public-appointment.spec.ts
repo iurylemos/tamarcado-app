@@ -115,6 +115,44 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     expect(appointment?.productImageUrlSnapshot).not.toBe('https://untrusted.example/client-url');
   });
 
+  it('uses the selected variant price for the appointment snapshot and commission', async () => {
+    const slots = await listAvailableSlots({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      professionalId: 'professional-vitoria-moura',
+      date: nextOpenDate(),
+    });
+    const slot = slots[0];
+    expect(slot).toBeDefined();
+
+    const result = await createPublicAppointment({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      professionalId: 'professional-vitoria-moura',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      customizationSelections: [
+        { attributeId: 'lash-service', optionId: 'volume-brasileiro' },
+      ],
+    });
+    const appointment = (
+      await db.collection('appointments').doc(result.appointmentId).get()
+    ).data();
+
+    expect(appointment).toMatchObject({
+      productPriceCentsSnapshot: 12000,
+      commissionAmountCentsSnapshot: 4200,
+      customizationSnapshot: [
+        {
+          attributeId: 'lash-service',
+          optionId: 'volume-brasileiro',
+          optionLabel: 'Volume Brasileiro',
+        },
+      ],
+    });
+  });
+
   it.each([
     ['missing', []],
     [

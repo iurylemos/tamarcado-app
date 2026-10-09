@@ -7,7 +7,12 @@ import type {
   ProductCustomizationSelection,
   ProductImage,
   ProductImageGallery,
+  ProductVariantPrice,
 } from '../../../shared/domain/interfaces/product.interface';
+import {
+  productCustomizationCombinationKey,
+  productCustomizationCombinations,
+} from '../../../shared/domain/product-variant-price';
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { collections } from '../config/collections';
 import type { BlockedPeriodDocument, WorkingHoursDocument } from '../model/availability.model';
@@ -108,6 +113,7 @@ export interface ProductInput {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   priceCents: number;
   durationMinutes: number;
@@ -124,7 +130,9 @@ function stableIdentifier(value: unknown, label: string): string {
   return identifier;
 }
 
-function validateCustomizationAttributes(value: unknown): ProductCustomizationAttribute[] | undefined {
+function validateCustomizationAttributes(
+  value: unknown,
+): ProductCustomizationAttribute[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value)) {
     throw new HttpsError('invalid-argument', 'As opções de personalização são inválidas.');
@@ -136,15 +144,15 @@ function validateCustomizationAttributes(value: unknown): ProductCustomizationAt
     const id = stableIdentifier(attribute.id, 'Identificador do atributo');
     const label = requiredText(attribute.label, 'Nome do atributo', 80);
     if (attributeIds.has(id)) {
-      throw new HttpsError('invalid-argument', 'Os identificadores dos atributos devem ser únicos.');
+      throw new HttpsError(
+        'invalid-argument',
+        'Os identificadores dos atributos devem ser únicos.',
+      );
     }
     attributeIds.add(id);
 
     if (!Array.isArray(attribute.options) || attribute.options.length < 2) {
-      throw new HttpsError(
-        'invalid-argument',
-        'Cada atributo deve ter pelo menos duas opções.',
-      );
+      throw new HttpsError('invalid-argument', 'Cada atributo deve ter pelo menos duas opções.');
     }
 
     const optionIds = new Set<string>();
@@ -164,15 +172,9 @@ function validateCustomizationAttributes(value: unknown): ProductCustomizationAt
       optionLabels.add(normalizedLabel);
       return { id: optionId, label: optionLabel };
     });
-    const defaultOptionId = stableIdentifier(
-      attribute.defaultOptionId,
-      'Opção padrão',
-    );
+    const defaultOptionId = stableIdentifier(attribute.defaultOptionId, 'Opção padrão');
     if (!optionIds.has(defaultOptionId)) {
-      throw new HttpsError(
-        'invalid-argument',
-        'A opção padrão deve pertencer ao atributo.',
-      );
+      throw new HttpsError('invalid-argument', 'A opção padrão deve pertencer ao atributo.');
     }
     return { id, label, options, defaultOptionId };
   });
@@ -181,10 +183,7 @@ function validateCustomizationAttributes(value: unknown): ProductCustomizationAt
 function validateProductImages(value: unknown): ProductImage[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value) || value.length < 1 || value.length > 10) {
-    throw new HttpsError(
-      'invalid-argument',
-      'A galeria padrão deve conter de uma a dez imagens.',
-    );
+    throw new HttpsError('invalid-argument', 'A galeria padrão deve conter de uma a dez imagens.');
   }
   const ids = new Set<string>();
   return value.map((rawImage) => {
@@ -212,12 +211,86 @@ function validateProductImages(value: unknown): ProductImage[] | undefined {
   });
 }
 
+function validateVariantPrices(
+  value: unknown,
+  attributes: ProductCustomizationAttribute[] | undefined,
+): ProductVariantPrice[] | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (!Array.isArray(value) || value.length === 0 || !attributes?.length) {
+    throw new HttpsError(
+      'invalid-argument',
+      'O preço por combinação exige opções de personalização e um preço para cada combinação.',
+    );
+  }
+
+  const combinations = productCustomizationCombinations(attributes);
+  const validKeys = new Set(combinations.map(productCustomizationCombinationKey));
+  if (value.length !== validKeys.size) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Informe exatamente um preço para cada combinação de opções.',
+    );
+  }
+
+  const seenKeys = new Set<string>();
+  return value.map((rawPrice) => {
+    const price = inputObject(rawPrice);
+    if (!Array.isArray(price.selections)) {
+      throw new HttpsError('invalid-argument', 'As opções do preço por combinação são inválidas.');
+    }
+    const selections = price.selections.map((rawSelection) => {
+      const selection = inputObject(rawSelection);
+      const attributeId = stableIdentifier(selection.attributeId, 'Identificador do atributo');
+      const optionId = stableIdentifier(selection.optionId, 'Identificador da opção');
+      const attribute = attributes.find((item) => item.id === attributeId);
+      if (!attribute || !attribute.options.some((option) => option.id === optionId)) {
+        throw new HttpsError(
+          'invalid-argument',
+          'O preço por combinação contém uma opção de personalização inválida.',
+        );
+      }
+      return { attributeId, optionId };
+    });
+    if (
+      selections.length !== attributes.length ||
+      new Set(selections.map((selection) => selection.attributeId)).size !== attributes.length
+    ) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Cada preço deve selecionar exatamente uma opção de cada atributo.',
+      );
+    }
+
+    const key = productCustomizationCombinationKey(selections);
+    if (!validKeys.has(key) || seenKeys.has(key)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Cada combinação de opções deve ter exatamente um preço.',
+      );
+    }
+    seenKeys.add(key);
+    return {
+      selections: attributes.map((attribute) =>
+        selections.find((selection) => selection.attributeId === attribute.id)!,
+      ),
+      priceCents: requiredInteger(
+        price.priceCents,
+        'Preço da combinação em centavos',
+        0,
+        Number.MAX_SAFE_INTEGER,
+      ),
+    };
+  });
+}
+
 export function validateProductInput(rawInput: unknown): ProductInput {
   const input = inputObject(rawInput);
   const id = optionalDocumentId(input.id);
   const name = requiredText(input.name, 'Nome do serviço', 80);
   const description = optionalText(input.description, 'Descrição', 600);
   const customizationAttributes = validateCustomizationAttributes(input.customizationAttributes);
+  const variantPrices = validateVariantPrices(input.variantPrices, customizationAttributes);
   const defaultImages = validateProductImages(input.defaultImages);
   const imageUrl = defaultImages
     ? defaultImages[0]!.downloadUrl
@@ -251,6 +324,7 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     ...(description ? { description } : {}),
     imageUrl,
     ...(customizationAttributes !== undefined ? { customizationAttributes } : {}),
+    ...(variantPrices !== undefined ? { variantPrices } : {}),
     ...(defaultImages !== undefined ? { defaultImages } : {}),
     priceCents,
     durationMinutes,
@@ -314,9 +388,10 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
 
   const byName = <T extends { name: string }>(first: T, second: T) =>
     first.name.localeCompare(second.name, 'pt-BR');
-  const productGalleries = galleriesSnapshot.docs.map(
-    (doc) => ({ ...(doc.data() as ProductGalleryDocument), id: doc.id }),
-  );
+  const productGalleries = galleriesSnapshot.docs.map((doc) => ({
+    ...(doc.data() as ProductGalleryDocument),
+    id: doc.id,
+  }));
   const galleriesByProduct = new Map<string, ProductImageGallery[]>();
   for (const gallery of productGalleries) {
     const galleries = galleriesByProduct.get(gallery.productId) ?? [];
@@ -388,6 +463,7 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     description,
     imageUrl,
     customizationAttributes,
+    variantPrices,
     defaultImages,
     priceCents,
     durationMinutes,
@@ -412,7 +488,8 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
       throw new HttpsError('not-found', 'Serviço não encontrado nesta empresa.');
     }
     if (defaultImages) validateImageOwnership(defaultImages, tenantId, reference.id);
-    const primaryImageUrl = defaultImages?.[0]?.downloadUrl ?? current?.defaultImages?.[0]?.downloadUrl ?? imageUrl;
+    const primaryImageUrl =
+      defaultImages?.[0]?.downloadUrl ?? current?.defaultImages?.[0]?.downloadUrl ?? imageUrl;
 
     const product: ProductDocument = {
       tenantId,
@@ -424,6 +501,7 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
         : current?.customizationAttributes
           ? { customizationAttributes: current.customizationAttributes }
           : {}),
+      ...(variantPrices !== undefined ? { variantPrices } : {}),
       ...(defaultImages !== undefined
         ? { defaultImages }
         : current?.defaultImages
@@ -456,6 +534,11 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
           ? { customizationAttributes }
           : current?.customizationAttributes
             ? { customizationAttributes: current.customizationAttributes }
+            : {}),
+        ...(variantPrices !== undefined
+          ? { variantPrices }
+          : current?.variantPrices !== undefined
+            ? { variantPrices: current.variantPrices }
             : {}),
         ...(defaultImages !== undefined
           ? { defaultImages }
@@ -493,7 +576,11 @@ function validateGallerySelections(
   rawSelections: unknown,
   attributes: ProductCustomizationAttribute[] | undefined,
 ): ProductCustomizationSelection[] {
-  if (!Array.isArray(rawSelections) || !attributes?.length || rawSelections.length !== attributes.length) {
+  if (
+    !Array.isArray(rawSelections) ||
+    !attributes?.length ||
+    rawSelections.length !== attributes.length
+  ) {
     throw new HttpsError(
       'invalid-argument',
       'A galeria deve selecionar exatamente uma opção para cada atributo do serviço.',
@@ -505,7 +592,10 @@ function validateGallerySelections(
     const attributeId = stableIdentifier(selection.attributeId, 'Identificador do atributo');
     const optionId = stableIdentifier(selection.optionId, 'Identificador da opção');
     if (byAttribute.has(attributeId)) {
-      throw new HttpsError('invalid-argument', 'A seleção de atributos não pode conter duplicatas.');
+      throw new HttpsError(
+        'invalid-argument',
+        'A seleção de atributos não pode conter duplicatas.',
+      );
     }
     byAttribute.set(attributeId, optionId);
   }
@@ -567,29 +657,37 @@ export async function saveProductGallery(
       selections,
       images,
       tenantId,
-      businessSlug: (await transaction.get(
-        firestore.collection(collections.tenants).doc(tenantId),
-      )).data()?.slug as string,
+      businessSlug: (
+        await transaction.get(firestore.collection(collections.tenants).doc(tenantId))
+      ).data()?.slug as string,
       published: true,
     };
     if (!gallery.businessSlug) {
       throw new HttpsError('not-found', 'Empresa não encontrada.');
     }
-    transaction.set(galleryReference, {
-      ...gallery,
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-    transaction.set(publicReference, {
-      id,
-      productId,
-      combinationKey,
-      selections,
-      images,
-      tenantId,
-      businessSlug: gallery.businessSlug,
-      published: true,
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
+    transaction.set(
+      galleryReference,
+      {
+        ...gallery,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    transaction.set(
+      publicReference,
+      {
+        id,
+        productId,
+        combinationKey,
+        selections,
+        images,
+        tenantId,
+        businessSlug: gallery.businessSlug,
+        published: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
     savedId = id;
     savedCombinationKey = combinationKey;
   });
@@ -895,7 +993,9 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     throw new HttpsError('invalid-argument', 'Informe um telefone brasileiro válido com DDD.');
   }
   const logoUrl = optionalUrl(input.logoUrl, 'Logo');
-  const emailDomain = optionalText(input.emailDomain, 'Domínio de e-mail', 100)?.toLowerCase().replace(/^@/, '');
+  const emailDomain = optionalText(input.emailDomain, 'Domínio de e-mail', 100)
+    ?.toLowerCase()
+    .replace(/^@/, '');
   if (emailDomain && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(emailDomain)) {
     throw new HttpsError('invalid-argument', 'Informe um domínio válido, como empresa.com.br.');
   }
