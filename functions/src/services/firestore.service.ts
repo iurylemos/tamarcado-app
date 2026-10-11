@@ -8,6 +8,7 @@ import {
 } from 'firebase-admin/firestore';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { collections, type CollectionName } from '../config/collections';
+export { professionalProductId } from '../utils/professional-product-id';
 
 if (getApps().length === 0) initializeApp();
 
@@ -28,10 +29,6 @@ export function tenantQuery<T extends DocumentData = DocumentData>(
 
 export function serverTimestamps() {
   return { createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
-}
-
-export function professionalProductId(tenantId: string, professionalId: string, productId: string): string {
-  return [tenantId, professionalId, productId].map(encodeURIComponent).join('__');
 }
 
 export function collectionNames(): readonly string[] {

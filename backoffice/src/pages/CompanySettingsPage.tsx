@@ -13,6 +13,7 @@ const segmentLabels: Record<string, string> = {
   health: 'Saúde',
   fitness: 'Atividade física',
   automotive: 'Automotivo',
+  home: 'Casa e decoração',
   other: 'Outro',
 };
 

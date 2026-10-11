@@ -37,6 +37,7 @@ const businessSegments = new Set<BusinessSegment>([
   'health',
   'fitness',
   'automotive',
+  'home',
   'other',
 ]);
 

@@ -1,4 +1,4 @@
-export type BusinessSegment = 'beauty' | 'health' | 'fitness' | 'automotive' | 'other';
+export type BusinessSegment = 'beauty' | 'health' | 'fitness' | 'automotive' | 'home' | 'other';
 
 export interface PublicBusiness {
   id: string;

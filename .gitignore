@@ -17,3 +17,6 @@ Thumbs.db
 .vscode/
 .idea/
 functions/lib/*
+private/company-import/
+functions/test/fixtures/templates/*.csv
+!functions/test/fixtures/templates/*.example.csv

@@ -305,6 +305,53 @@ selecionado na CLI. Sempre verifique o destino antes de executar comandos de
 deploy. Configure variáveis e segredos de produção no Firebase conforme a
 integração utilizada, e não inclua credenciais nos arquivos versionados.
 
+### Importar uma empresa por CSV em produção
+
+O projeto Firebase de produção configurado neste repositório é
+`tamarcado-dad82` (alias `ta-marcado` em `.firebaserc`). Informe esse ID
+explicitamente em `--project`; não use `demo-tamarcado`, que é o projeto do
+emulador.
+
+1. Instale as dependências com `npm ci` e configure as credenciais ADC que o
+   Firebase Admin usa (por exemplo, `gcloud auth application-default login`).
+   A conta precisa ter permissão para criar usuários no Firebase Authentication
+   e documentos no Firestore do projeto `tamarcado-dad82`.
+2. Copie o template de exemplo para um CSV operacional no mesmo diretório. CSVs
+   operacionais nessa pasta são ignorados pelo Git. No PowerShell:
+
+```powershell
+Copy-Item functions\test\fixtures\templates\soft-stylus.example.csv functions\test\fixtures\templates\soft-stylus.csv
+```
+
+No Git Bash:
+
+```bash
+cp functions/test/fixtures/templates/soft-stylus.example.csv functions/test/fixtures/templates/soft-stylus.csv
+```
+
+3. Preencha no CSV as senhas iniciais do administrador e do colaborador e o
+   telefone real do colaborador. Revise também os dados e as URLs de imagem. Não
+   importe o template sem preencher esses campos.
+4. No PowerShell, a partir da raiz do repositório, execute:
+
+```powershell
+npm run import:company -- --project tamarcado-dad82 --file soft-stylus.csv --confirm-production-import
+```
+
+O `--file` recebe apenas o nome do CSV, que será lido de
+`functions/test/fixtures/templates/`. O sinalizador `--confirm-production-import`
+é obrigatório. O comando valida todo o CSV localmente antes de inicializar o
+Firebase e usa operações create-only; em caso de conflito, não sobrescreve dados
+existentes e tenta remover somente os registros criados naquela tentativa.
+Sucesso e erros não devem expor senhas nem telefones pessoais. Proteja o CSV e as
+credenciais ADC durante a operação e remova o arquivo operacional e suas cópias
+temporárias com segurança após confirmar o resultado. Nunca use
+`seed:production` para importar empresas: esse script é destrutivo.
+
+O importador ignora colunas vazias extras ao final do cabeçalho e das linhas,
+comuns ao salvar planilhas. Preços inteiros como `350` são interpretados como
+R$ 350,00; o formato decimal brasileiro, como `350,00`, também é aceito.
+
 ## Qualidade e testes
 
 Antes de concluir uma mudança, execute os testes relevantes e o build do
@@ -319,3 +366,13 @@ npm run build
 
 Consulte também [design-system.md](./design-system.md) ao alterar a experiência
 visual das aplicações.
+
+## Rodando as Seed de produção
+
+Isso apaga todas as empresas, e deixa apenas as padrões
+
+```bash
+$bucket = "tamarcado-dad82.firebasestorage.app"
+$env:VITE_FIREBASE_STORAGE_BUCKET = $bucket
+npm run seed:production -- --project tamarcado-dad82 --confirm-production-seed
+```

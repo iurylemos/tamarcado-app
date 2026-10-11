@@ -177,15 +177,6 @@ const beautyProducts: BeautyProductSeed[] = [
   },
 ];
 
-const retiredBeautyProductIds = [
-  ...beautyBrows.map((service) => `service-vitoria-brow-${service.id}`),
-  ...beautyLashes.map((service) => `service-vitoria-lash-${service.id}`),
-  ...beautyMaintenance.map((service) => `service-vitoria-maintenance-${service.id}`),
-  ...beautyBrows.flatMap((brow) =>
-    beautyComboLashes.map((lash) => `service-vitoria-combo-${brow.id}-${lash.id}`),
-  ),
-];
-
 const fixedDate = (daysFromNow: number, hour = 10) => {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + daysFromNow);
@@ -454,35 +445,6 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       },
     });
   }
-  for (const productId of retiredBeautyProductIds) {
-    documents.push(
-      {
-        collection: 'products',
-        id: productId,
-        data: { tenantId: 'tenant-vitoria-moura-beauty', active: false },
-      },
-      {
-        collection: 'public_products',
-        id: productId,
-        data: {
-          tenantId: 'tenant-vitoria-moura-beauty',
-          active: false,
-          published: false,
-        },
-      },
-      {
-        collection: 'professional_products',
-        id: ['tenant-vitoria-moura-beauty', 'professional-vitoria-moura', productId].join('__'),
-        data: {
-          tenantId: 'tenant-vitoria-moura-beauty',
-          professionalId: 'professional-vitoria-moura',
-          productId,
-          active: false,
-        },
-      },
-    );
-  }
-
   const assignments = [
     ['tenant-aurora', 'professional-ana', 'service-corte', true],
     ['tenant-aurora', 'professional-bruna', 'service-corte', true],
@@ -654,6 +616,7 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         tenantId: 'tenant-vitoria-moura-beauty',
         role: 'backoffice',
         name: 'Gestor Vitória Moura Beauty',
+        phoneE164: '+558592798325',
         email: 'admin@vitoriamourabeauty.com',
         active: true,
       },

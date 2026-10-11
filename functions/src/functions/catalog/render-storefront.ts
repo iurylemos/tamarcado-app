@@ -1,4 +1,7 @@
-import { findPublicBusiness, listPublicProductRecords } from '../../services/public-catalog.service';
+import {
+  findPublicBusiness,
+  listPublicProductRecords,
+} from '../../services/public-catalog.service';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
 import type { Response } from 'firebase-functions/v1';
 import { logger } from 'firebase-functions';
@@ -37,7 +40,9 @@ export function renderStorefrontHtml(
 ): string {
   const canonical = `${origin}/empresa/${encodeURIComponent(catalog.business.slug)}`;
   const title = `${catalog.business.name} | Agende seu serviço`;
-  const description = catalog.business.description || `Conheça os serviços de ${catalog.business.name} e agende online.`;
+  const description =
+    catalog.business.description ||
+    `Conheça os serviços de ${catalog.business.name} e agende online.`;
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -75,10 +80,7 @@ export function renderStorefrontHtml(
   return shellHtml
     .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`)
     .replace(/<meta\s+name=["']description["'][^>]*>/i, '')
-    .replace(
-      '</head>',
-      `${metadata}</head>`,
-    )
+    .replace('</head>', `${metadata}</head>`)
     .replace(
       '<div id="root"></div>',
       `<div id="root">${renderPublicContent(catalog)}</div><script>window.__TAMARCADO_SSR__={catalog:${serializedCatalog}};</script>`,
@@ -105,7 +107,10 @@ export const renderStorefront = onRequest(
       }
 
       if (segments.length !== 2) {
-        response.status(200).type('html').send(await shell.text());
+        response
+          .status(200)
+          .type('html')
+          .send(await shell.text());
         return;
       }
 

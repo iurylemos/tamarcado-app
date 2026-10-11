@@ -9,7 +9,7 @@ import {
   listPublicProductRecords,
 } from '../../services/public-catalog.service';
 import { createSeedDocuments } from '../../../test/fixtures/seed-data';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getZonedDateTimeParts, localDateTimeToUtc } from '../../../../shared/domain/timezone';
 import { logger } from 'firebase-functions';
 import { processAppointmentNotification } from '../../services/appointment-notification.service';
@@ -272,6 +272,26 @@ emulatorOnly('public booking on the Firestore emulator', () => {
           slot.startsAt === blockStartsAt.toISOString(),
       ),
     ).toBe(true);
+  });
+
+  it('uses professional document IDs when records do not store an id field', async () => {
+    await db
+      .collection('professionals')
+      .doc('professional-ana')
+      .update({ id: FieldValue.delete() });
+
+    const input = {
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      date: nextOpenDate(),
+    };
+    const [listedSlots, search] = await Promise.all([
+      listAvailableSlots(input),
+      searchAvailability(input),
+    ]);
+
+    expect(listedSlots.some((slot) => slot.professionalId === 'professional-ana')).toBe(true);
+    expect(search.slots.some((slot) => slot.professionalId === 'professional-ana')).toBe(true);
   });
 
   it('returns the earliest available date within the bounded 31-date window', async () => {

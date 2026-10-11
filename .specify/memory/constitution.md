@@ -1,12 +1,12 @@
 <!--
 Sync Impact Report
-Version change: 2.0.0 -> 3.0.0
+Version change: 3.0.0 -> 3.1.0
 Modified principles:
- - I. Domain and User Flow Integrity (redefined for business-specific SaaS catalogs)
- - Principles II-VIII remain unchanged
+ - III. Security and Authorization (defined the staff email/password authentication exception)
+ - Principles I-II and IV-VIII remain unchanged
 Added sections: none
 Removed sections: none
-Follow-up TODOs: None; `specs/004-saass-catalog-platform/spec.md` and its implementation tasks follow this principle.
+Follow-up TODOs: `specs/007-business-csv-onboarding/spec.md` and its plan must follow the staff authentication exception and existing tenant/role authorization requirements.
 -->
 # Tamarcado Constitution
 
@@ -63,8 +63,11 @@ collaborator workflow.
 Rationale: Appointment integrity is the core business invariant of the platform.
 
 ### III. Security and Authorization
-Authentication MUST be based on verified phone numbers using the platform's supported
-WhatsApp authentication flow.
+Customer authentication MUST be based on verified phone numbers using the platform's
+supported WhatsApp authentication flow. Backoffice and collaborator accounts are an
+explicit staff-authentication exception and MAY use the existing email/password flow.
+The exception applies only to staff applications; it MUST NOT enable email/password
+authentication for customers.
 
 Authentication alone MUST NOT grant access to resources outside the user's authorized role.
 
@@ -72,6 +75,9 @@ Every protected operation MUST perform server-side authorization checks.
 
 Client, collaborator, and backoffice users MUST only access resources belonging to the
 appropriate company, role, and ownership scope.
+
+Staff account provisioning MUST assign the correct role and company scope, enforce the
+existing password policy, and protect initial credentials as sensitive data.
 
 Phone numbers and other personal data MUST be treated as sensitive application data and MUST
 not be exposed unnecessarily.
@@ -223,4 +229,4 @@ Versioning follows Semantic Versioning:
 Every implementation MUST preserve existing automated tests unless the related specification
 explicitly changes the expected behavior.
 
-**Version**: 3.0.0 | **Ratified**: 2026-10-02 | **Last Amended**: 2026-10-08
+**Version**: 3.1.0 | **Ratified**: 2026-10-02 | **Last Amended**: 2026-10-10
