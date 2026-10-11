@@ -126,12 +126,12 @@ export async function listAvailableSlots(input: ListAvailabilityInput): Promise<
           .collection(collections.professionals)
           .doc(professionalId)
           .get();
-        const professional = snapshot.data() as ProfessionalRecord | undefined;
+        const professional = snapshot.data() as Omit<ProfessionalRecord, 'id'> | undefined;
 
         return snapshot.exists &&
           professional?.tenantId === business.tenantId &&
           professional.active
-          ? professional
+          ? { ...professional, id: snapshot.id }
           : null;
       }),
     )
@@ -378,12 +378,12 @@ async function loadBoundedAvailabilityContext(
           .collection(collections.professionals)
           .doc(professionalId)
           .get();
-        const professional = snapshot.data() as ProfessionalRecord | undefined;
+        const professional = snapshot.data() as Omit<ProfessionalRecord, 'id'> | undefined;
 
         return snapshot.exists &&
           professional?.tenantId === business.tenantId &&
           professional.active
-          ? professional
+          ? { ...professional, id: snapshot.id }
           : null;
       }),
     )

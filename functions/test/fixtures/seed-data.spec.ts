@@ -122,6 +122,8 @@ describe('shared seed data', () => {
     expect(findDocument('users', 'test-backoffice-vitoria-moura-beauty')?.data).toMatchObject({
       tenantId: 'tenant-vitoria-moura-beauty',
       role: 'backoffice',
+      name: 'Gestor Vitória Moura Beauty',
+      phoneE164: '',
       email: 'admin@vitoriamourabeauty.com',
       active: true,
     });
@@ -267,24 +269,14 @@ describe('shared seed data', () => {
       });
     }
     expect(professionalProductIds).toEqual(products.map((product) => product.id));
-    const retiredProducts = documents.filter(
-      (document) =>
-        document.collection === 'products' &&
-        document.data.tenantId === tenantId &&
-        document.data.active === false,
-    );
-    expect(retiredProducts).toHaveLength(34);
-    for (const retired of retiredProducts) {
-      expect(findDocument('public_products', retired.id)?.data).toMatchObject({
-        tenantId,
-        active: false,
-        published: false,
-      });
-      expect(
-        findDocument('professional_products', [tenantId, professionalId, retired.id].join('__'))
-          ?.data,
-      ).toMatchObject({ active: false });
-    }
+    expect(
+      documents.some(
+        (document) =>
+          document.collection === 'products' &&
+          document.data.tenantId === tenantId &&
+          document.data.active === false,
+      ),
+    ).toBe(false);
     expect(
       documents.filter(
         (document) =>

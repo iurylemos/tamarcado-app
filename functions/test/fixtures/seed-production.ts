@@ -37,7 +37,7 @@ function parseProjectId(args: string[]): string {
 }
 
 function readSeedPassword(): string {
-  const password = process.env.SEED_USER_PASSWORD ?? '@Admin123';
+  const password = '@Admin123';
   if (password.length < 6) {
     throw new Error('SEED_USER_PASSWORD must contain at least 6 characters.');
   }

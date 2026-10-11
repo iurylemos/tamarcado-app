@@ -3,7 +3,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { listPublicBusinessRecords } from '../../services/public-catalog.service';
 import { callableOptionsPublic } from '../../options/callable.option';
 
-const segments = new Set(['beauty', 'health', 'fitness', 'automotive', 'other']);
+const segments = new Set(['beauty', 'health', 'fitness', 'automotive', 'home', 'other']);
 
 export const listPublicBusinesses = onCall(callableOptionsPublic, async (request) => {
   const segment = request.data?.segment;
