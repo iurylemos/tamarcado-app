@@ -1,7 +1,8 @@
-import { useEffect, type JSX } from 'react';
+import { useEffect, useMemo, type JSX } from 'react';
 import { formatBrl } from '../../../../../shared/domain/money.js';
 import type { CompanyCatalog } from '../../../interfaces/company.interface.js';
 import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service.js';
+import Skeleton from '../../atoms/Skeleton/Skeleton.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
 import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.js';
 
@@ -14,6 +15,8 @@ export default function CompanyCatalogTemplate({
   catalog,
   status,
 }: Readonly<CompanyCatalogTemplateProps>): JSX.Element {
+  const isLoading = useMemo<boolean>(() => status === 'loading', [status]);
+
   useEffect(() => {
     if (status !== 'ready' || !catalog) return;
 
@@ -64,18 +67,6 @@ export default function CompanyCatalogTemplate({
   return (
     <>
       <div className="market-bg" aria-hidden="true" />
-      {status === 'loading' && (
-        <main className="page market-page">
-          <p className="skeleton-status" role="status">
-            Carregando catálogo...
-          </p>
-          <section className="showcase-grid catalog-grid" aria-label="Carregando serviços">
-            {Array.from({ length: 4 }, (_, index) => (
-              <SkeletonCard key={`catalog-skeleton-${index}`} variant="service" />
-            ))}
-          </section>
-        </main>
-      )}
       {status === 'error' && (
         <main className="page market-page">
           <p role="alert" className="error state-card">
@@ -97,11 +88,18 @@ export default function CompanyCatalogTemplate({
           </p>
         </main>
       )}
-      {status === 'ready' && catalog && (
+      {(isLoading || (status === 'ready' && catalog !== null)) && (
         <main className="page stack market-page catalog-page">
+          {isLoading && (
+            <p className="skeleton-status" role="status">
+              Carregando catálogo...
+            </p>
+          )}
           <header className="company-hero">
-            <div className="company-identity">
-              {catalog.business.logoUrl ? (
+            <div className="company-identity" aria-busy={isLoading}>
+              {isLoading ? (
+                <span className="company-logo catalog-loading-logo" aria-hidden="true" />
+              ) : catalog?.business.logoUrl ? (
                 <img
                   className="company-logo"
                   src={catalog.business.logoUrl}
@@ -114,60 +112,90 @@ export default function CompanyCatalogTemplate({
               )}
               <div>
                 <p className="eyebrow">CATÁLOGO DA EMPRESA</p>
-                <h1>{catalog.business.name}</h1>
-                {catalog.business.description && <p>{catalog.business.description}</p>}
+                {isLoading ? (
+                  <Skeleton className="catalog-loading-title" />
+                ) : (
+                  catalog && <h1>{catalog.business.name}</h1>
+                )}
+                {isLoading ? (
+                  <Skeleton className="catalog-loading-description" />
+                ) : (
+                  catalog?.business.description && <p>{catalog.business.description}</p>
+                )}
               </div>
             </div>
             <span className="company-hero-note">Encontre seu próximo horário</span>
           </header>
-          <section className="catalog-section" aria-labelledby="catalog-heading">
+          <section
+            className="catalog-section"
+            aria-labelledby="catalog-heading"
+            aria-busy={isLoading}
+          >
             <div className="section-heading">
               <div>
                 <p className="eyebrow">ESCOLHA O QUE COMBINA COM VOCÊ</p>
                 <h2 id="catalog-heading">Serviços disponíveis</h2>
               </div>
-              <span className="catalog-count">{catalog.products.length} serviços</span>
+              {isLoading ? (
+                <Skeleton className="catalog-loading-count" />
+              ) : (
+                catalog && <span className="catalog-count">{catalog.products.length} serviços</span>
+              )}
             </div>
-            {catalog.products.length === 0 ? (
-              <p role="status" className="state-card">
-                Esta empresa ainda não publicou serviços.
-              </p>
-            ) : (
-              <section className="showcase-grid catalog-grid" aria-label="Serviços">
-                {catalog.products.map((product) => (
-                  <div key={product.id}>
-                    <a
-                      className="product-card catalog-service-card"
-                      href={`/empresa/${encodeURIComponent(catalog.business.slug)}/agendar/${encodeURIComponent(product.id)}`}
-                    >
-                      <div className="media">
-                        <img
-                          src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
-                          alt={product.name}
-                          loading="lazy"
-                        />
-                        <span className="price">{formatBrl(product.priceCents)}</span>
-                      </div>
-                      <div className="body">
-                        <h3>{product.name}</h3>
-                        {product.description && (
-                          <p className="service-description">{product.description}</p>
-                        )}
-                        <span className="store">
-                          {product.durationMinutes} min · Escolher horário →
-                        </span>
-                      </div>
-                    </a>
+            {isLoading ? (
+              <section
+                className="showcase-grid catalog-grid"
+                aria-label="Carregando serviços"
+                aria-busy="true"
+              >
+                {Array.from({ length: 4 }, (_, index) => (
+                  <div key={`catalog-skeleton-${index}`}>
+                    <SkeletonCard variant="service" imagePlaceholder />
                   </div>
                 ))}
               </section>
-            )}
+            ) : catalog ? (
+              catalog.products.length === 0 ? (
+                <p role="status" className="state-card">
+                  Esta empresa ainda não publicou serviços.
+                </p>
+              ) : (
+                <section className="showcase-grid catalog-grid" aria-label="Serviços">
+                  {catalog.products.map((product) => (
+                    <div key={product.id}>
+                      <a
+                        className="product-card catalog-service-card"
+                        href={`/empresa/${encodeURIComponent(catalog.business.slug)}/agendar/${encodeURIComponent(product.id)}`}
+                      >
+                        <div className="media">
+                          <img
+                            src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
+                            alt={product.name}
+                            loading="lazy"
+                          />
+                          <span className="price">{formatBrl(product.priceCents)}</span>
+                        </div>
+                        <div className="body">
+                          <h3>{product.name}</h3>
+                          {product.description && (
+                            <p className="service-description">{product.description}</p>
+                          )}
+                          <span className="store">
+                            {product.durationMinutes} min · Escolher horário →
+                          </span>
+                        </div>
+                      </a>
+                    </div>
+                  ))}
+                </section>
+              )
+            ) : null}
           </section>
           <footer className="tamarcado-brand">
             <img src="/pwa-icon.svg" alt="" width="24" height="24" loading="lazy" />
             <span>Agendamentos online com Tá Marcado</span>
           </footer>
-          <PwaInstallPrompt businessName={catalog.business.name} />
+          {catalog && <PwaInstallPrompt businessName={catalog.business.name} />}
         </main>
       )}
     </>

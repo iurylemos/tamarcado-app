@@ -40,7 +40,16 @@ describe('CompanyCatalogPage', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Carregando catálogo');
     expect(screen.getByRole('status')).toHaveClass('skeleton-status');
+    expect(screen.getByRole('heading', { name: 'Serviços disponíveis' })).toBeInTheDocument();
+    expect(screen.getByText('Encontre seu próximo horário')).toBeInTheDocument();
+    expect(container.querySelector('.company-identity')).toHaveAttribute('aria-busy', 'true');
+    expect(container.querySelector('.catalog-section')).toHaveAttribute('aria-busy', 'true');
     expect(container.querySelectorAll('.skeleton-card')).toHaveLength(4);
+    expect(container.querySelectorAll('.catalog-grid > div')).toHaveLength(4);
+    expect(container.querySelectorAll('.catalog-grid .skeleton-card__image')).toHaveLength(0);
+    expect(container.querySelectorAll('.catalog-grid .skeleton-card__image-placeholder')).toHaveLength(
+      4,
+    );
     expect(container.querySelector('.app-loading-overlay')).not.toBeInTheDocument();
   });
 

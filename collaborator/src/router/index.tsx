@@ -16,7 +16,7 @@ export function WorkspaceLayout(): JSX.Element {
     <div className="app-shell">
       <header className="app-header">
         <Link className="app-brand" to="/appointments">
-          Tamarcado
+          <img src="/pwa-icon.svg" alt="Tá Marcado" />
         </Link>
         <nav aria-label="Navegação principal">
           <Link to="/appointments">Agendamentos</Link>
