@@ -1,22 +1,42 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import {
+  type DocumentData,
+  DocumentSnapshot,
+  FieldValue,
+  Transaction,
+} from 'firebase-admin/firestore';
+import type { InputConnection, SaveConnectionData } from '../interfaces/connection.interface';
+import type {
+  DocumentCreateContact,
+  InputContact,
+  SaveContactData,
+} from '../interfaces/contact.interface';
+import type { AuthorizedActor } from './authorization.service';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { collections } from '../config/collections';
-import type { ContactDocument } from '../model/contact.model';
-import type { AuthorizedActor } from './authorization.service';
 import { firestore } from './firestore.service';
 import { normalizeBrazilianPhone as normalizeShared } from '../../../shared/domain/phone';
 
 function normalizeBrazilianPhone(value: string): string {
   const normalized = normalizeShared(value);
-  if (!normalized) throw new HttpsError('invalid-argument', 'Informe um telefone celular v�lido com DDD.');
+  if (!normalized) {
+    throw new HttpsError('invalid-argument', 'Informe um telefone celular v�lido com DDD.');
+  }
+
   return normalized;
 }
 
-export function contactDocumentId(tenantId: string, connectionId: string, phoneE164: string) {
+export function contactDocumentId(
+  tenantId: string,
+  connectionId: string,
+  phoneE164: string,
+): string {
   return [tenantId, connectionId, phoneE164].map(encodeURIComponent).join('__');
 }
 
-async function requireConnection(actor: AuthorizedActor, connectionId: string) {
+async function requireConnection(
+  actor: AuthorizedActor,
+  connectionId: string,
+): Promise<DocumentSnapshot<DocumentData, DocumentData>> {
   const snapshot = await firestore.collection(collections.connections).doc(connectionId).get();
   if (!snapshot.exists || snapshot.data()?.tenantId !== actor.tenantId) {
     throw new HttpsError('not-found', 'ConexÃ£o nÃ£o encontrada.');
@@ -26,17 +46,28 @@ async function requireConnection(actor: AuthorizedActor, connectionId: string) {
 
 export async function saveConnection(
   actor: AuthorizedActor,
-  input: { connectionId?: string; provider: string },
-): Promise<{ connectionId: string }> {
+  input: InputConnection,
+): Promise<SaveConnectionData> {
   const provider = input.provider.trim();
-  if (!provider) throw new HttpsError('invalid-argument', 'Informe o provedor da conexÃ£o.');
+
+  if (!provider) {
+    throw new HttpsError('invalid-argument', 'Informe o provedor da conexÃ£o.');
+  }
+
   const collection = firestore.collection(collections.connections);
+
   if (input.connectionId) {
     await requireConnection(actor, input.connectionId);
-    await collection.doc(input.connectionId).update({ provider, updatedAt: FieldValue.serverTimestamp() });
+
+    await collection
+      .doc(input.connectionId)
+      .update({ provider, updatedAt: FieldValue.serverTimestamp() });
+
     return { connectionId: input.connectionId };
   }
+
   const reference = collection.doc();
+
   await reference.set({
     tenantId: actor.tenantId,
     provider,
@@ -44,17 +75,18 @@ export async function saveConnection(
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
+
   return { connectionId: reference.id };
 }
 
 export async function createContact(
   actor: AuthorizedActor,
-  input: { connectionId: string; phone: string; name?: string },
-): Promise<{ contactId: string }> {
+  input: InputContact,
+): Promise<SaveContactData> {
   await requireConnection(actor, input.connectionId);
   const phoneE164 = normalizeBrazilianPhone(input.phone);
   const contactId = contactDocumentId(actor.tenantId, input.connectionId, phoneE164);
-  const document: Omit<ContactDocument, 'createdAt' | 'updatedAt'> & Record<string, unknown> = {
+  const document: DocumentCreateContact = {
     tenantId: actor.tenantId,
     connectionId: input.connectionId,
     phoneE164,
@@ -62,7 +94,11 @@ export async function createContact(
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
-  if (input.name?.trim()) document.name = input.name.trim();
+
+  if (input.name?.trim()) {
+    document.name = input.name.trim();
+  }
+
   const reference = firestore.collection(collections.contacts).doc(contactId);
   const duplicates = firestore
     .collection(collections.contacts)
@@ -70,13 +106,20 @@ export async function createContact(
     .where('connectionId', '==', input.connectionId)
     .where('phoneE164', '==', phoneE164)
     .limit(1);
-  await firestore.runTransaction(async (transaction) => {
-    const [existing, byId] = await Promise.all([transaction.get(duplicates), transaction.get(reference)]);
+
+  await firestore.runTransaction(async (transaction: Transaction): Promise<void> => {
+    const [existing, byId] = await Promise.all([
+      transaction.get(duplicates),
+      transaction.get(reference),
+    ]);
+
     if (!existing.empty || byId.exists) {
       throw new HttpsError('already-exists', 'Este telefone já existe nesta conexão.');
     }
+
     transaction.create(reference, document);
   });
+
   return { contactId };
 }
 
@@ -88,10 +131,13 @@ export async function setContactConsent(
 ): Promise<void> {
   const reference = firestore.collection(collections.contacts).doc(contactId);
   const snapshot = await reference.get();
+
   if (!snapshot.exists || snapshot.data()?.tenantId !== actor.tenantId) {
     throw new HttpsError('not-found', 'Contato nÃ£o encontrado.');
   }
+
   const now = FieldValue.serverTimestamp();
+
   await reference.update(
     optIn
       ? { whatsappOptIn: true, optInAt: now, consentSource, updatedAt: now }

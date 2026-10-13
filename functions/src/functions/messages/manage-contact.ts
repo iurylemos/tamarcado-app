@@ -1,7 +1,8 @@
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { type CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import { authorizeActor } from '../../services/authorization.service';
 import { createContact, setContactConsent } from '../../services/contact.service';
 import { callableOptionsCollaboratorAndBackoffice } from '../../options/callable.option';
+import { SaveContactData } from '../../interfaces/contact.interface';
 
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null) {
@@ -12,7 +13,7 @@ function record(value: unknown): Record<string, unknown> {
 
 export const createContactCallable = onCall(
   callableOptionsCollaboratorAndBackoffice,
-  async (request) => {
+  async (request: CallableRequest<unknown>): Promise<SaveContactData> => {
     const actor = await authorizeActor(request, ['collaborator', 'backoffice']);
     const data = record(request.data);
     if (typeof data.connectionId !== 'string' || typeof data.phone !== 'string') {
@@ -28,13 +29,17 @@ export const createContactCallable = onCall(
 
 export const setContactConsentCallable = onCall(
   callableOptionsCollaboratorAndBackoffice,
-  async (request) => {
+  async (request: CallableRequest<unknown>): Promise<{ ok: boolean }> => {
     const actor = await authorizeActor(request, ['collaborator', 'backoffice']);
+
     const data = record(request.data);
+
     if (typeof data.contactId !== 'string' || typeof data.optIn !== 'boolean') {
       throw new HttpsError('invalid-argument', 'Informe o contato e o consentimento.');
     }
+
     await setContactConsent(actor, data.contactId, data.optIn);
+
     return { ok: true };
   },
 );

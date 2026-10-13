@@ -5,9 +5,13 @@ export type SkeletonCardVariant = 'product' | 'store' | 'service' | 'booking' | 
 
 type SkeletonCardProps = {
   variant: SkeletonCardVariant;
+  imagePlaceholder?: boolean;
 };
 
-export default function SkeletonCard({ variant }: Readonly<SkeletonCardProps>): JSX.Element {
+export default function SkeletonCard({
+  variant,
+  imagePlaceholder = false,
+}: Readonly<SkeletonCardProps>): JSX.Element {
   if (variant === 'time') {
     return (
       <div aria-hidden="true" className="skeleton-card skeleton-card--time">
@@ -28,10 +32,23 @@ export default function SkeletonCard({ variant }: Readonly<SkeletonCardProps>): 
 
   return (
     <div aria-hidden="true" className={`skeleton-card skeleton-card--${variant}`}>
-      <Skeleton className="skeleton-card__image" />
+      {imagePlaceholder ? (
+        <div className="skeleton-card__image-placeholder">
+          {variant === 'service' && <Skeleton className="skeleton-card__price" />}
+        </div>
+      ) : (
+        <Skeleton className="skeleton-card__image" />
+      )}
       <div className="skeleton-card__body">
         <Skeleton className="skeleton-card__title" width="76%" />
-        <Skeleton className="skeleton-card__metadata" width="54%" />
+        {variant === 'service' ? (
+          <>
+            <Skeleton className="skeleton-card__description" width="90%" />
+            <Skeleton className="skeleton-card__metadata" width="62%" />
+          </>
+        ) : (
+          <Skeleton className="skeleton-card__metadata" width="54%" />
+        )}
       </div>
     </div>
   );

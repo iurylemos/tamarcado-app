@@ -26,7 +26,10 @@ export async function authorizeActor(
   allowedRoles?: readonly UserDocument['role'][],
 ): Promise<AuthorizedActor> {
   const auth = request.auth;
-  if (!auth) throw new HttpsError('unauthenticated', 'Entre na sua conta para continuar.');
+
+  if (!auth) {
+    throw new HttpsError('unauthenticated', 'Entre na sua conta para continuar.');
+  }
 
   const snapshot = await firestore.collection(collections.users).doc(auth.uid).get();
   const user: unknown = snapshot.data();
@@ -47,12 +50,14 @@ export async function authorizeActor(
       uid: auth.uid,
       claimMatches,
     });
+
     throw new HttpsError('permission-denied', 'Sua sessão não corresponde ao acesso atual.');
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     throw new HttpsError('permission-denied', 'Seu perfil não permite esta operação.');
   }
+
   return { ...user, uid: auth.uid };
 }
 
