@@ -1,13 +1,23 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type RootOptions } from 'react-dom/client';
 import App from './App';
+import { initializeMonitoring } from './config/sentry.config';
+import { reactErrorHandler } from '@sentry/react';
 import './styles/index.css';
+
+initializeMonitoring();
 
 const root = document.getElementById('root');
 
 if (!root) throw new Error('Root element not found.');
 
-createRoot(root).render(
+const optionsRoot: RootOptions = {
+  onUncaughtError: reactErrorHandler(),
+  onCaughtError: reactErrorHandler(),
+  onRecoverableError: reactErrorHandler(),
+};
+
+createRoot(root, optionsRoot).render(
   <StrictMode>
     <App />
   </StrictMode>,

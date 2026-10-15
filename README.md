@@ -376,3 +376,35 @@ $bucket = "tamarcado-dad82.firebasestorage.app"
 $env:VITE_FIREBASE_STORAGE_BUCKET = $bucket
 npm run seed:production -- --project tamarcado-dad82 --confirm-production-seed
 ```
+
+Tamarcado is a TypeScript monorepo for public service discovery, appointment booking, and business operations. I inspected the code and Firebase configuration without modifying files.
+
+Architecture
+
+- client/ is the public React app: customers browse businesses and services, check availability, and request appointments. Its routes include /empresa/:slug and /empresa/:slug/agendar/:productId (client/src/App.tsx:10–14).
+- collaborator/ is the authenticated workspace for appointments, customers, messages, and reports (collaborator/src/router/index.tsx:32–38).
+- backoffice/ is the authenticated business-admin workspace for the catalog, team, schedule, and company settings (backoffice/src/router/index.tsx:7–15).
+- shared/domain/ holds UI-independent domain types and rules reused across workspaces; the root README describes the boundaries (README.md:44–52).
+- functions/ contains trusted server-side operations. The frontends are deployed as three separate Firebase Hosting sites; Firebase resource configuration is in firebase.json:16–46.
+
+The frontends initialize Firebase Auth, Firestore, and Functions in the same region, and can connect to local emulators (client/src/config/firebase.config.ts:6–40; backoffice/src/config/firebase.config.ts:7–45). The collaborator app uses both callable Functions and Firestore subscriptions for the live appointment list (collaborator/src/services/appointment.service.ts:34–72).
+
+Firebase Cloud Functions
+
+- functions/src/index.ts:1–41 is the deployment entry point. It exports public catalog and booking operations, collaborator and backoffice operations, reports, WhatsApp message handling, and the storefront renderer.
+- Functions are configured for nodejs24 in southamerica-east1 (firebase.json:9–15; functions/src/config/region.ts:1–5). The global options set a 10-instance maximum and a public invoker.
+- Most operations are v2 callable Functions. Their handlers are generally thin: they validate or authorize the request, then call domain/service code. Firestore access and business logic are concentrated in functions/src/services/; the Admin SDK is initialized in functions/src/services/firestore.service.ts:13–32.
+- Public callables provide business listings, catalogs, availability, and appointment creation. Protected collaborator and backoffice callables use authorizeActor, which checks the Firebase user, the corresponding user document, current status, and that token claims match the document; it also checks allowed roles (functions/src/services/authorization.service.ts:24–61). Collaborator accounts receive tenant, role, active, and professional ID claims (functions/src/services/collaborator-account.service.ts:89–120).
+- invoker: 'public' and CORS settings control reachability/browser origins, not user permissions. Protected operations still enforce authorization in their handlers. For example, appointment listing checks for an active collaborator (functions/src/functions/appointments/list-appointments.ts:6–9), while report calculation checks for a backoffice actor (functions/src/functions/reports/calculate-sales-report.ts:6–11).
+- Public appointment creation validates the requested service, professional, price/options, and slot availability. It then uses a Firestore transaction to create the pending appointment, reserve its five-minute time buckets, and create a notification job atomically (functions/src/services/booking.service.ts:210–248, 324–429). Reservation IDs are derived from tenant, professional, and time bucket (:200–208), which helps prevent overlapping bookings.
+- An onDocumentCreated trigger processes notification jobs with retries (functions/src/functions/appointments/process-appointment-notification.ts:5–13). The notification service sends WhatsApp updates through a provider abstraction; it selects Twilio when configured and has a test double for the emulator (functions/src/services/appointment-notification.service.ts:120–185, 189–224; functions/src/services/whatsapp-provider.service.ts:23–39, 90–114).
+- The Twilio webhook is an HTTP Function that accepts POST callbacks, validates Twilio’s signature, maps provider statuses, and applies the resulting event (functions/src/functions/messages/process-provider-webhook.ts:19–52, 54–74).
+- Public business pages also use server-side rendering: Firebase Hosting rewrites /empresa/** to renderStorefront; that Function loads published catalog data, renders HTML and metadata, then the client hydrates using the serialized catalog (firebase.json:21–26; functions/src/functions/catalog/render-storefront.ts:90–161; client/src/main.tsx:13–30).
+
+Data access and local development
+
+Firestore rules deny writes from clients and allow only selected reads, including published public records and constrained collaborator access (firestore.rules:26–69). Trusted Functions use the Admin SDK, so server-side operations do not rely on client rules for their own authorization; their handlers must enforce it. Storage permits public reads of product images but restricts uploads to active backoffice users in that tenant, with a 5 MB limit and JPEG/PNG/WebP types (storage.rules:4–20).
+
+The Firebase Emulator Suite is configured for Auth, Functions, Firestore, Storage, and Hosting (firebase.json:48–56); the root scripts include emulator startup and tests (package.json:18–24).
+
+I did not run tests because this was a read-only architecture analysis. The working tree remains as I found it: backoffice/src/components/atoms/MarketBackground/MarketBackground.tsx was already modified, and docker-compose.yml was already untracked.

@@ -1,9 +1,12 @@
-import type { JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { motion } from 'framer-motion';
 
-const floaters = ['🛍️', '✂️', '💅', '🏪', '💆', '🚗', '🏷️', '💈', '🧴', '🎁', '⭐', '🛒'];
-
 export default function MarketBackground(): JSX.Element {
+  const floaters = useMemo<string[]>(
+    () => ['🛍️', '✂️', '💅', '🏪', '💆', '🚗', '🏷️', '💈', '🧴', '🎁', '⭐', '🛒'],
+    [],
+  );
+
   return (
     <div className="market-bg" aria-hidden="true">
       {floaters.map((icon, index) => (

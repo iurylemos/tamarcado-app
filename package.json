@@ -11,7 +11,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build:functions": "npm run build --workspace functions",
-    "build:hosting": "npm run build --workspaces client collaborator backoffice",
+    "build:hosting": "npm run build --workspaces client,collaborator,backoffice",
     "dev:client": "npm run dev --workspace client",
     "dev:collaborator": "npm run dev --workspace collaborator",
     "dev:backoffice": "npm run dev --workspace backoffice",
@@ -31,6 +31,7 @@
     "deploy:all": "npm run build && firebase deploy --project tamarcado-dad82 --only firestore,functions,hosting"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
