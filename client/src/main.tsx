@@ -1,10 +1,20 @@
 import { StrictMode, type JSX } from 'react';
-import { createRoot, hydrateRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot, type RootOptions } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import { companyCatalogQueryKey, queryClient } from './services/query-client';
+import { initializeMonitoring } from './config/sentry.config';
+import { reactErrorHandler } from '@sentry/react';
 import './styles/index.css';
+
+initializeMonitoring();
+
+const optionsRoot: RootOptions = {
+  onUncaughtError: reactErrorHandler(),
+  onCaughtError: reactErrorHandler(),
+  onRecoverableError: reactErrorHandler(),
+};
 
 const root = document.getElementById('root');
 
@@ -26,5 +36,5 @@ const app: JSX.Element = (
   </StrictMode>
 );
 
-if (ssrData) hydrateRoot(root, app);
-else createRoot(root).render(app);
+if (ssrData) hydrateRoot(root, app, optionsRoot);
+else createRoot(root, optionsRoot).render(app);
