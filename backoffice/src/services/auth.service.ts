@@ -5,12 +5,13 @@ export async function signInWithEmail(email: string, password: string): Promise<
   await signInWithEmailAndPassword(auth, email.trim(), password);
 }
 
-export function signOutCurrentUser(): Promise<void> {
-  return signOut(auth);
+export async function signOutCurrentUser(): Promise<void> {
+  return await signOut(auth);
 }
 
 export function authErrorMessage(error: unknown): string {
-  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
   if (
     code === 'auth/invalid-credential' ||
     code === 'auth/wrong-password' ||

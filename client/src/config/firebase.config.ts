@@ -2,10 +2,13 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
+import { FirebaseUtil } from '../utils/firebase.util';
 
 const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true';
+
 const projectId =
-  import.meta.env.VITE_FIREBASE_PROJECT_ID || (import.meta.env.DEV ? 'demo-tamarcado' : undefined);
+  import.meta.env.VITE_FIREBASE_PROJECT_ID ||
+  (import.meta.env.DEV ? FirebaseUtil.defaultProjectIdEmulator : undefined);
 
 if (!projectId) {
   throw new Error('Set VITE_FIREBASE_PROJECT_ID before building this frontend for production.');
@@ -24,15 +27,15 @@ if (!useEmulators && !import.meta.env.VITE_FIREBASE_API_KEY) {
 const app = getApps().length
   ? getApp()
   : initializeApp({
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'emulator-only',
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY || FirebaseUtil.defaultKeyEmulator,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
       projectId,
-      appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789:web:emulator',
+      appId: import.meta.env.VITE_FIREBASE_APP_ID || FirebaseUtil.defaultIdEmulator,
     });
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const functions = getFunctions(app, 'southamerica-east1');
+export const db = getFirestore(app, FirebaseUtil.defaultFirestore);
+export const functions = getFunctions(app, FirebaseUtil.region);
 
 if (useEmulators) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });

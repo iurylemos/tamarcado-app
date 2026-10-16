@@ -30,62 +30,66 @@ async function callable<TInput, TOutput>(name: string, data?: TInput): Promise<T
   return result.data;
 }
 
-export function getWorkspace(): Promise<BackofficeWorkspace> {
-  return callable<void, BackofficeWorkspace>('getBackofficeWorkspace');
+export async function getWorkspace(): Promise<BackofficeWorkspace> {
+  return await callable<void, BackofficeWorkspace>('getBackofficeWorkspace');
 }
 
-export function saveProduct(
+export async function saveProduct(
   product: Omit<ProductRecord, 'tenantId'>,
 ): Promise<Pick<GenericAdmin, 'id'>> {
-  return callable('saveProduct', product);
+  return await callable('saveProduct', product);
 }
 
-export function saveProductGallery(input: {
+export async function saveProductGallery(input: {
   productId: string;
   galleryId?: string;
   selections: ProductCustomizationSelection[];
   images: ProductImage[];
 }): Promise<{ id: string }> {
-  return callable('saveProductGallery', input);
+  return await callable('saveProductGallery', input);
 }
 
-export function deleteProductGallery(input: {
+export async function deleteProductGallery(input: {
   productId: string;
   galleryId: string;
 }): Promise<{ storagePaths: string[] }> {
-  return callable('deleteProductGallery', input);
+  return await callable('deleteProductGallery', input);
 }
 
-export function saveProfessional(input: InputProfessional): Promise<Pick<GenericAdmin, 'id'>> {
-  return callable('saveProfessional', input);
+export async function saveProfessional(
+  input: InputProfessional,
+): Promise<Pick<GenericAdmin, 'id'>> {
+  return await callable('saveProfessional', input);
 }
 
-export function saveCollaboratorAccount(
+export async function saveCollaboratorAccount(
   input: InputCollaboratorAccount,
 ): Promise<CollaboratorAccountData> {
-  return callable('saveCollaboratorAccount', input);
+  return await callable('saveCollaboratorAccount', input);
 }
 
-export function resetCollaboratorPassword(
+export async function resetCollaboratorPassword(
   input: InputResetCollaborator,
 ): Promise<Pick<CollaboratorAccountData, 'uid'>> {
-  return callable('resetCollaboratorPassword', input);
+  return await callable('resetCollaboratorPassword', input);
 }
 
-export function saveWorkingHours(input: InputWorkingHours): Promise<Pick<GenericAdmin, 'id'>> {
-  return callable('saveWorkingHours', input);
+export async function saveWorkingHours(
+  input: InputWorkingHours,
+): Promise<Pick<GenericAdmin, 'id'>> {
+  return await callable('saveWorkingHours', input);
 }
 
-export function saveBlockedPeriod(input: InputBlockedPeriod): Promise<{ id: string }> {
-  return callable('saveBlockedPeriod', input);
+export async function saveBlockedPeriod(input: InputBlockedPeriod): Promise<{ id: string }> {
+  return await callable('saveBlockedPeriod', input);
 }
 
-export function deleteBlockedPeriod(id: string): Promise<Pick<GenericAdmin, 'deleted'>> {
-  return callable('deleteBlockedPeriod', { id });
+export async function deleteBlockedPeriod(id: string): Promise<Pick<GenericAdmin, 'deleted'>> {
+  return await callable('deleteBlockedPeriod', { id });
 }
 
-export function saveCompany(input: InputCompany): Promise<Pick<GenericAdmin, 'saved'>> {
-  return callable('saveTenantSettings', input);
+export async function saveCompany(input: InputCompany): Promise<Pick<GenericAdmin, 'saved'>> {
+  return await callable('saveTenantSettings', input);
 }
 
 export function errorMessage(error: unknown): string {
