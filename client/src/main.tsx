@@ -26,13 +26,13 @@ if (ssrData) {
 
 const app: JSX.Element = (
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <SentryProvider>
+    <BrowserRouter>
+      <SentryProvider>
+        <QueryClientProvider client={queryClient}>
           <App />
-        </SentryProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+        </QueryClientProvider>
+      </SentryProvider>
+    </BrowserRouter>
   </StrictMode>
 );
 

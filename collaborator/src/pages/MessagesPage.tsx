@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useState, type JSX, type SubmitEvent } from 'react';
 import type { Contact } from '@shared/interfaces/contact.interface';
 import type { Message, MessageStatus } from '@shared/interfaces/message.interface';
 import type { MessageConnection } from '../interfaces/message.interface';
@@ -71,7 +71,7 @@ export default function MessagesPage(): JSX.Element {
     }
   };
 
-  const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
+  const handleCreate = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
     const connection = connections[0];

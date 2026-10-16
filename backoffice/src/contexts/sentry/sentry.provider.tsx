@@ -1,8 +1,9 @@
 import { type JSX, type ReactNode, useEffect, useState } from 'react';
 import { SentryContext } from './sentry.context';
 import { useLocation } from 'react-router-dom';
-import { createSafeRouteBreadcrumb, initializeMonitoring } from '../../config/sentry.config';
+import { initializeMonitoring } from '../../config/sentry.config';
 import { addBreadcrumb, type Breadcrumb } from '@sentry/react';
+import { SentryUtil } from '../../utils/sentry.util';
 
 type SentryProviderProps = {
   children: ReactNode;
@@ -11,7 +12,7 @@ type SentryProviderProps = {
 export default function SentryProvider({ children }: Readonly<SentryProviderProps>): JSX.Element {
   const { pathname } = useLocation();
   const [breadcrumb, setBreadcrumb] = useState<Breadcrumb | null>(() =>
-    createSafeRouteBreadcrumb(pathname),
+    SentryUtil.createSafeRouteBreadcrumb(pathname),
   );
 
   useEffect(() => {
@@ -19,7 +20,7 @@ export default function SentryProvider({ children }: Readonly<SentryProviderProp
   }, []);
 
   useEffect(() => {
-    const breadcrumb = createSafeRouteBreadcrumb(pathname);
+    const breadcrumb = SentryUtil.createSafeRouteBreadcrumb(pathname);
 
     if (breadcrumb) {
       addBreadcrumb(breadcrumb);

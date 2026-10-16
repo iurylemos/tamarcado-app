@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { getZonedDateTimeParts } from '@shared/timezone';
 import type { SalesReport } from '@shared/reporting';
 import { errorMessage, getSalesReport } from '../services/report.service';
-import type { ProductRecord } from '../interfaces/admin.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
 import CollaboratorRanking from '../components/organisms/CollaboratorRanking/CollaboratorRanking';
 import { CurrencyUtil } from '../utils/currency.util';
 

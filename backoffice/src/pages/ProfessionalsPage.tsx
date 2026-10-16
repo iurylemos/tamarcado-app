@@ -1,9 +1,7 @@
 import { useState, type JSX } from 'react';
-import type {
-  AssignmentRecord,
-  ProductRecord,
-  ProfessionalRecord,
-} from '../interfaces/admin.interface';
+import type { AssignmentRecord, ProfessionalRecord } from '../interfaces/admin.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
+
 import ProfessionalEditor from '../components/organisms/ProfessionalEditor/ProfessionalEditor';
 
 type ProfessionalsPageProps = {
@@ -102,7 +100,9 @@ export default function ProfessionalsPage({
                   <div>
                     <h2>{professional.name}</h2>
                     <span>{professional.phoneE164}</span>
-                    <small className="muted">{collaboratorEmails[professional.id] ?? 'Sem acesso à plataforma'}</small>
+                    <small className="muted">
+                      {collaboratorEmails[professional.id] ?? 'Sem acesso à plataforma'}
+                    </small>
                   </div>
                 </div>
                 <div className="professional-services">

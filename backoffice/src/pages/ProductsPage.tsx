@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react';
-import type { ProductRecord } from '../interfaces/admin.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
 import ProductEditor from '../components/organisms/ProductEditor/ProductEditor';
 import { CurrencyUtil } from '../utils/currency.util';
 

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type JSX, type SubmitEvent } from 're
 import { getZonedDateTimeParts } from '@shared/timezone';
 import type { SalesReport } from '@shared/reporting';
 import { CurrencyUtil } from '../utils/currency.util';
-import type { ProductRecord, ProfessionalRecord } from '../interfaces/admin.interface';
+import type { ProfessionalRecord } from '../interfaces/admin.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
 import {
   errorMessage,
   exportSalesReport,

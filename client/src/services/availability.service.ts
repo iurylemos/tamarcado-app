@@ -18,7 +18,7 @@ export async function listAvailability(input: ListAvailabilityInput): Promise<Av
 export async function searchAvailability(
   input: SearchAvailabilityInput,
 ): Promise<SearchAvailabilityResult> {
-  return trackClientRequest(
+  return await trackClientRequest(
     SentryClientRequestOperation.AVAILABILITY_SEARCH,
     async (): Promise<SearchAvailabilityResult> => {
       const call = httpsCallable<SearchAvailabilityInput, SearchAvailabilityResult>(

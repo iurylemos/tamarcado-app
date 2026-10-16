@@ -1,11 +1,5 @@
 import type { BusinessSegment } from '@shared/interfaces/tenant.interface';
-import type { CommissionType } from '@shared/interfaces/product.interface';
-import type {
-  ProductCustomizationAttribute,
-  ProductImage,
-  ProductImageGallery,
-  ProductVariantPrice,
-} from '@shared/interfaces/product.interface';
+import type { ProductRecord } from './product.interface';
 
 export interface CompanyRecord {
   id: string;
@@ -18,23 +12,6 @@ export interface CompanyRecord {
   emailDomain?: string;
   timezone: string;
   bookingIntervalMinutes: number;
-  active: boolean;
-}
-
-export interface ProductRecord {
-  id: string;
-  tenantId: string;
-  name: string;
-  description?: string;
-  imageUrl: string;
-  customizationAttributes?: ProductCustomizationAttribute[];
-  variantPrices?: ProductVariantPrice[] | null;
-  defaultImages?: ProductImage[];
-  imageGalleries?: ProductImageGallery[];
-  priceCents: number;
-  durationMinutes: number;
-  commissionType: CommissionType;
-  commissionValue: number;
   active: boolean;
 }
 

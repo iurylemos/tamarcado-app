@@ -1,10 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type {
-  AssignmentRecord,
-  ProductRecord,
-  ProfessionalRecord,
-} from '../interfaces/admin.interface';
+import type { AssignmentRecord, ProfessionalRecord } from '../interfaces/admin.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
+
 import ProfessionalsPage from './ProfessionalsPage';
 import { saveProfessional } from '../services/admin.service';
 

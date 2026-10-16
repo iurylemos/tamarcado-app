@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot, type RootOptions } from 'react-dom/client';
 import { reactErrorHandler } from '@sentry/react';
-import App from './App';
+import BackofficeRouter from './router';
 import './styles/index.css';
 
 const root = document.getElementById('root');
@@ -15,6 +15,6 @@ const optionsRoot: RootOptions = {
 
 createRoot(root, optionsRoot).render(
   <StrictMode>
-    <App />
+    <BackofficeRouter />,
   </StrictMode>,
 );
