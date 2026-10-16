@@ -1,9 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-import type {
-  BackofficeWorkspace,
-  ProductRecord,
-  InputWorkingHours,
-} from '../interfaces/admin.interface';
+import type { BackofficeWorkspace, InputWorkingHours } from '../interfaces/admin.interface';
 import { auth, functions } from '../config/firebase.config';
 import type { InputProfessional } from '../interfaces/professional.interface';
 import type {
@@ -18,6 +14,7 @@ import type {
   ProductCustomizationSelection,
   ProductImage,
 } from '@shared/interfaces/product.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
 
 async function callable<TInput, TOutput>(name: string, data?: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;

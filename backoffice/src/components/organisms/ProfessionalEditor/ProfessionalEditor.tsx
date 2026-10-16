@@ -1,5 +1,6 @@
 import { useState, type JSX, type SubmitEvent } from 'react';
-import type { ProductRecord, ProfessionalRecord } from '../../../interfaces/admin.interface';
+import type { ProfessionalRecord } from '../../../interfaces/admin.interface';
+import type { ProductRecord } from '../../../interfaces/product.interface';
 import {
   errorMessage,
   resetCollaboratorPassword,
