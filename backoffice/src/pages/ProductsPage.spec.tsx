@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProductsPage from './ProductsPage';
-import type { ProductRecord } from '../interfaces/admin.interface';
+import type { ProductRecord } from '../interfaces/product.interface';
 import { saveProduct } from '../services/admin.service';
 
 vi.mock('../services/admin.service', () => ({
@@ -198,17 +198,27 @@ describe('ProductsPage', () => {
     await waitFor(() => expect(saveProductMock).toHaveBeenCalledOnce());
     const savedProduct = saveProductMock.mock.calls[0]![0];
     const attributes = savedProduct.customizationAttributes!;
-    const priceByLabels = savedProduct.variantPrices!.map((variantPrice) => [
-      variantPrice.selections
-        .map(
-          (selection) =>
-            attributes
-              .find((attribute) => attribute.id === selection.attributeId)!
-              .options.find((option) => option.id === selection.optionId)!.label,
-        )
-        .join('+'),
-      variantPrice.priceCents,
-    ]);
+    const priceByLabels = savedProduct.variantPrices!.map(
+      (variantPrice: {
+        selections: { attributeId: string; optionId: string }[];
+        priceCents: number;
+      }) => [
+        variantPrice.selections
+          .map(
+            (selection: { attributeId: string; optionId: string }) =>
+              attributes
+                .find(
+                  (attribute: { id: string; options: { id: string; label: string }[] }) =>
+                    attribute.id === selection.attributeId,
+                )!
+                .options.find(
+                  (option: { id: string; label: string }) => option.id === selection.optionId,
+                )!.label,
+          )
+          .join('+'),
+        variantPrice.priceCents,
+      ],
+    );
     expect(priceByLabels).toEqual([
       ['Castanho+Linho', 11000],
       ['Castanho+Veludo', 12000],

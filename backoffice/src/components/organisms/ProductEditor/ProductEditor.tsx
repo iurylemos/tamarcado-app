@@ -5,11 +5,11 @@ import type {
   ProductImage,
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
+import type { ProductInputData, ProductRecord } from '../../../interfaces/product.interface';
 import {
   productCustomizationCombinationKey,
   productCustomizationCombinations,
 } from '@shared/product-variant-price';
-import type { ProductRecord } from '../../../interfaces/admin.interface';
 import {
   deleteProductGallery,
   errorMessage,
@@ -248,12 +248,6 @@ export default function ProductEditor({
       ) {
         throw new Error('Não foi possível identificar a empresa para enviar as imagens.');
       }
-      const initialImages =
-        defaultImages.length > 0
-          ? defaultImages
-          : product?.defaultImages?.length
-            ? product.defaultImages
-            : [legacyImage(imageUrl)];
       const productId = product?.id ?? crypto.randomUUID();
 
       for (const file of imageFiles) {
@@ -282,7 +276,7 @@ export default function ProductEditor({
       ) {
         throw new Error('A galeria padrão deve ter de uma a dez imagens válidas.');
       }
-      const productInput = {
+      const productInput: ProductInputData = {
         ...(product ? { id: product.id } : { id: productId }),
         name,
         description,
