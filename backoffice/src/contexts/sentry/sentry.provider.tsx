@@ -1,4 +1,4 @@
-import { type JSX, type ReactNode, Fragment, useEffect, useState } from 'react';
+import { type JSX, type ReactNode, useEffect, useState } from 'react';
 import { SentryContext } from './sentry.context';
 import { useLocation } from 'react-router-dom';
 import { createSafeRouteBreadcrumb, initializeMonitoring } from '../../config/sentry.config';
@@ -27,9 +27,5 @@ export default function SentryProvider({ children }: Readonly<SentryProviderProp
     }
   }, [pathname]);
 
-  return (
-    <SentryContext.Provider value={{ breadcrumb }}>
-      <Fragment>{children}</Fragment>
-    </SentryContext.Provider>
-  );
+  return <SentryContext.Provider value={{ breadcrumb }}>{children}</SentryContext.Provider>;
 }
