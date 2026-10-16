@@ -9,6 +9,7 @@ import type {
   SearchAvailabilityResult,
 } from '../../../shared/domain/interfaces/availability.interface';
 import type { BlockedPeriodDocument, WorkingHoursDocument } from '../model/availability.model';
+import type { RequestedSlotValidationInput } from '../interfaces/availability.interface';
 import { DomainError } from '../../../shared/domain/errors';
 import { intervalsOverlap } from '../../../shared/domain/interval';
 import {
@@ -565,6 +566,7 @@ export async function searchAvailability(
   for (let offset = 0; offset <= 30; offset += 1) {
     const date = addDays(input.date, offset);
     const slots = listSlotsForDate(context, date);
+
     if (slots.length > 0) {
       logAvailabilityDuration(
         'availability_search',
@@ -572,7 +574,9 @@ export async function searchAvailability(
         evaluationStartedAt,
         requestColdStart,
       );
+
       logAvailabilityDuration('availability_search', 'total', requestStartedAt, requestColdStart);
+
       return { date, slots };
     }
   }
@@ -583,18 +587,10 @@ export async function searchAvailability(
     evaluationStartedAt,
     requestColdStart,
   );
-  logAvailabilityDuration('availability_search', 'total', requestStartedAt, requestColdStart);
-  return { date: null, slots: [] };
-}
 
-export interface RequestedSlotValidationInput {
-  tenantId: string;
-  professionalId: string;
-  startsAt: Date;
-  durationMinutes: number;
-  timezone: string;
-  bookingIntervalMinutes: number;
-  coldStart?: boolean;
+  logAvailabilityDuration('availability_search', 'total', requestStartedAt, requestColdStart);
+
+  return { date: null, slots: [] };
 }
 
 export async function isRequestedSlotAvailable(
@@ -621,6 +617,7 @@ export async function isRequestedSlotAvailable(
   const requestColdStart = input.coldStart ?? coldStart;
   coldStart = false;
   const conflictReadsStartedAt = performance.now();
+
   const [hoursSnapshot, appointmentsSnapshot, reservationsSnapshot, blocksSnapshot] =
     await Promise.all([
       firestore
@@ -656,6 +653,7 @@ export async function isRequestedSlotAvailable(
         .where('endsAt', '>', Timestamp.fromDate(startsAt))
         .get(),
     ]);
+
   logAvailabilityDuration(
     'appointment_registration',
     'conflict_reads',
@@ -679,6 +677,7 @@ export async function isRequestedSlotAvailable(
       minuteOfDay + input.durationMinutes <= closing
     );
   });
+
   const hasAppointmentConflict = appointmentsSnapshot.docs.some((document) => {
     const appointment = document.data();
     return (
@@ -688,6 +687,7 @@ export async function isRequestedSlotAvailable(
       overlapsWindow(interval, appointment.startsAt as Timestamp, appointment.endsAt as Timestamp)
     );
   });
+
   const hasReservationConflict = reservationsSnapshot.docs.some((document) => {
     const reservation = document.data();
     const bucketStart = (reservation.bucketStartAt as Timestamp).toDate().getTime();
@@ -700,6 +700,7 @@ export async function isRequestedSlotAvailable(
       })
     );
   });
+
   const hasBlockConflict = blocksSnapshot.docs.some((document) => {
     const block = document.data() as BlockedPeriodDocument;
     return (
@@ -708,6 +709,7 @@ export async function isRequestedSlotAvailable(
       overlapsWindow(interval, block.startsAt, block.endsAt)
     );
   });
+
   logAvailabilityDuration(
     'appointment_registration',
     'slot_evaluation',

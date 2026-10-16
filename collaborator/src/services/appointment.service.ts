@@ -64,6 +64,7 @@ export async function subscribeToAppointments(
   if (typeof claims.professionalId === 'string') {
     constraints.push(where('professionalId', '==', claims.professionalId));
   }
+
   return onSnapshot(
     query(collection(db, 'appointments'), ...constraints),
     (snapshot) =>

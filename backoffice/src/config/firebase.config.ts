@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
 import { FirebaseUtil } from '../utils/firebase.util';
@@ -35,8 +35,13 @@ const app = getApps().length
       appId: import.meta.env.VITE_FIREBASE_APP_ID || FirebaseUtil.defaultIdEmulator,
     });
 
+export const db = initializeFirestore(
+  app,
+  FirebaseUtil.firestoreSettings,
+  FirebaseUtil.defaultFirestore,
+);
+
 export const auth = getAuth(app);
-export const db = getFirestore(app, FirebaseUtil.defaultFirestore);
 export const functions = getFunctions(app, FirebaseUtil.region);
 export const storage = getStorage(app);
 
