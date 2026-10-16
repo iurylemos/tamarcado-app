@@ -15,7 +15,7 @@ const initialSession: AuthSession = {
 
 type AuthProviderProps = { children: ReactNode };
 
-export function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Element {
+export default function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Element {
   const [session, setSession] = useState<AuthSession>(initialSession);
   const eventId = useRef<number>(0);
 

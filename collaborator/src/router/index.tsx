@@ -9,6 +9,7 @@ import LoginPage from '../pages/LoginPage';
 import ReportsPage from '../pages/ReportsPage';
 import ProtectedRoute from './ProtectedRoute';
 import SentryProvider from '../contexts/sentry/sentry.provider';
+import AuthProvider from '../contexts/auth/auth.provider';
 
 export function WorkspaceLayout(): JSX.Element {
   const { logout } = useAuth();
@@ -47,12 +48,14 @@ export default function CollaboratorRouter(): JSX.Element {
   return (
     <BrowserRouter>
       <SentryProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/*" element={<WorkspaceLayout />} />
-          </Route>
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/*" element={<WorkspaceLayout />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
       </SentryProvider>
     </BrowserRouter>
   );

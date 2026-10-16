@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { User } from 'firebase/auth';
 import { useAuth } from './auth.context';
-import { AuthProvider } from './auth.provider';
+import AuthProvider from './auth.provider';
 
 const mocks = vi.hoisted(() => ({
   listener: undefined as ((user: User | null) => void) | undefined,

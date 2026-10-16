@@ -16,7 +16,7 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
-export function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Element {
+export default function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Element {
   const [session, setSession] = useState<AuthSession>(initialSession);
   const eventId = useRef<number>(0);
 
@@ -74,13 +74,13 @@ export function AuthProvider({ children }: Readonly<AuthProviderProps>): JSX.Ele
     return unsubscribe;
   }, []);
 
-  const login = useCallback((email: string, password: string) => signInWithEmail(email, password), []);
+  const login = useCallback(
+    (email: string, password: string) => signInWithEmail(email, password),
+    [],
+  );
   const logout = useCallback(() => signOutCurrentUser(), []);
 
-  const value = useMemo(
-    () => ({ ...session, login, logout }),
-    [session, login, logout],
-  );
+  const value = useMemo(() => ({ ...session, login, logout }), [session, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
