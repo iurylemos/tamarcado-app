@@ -2,13 +2,11 @@ import { StrictMode, type JSX } from 'react';
 import { createRoot, hydrateRoot, type RootOptions } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { App } from './App';
 import { companyCatalogQueryKey, queryClient } from './services/query-client';
-import { initializeMonitoring } from './config/sentry.config';
 import { reactErrorHandler } from '@sentry/react';
+import { App } from './App';
+import SentryProvider from './contexts/sentry/sentry.provider';
 import './styles/index.css';
-
-initializeMonitoring();
 
 const optionsRoot: RootOptions = {
   onUncaughtError: reactErrorHandler(),
@@ -30,7 +28,9 @@ const app: JSX.Element = (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <SentryProvider>
+          <App />
+        </SentryProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>

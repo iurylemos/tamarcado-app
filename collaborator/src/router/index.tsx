@@ -8,11 +8,10 @@ import MessagesPage from '../pages/MessagesPage';
 import LoginPage from '../pages/LoginPage';
 import ReportsPage from '../pages/ReportsPage';
 import ProtectedRoute from './ProtectedRoute';
-import { useRouteBreadcrumb } from '../hooks/useRouteBreadcrumb.hook';
+import SentryProvider from '../contexts/sentry/sentry.provider';
 
 export function WorkspaceLayout(): JSX.Element {
   const { logout } = useAuth();
-  useRouteBreadcrumb();
 
   return (
     <div className="app-shell">
@@ -45,16 +44,16 @@ export function WorkspaceLayout(): JSX.Element {
 }
 
 export default function CollaboratorRouter(): JSX.Element {
-  useRouteBreadcrumb();
-
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route path="/*" element={<WorkspaceLayout />} />
-        </Route>
-      </Routes>
+      <SentryProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/*" element={<WorkspaceLayout />} />
+          </Route>
+        </Routes>
+      </SentryProvider>
     </BrowserRouter>
   );
 }

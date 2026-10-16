@@ -1,11 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot, type RootOptions } from 'react-dom/client';
-import { initializeMonitoring } from './config/sentry.config';
 import { reactErrorHandler } from '@sentry/react';
 import App from './App';
 import './styles/index.css';
-
-initializeMonitoring();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found.');
