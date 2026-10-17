@@ -2,12 +2,8 @@ import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
-import type {
-  BookingReceipt,
-  CompanyCatalog,
-  PublicProductSummary,
-} from '../../../interfaces/company.interface';
-import type { BookingFormValues } from '../../../interfaces/booking.interface';
+import type { CompanyCatalog, PublicProductSummary } from '../../../interfaces/company.interface';
+import type { BookingFormValues, BookingReceipt } from '../../../interfaces/booking.interface';
 import type {
   ProductCustomizationSelection,
   ProductImage,

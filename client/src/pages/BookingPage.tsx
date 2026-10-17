@@ -2,12 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
-import type {
-  PublicProductSummary,
-  BookingReceipt,
-  CompanyCatalog,
-} from '../interfaces/company.interface';
-import type { BookingFormValues } from '../interfaces/booking.interface';
+import type { PublicProductSummary, CompanyCatalog } from '../interfaces/company.interface';
+import type { BookingFormValues, BookingReceipt } from '../interfaces/booking.interface';
 import type {
   ProductCustomizationSelection,
   ProductImage,

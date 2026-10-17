@@ -1,6 +1,6 @@
 import type { JSX, MouseEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { BookingReceipt } from '../../../interfaces/company.interface';
+import type { BookingReceipt } from '../../../interfaces/booking.interface';
 import { formatTimeRange } from '../../../utils/date.util';
 
 type BookingReceiptDialogProps = {
