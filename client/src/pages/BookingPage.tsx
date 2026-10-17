@@ -2,7 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
-import type { BookingReceipt, CompanyCatalog } from '../interfaces/company.interface';
+import type {
+  PublicProductSummary,
+  BookingReceipt,
+  CompanyCatalog,
+} from '../interfaces/company.interface';
+import type { BookingFormValues } from '../interfaces/booking.interface';
+import type {
+  ProductCustomizationSelection,
+  ProductImage,
+  ProductImageGallery,
+} from '@shared/interfaces/product.interface';
+import type { EligibleProfessional } from '../interfaces/professional.interface';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability, searchAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
@@ -14,12 +25,6 @@ import {
 import { eligibleProfessionals } from '../services/professional.service';
 import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
-import type { BookingFormValues } from '../interfaces/booking.interface';
-import type {
-  ProductCustomizationSelection,
-  ProductImage,
-} from '@shared/interfaces/product.interface';
-import type { EligibleProfessional } from '../interfaces/professional.interface';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 
@@ -45,13 +50,17 @@ export default function BookingPage(): JSX.Element {
   const [selectedImageId, setSelectedImageId] = useState<string>('');
   const queryClient = useQueryClient();
   const skipSearchForDate = useRef<string | null>(null);
-  const selectedDateRef = useRef(date);
+  const selectedDateRef = useRef<string>(date);
 
-  const product =
-    catalog?.business.slug === slug
-      ? catalog.products.find((item) => item.id === productId)
-      : undefined;
-  const effectiveImageGallery = useMemo(
+  const product = useMemo<PublicProductSummary | undefined>(
+    () =>
+      catalog?.business.slug === slug
+        ? catalog.products.find((item) => item.id === productId)
+        : undefined,
+    [catalog, slug, productId],
+  );
+
+  const effectiveImageGallery = useMemo<ProductImageGallery | undefined>(
     () =>
       product?.imageGalleries?.find(
         (gallery) =>
@@ -73,24 +82,30 @@ export default function BookingPage(): JSX.Element {
       ),
     [customizationSelections, product],
   );
-  const effectiveImages: ProductImage[] = useMemo(
-    () => {
-      if (!product) return [];
-      if ((product.customizationAttributes?.length ?? 0) > 0) {
-        return effectiveImageGallery?.images.filter((image) => image.downloadUrl) ?? [];
-      }
-      return product.defaultImages?.length
-        ? product.defaultImages.filter((image) => image.downloadUrl)
-        : [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }];
-    },
-    [effectiveImageGallery, product],
+
+  const effectiveImages = useMemo<ProductImage[]>(() => {
+    if (!product) return [];
+
+    if ((product.customizationAttributes?.length ?? 0) > 0) {
+      return effectiveImageGallery?.images.filter((image) => image.downloadUrl) ?? [];
+    }
+
+    return product.defaultImages?.length
+      ? product.defaultImages.filter((image) => image.downloadUrl)
+      : [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }];
+  }, [effectiveImageGallery, product]);
+
+  const effectiveSelectedImageId = useMemo<string>(
+    () =>
+      effectiveImages.some((image) => image.id === selectedImageId)
+        ? selectedImageId
+        : (effectiveImages[0]?.id ?? ''),
+    [effectiveImages, selectedImageId],
   );
-  const effectiveSelectedImageId = effectiveImages.some((image) => image.id === selectedImageId)
-    ? selectedImageId
-    : (effectiveImages[0]?.id ?? '');
 
   useEffect(() => {
     const attributes = product?.customizationAttributes ?? [];
+
     setCustomizationSelections((current) => {
       const next = attributes.map((attribute) => {
         const selected = current.find((selection) => selection.attributeId === attribute.id);
