@@ -1,4 +1,4 @@
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { collection, getDocsFromServer, limit, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase.config';
 import type {
   CompanyCatalog,
@@ -15,13 +15,14 @@ import { isValidBusinessSlug } from '../utils/business-slug.util';
 export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | null> {
   if (!isValidBusinessSlug(slug)) return null;
 
-  const businesses = await getDocs(
+  const businesses = await getDocsFromServer(
     query(
       collection(db, 'public_businesses'),
       where('slug', '==', slug),
       where('published', '==', true),
     ),
   );
+
   const businessDoc = businesses.docs[0];
 
   if (!businessDoc) return null;
@@ -32,7 +33,7 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
   if (!tenantId) return null;
 
   const [products, galleries] = await Promise.all([
-    getDocs(
+    getDocsFromServer(
       query(
         collection(db, 'public_products'),
         where('businessSlug', '==', slug),
@@ -40,7 +41,7 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
         where('published', '==', true),
       ),
     ),
-    getDocs(
+    getDocsFromServer(
       query(
         collection(db, 'public_product_galleries'),
         where('tenantId', '==', tenantId),

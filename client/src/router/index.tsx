@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import BookingPage from './pages/BookingPage';
-import CompanyCatalogPage from './pages/CompanyCatalogPage';
-import HomePage from './pages/HomePage';
+import HomePage from '../pages/HomePage';
+import CompanyCatalogPage from '../pages/CompanyCatalogPage';
+import BookingPage from '../pages/BookingPage';
 
-export function App(): JSX.Element {
+export default function ClientRouter(): JSX.Element {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
