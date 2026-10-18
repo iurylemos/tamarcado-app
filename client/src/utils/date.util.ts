@@ -1,6 +1,6 @@
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
 import { getZonedDateTimeParts } from '@shared/timezone';
-import type { BookingReceipt } from '../interfaces/company.interface';
+import type { BookingReceipt } from '../interfaces/booking.interface';
 
 export function getDateInBusinessTimezone(
   now = new Date(),

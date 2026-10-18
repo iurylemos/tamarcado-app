@@ -4,8 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { companyCatalogQueryKey, queryClient } from './services/query-client';
 import { reactErrorHandler } from '@sentry/react';
-import { App } from './App';
 import SentryProvider from './contexts/sentry/sentry.provider';
+import ClientRouter from './router';
 import './styles/index.css';
 
 const optionsRoot: RootOptions = {
@@ -29,7 +29,7 @@ const app: JSX.Element = (
     <BrowserRouter>
       <SentryProvider>
         <QueryClientProvider client={queryClient}>
-          <App />
+          <ClientRouter />
         </QueryClientProvider>
       </SentryProvider>
     </BrowserRouter>

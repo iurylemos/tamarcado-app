@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDocs } from 'firebase/firestore';
+import { getDocsFromServer } from 'firebase/firestore';
 import { getCompanyCatalog } from './catalog.service';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_, name: string) => name),
-  getDocs: vi.fn(),
+  getDocsFromServer: vi.fn(),
   query: vi.fn((source, ...constraints) => ({ source, constraints })),
   where: vi.fn((field: string, _operator: string, value: unknown) => ({ field, value })),
   limit: vi.fn((value: number) => ({ limit: value })),
@@ -16,7 +16,7 @@ describe('getCompanyCatalog', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('loads product and gallery metadata in parallel after resolving the business', async () => {
-    vi.mocked(getDocs)
+    vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({
         docs: [
           {
@@ -29,12 +29,12 @@ describe('getCompanyCatalog', () => {
 
     await getCompanyCatalog('studio-aurora');
 
-    expect(getDocs).toHaveBeenCalledTimes(3);
-    expect(getDocs).toHaveBeenNthCalledWith(
+    expect(getDocsFromServer).toHaveBeenCalledTimes(3);
+    expect(getDocsFromServer).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ source: 'public_products' }),
     );
-    expect(getDocs).toHaveBeenNthCalledWith(
+    expect(getDocsFromServer).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
         source: 'public_product_galleries',
@@ -49,7 +49,7 @@ describe('getCompanyCatalog', () => {
   });
 
   it('returns only active public products owned by the business matched by the slug', async () => {
-    vi.mocked(getDocs)
+    vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({
         docs: [
           {
@@ -105,7 +105,7 @@ describe('getCompanyCatalog', () => {
         priceCents: 12000,
       },
     ]);
-    expect(getDocs).toHaveBeenNthCalledWith(
+    expect(getDocsFromServer).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         source: 'public_businesses',
@@ -115,7 +115,7 @@ describe('getCompanyCatalog', () => {
         ]),
       }),
     );
-    expect(getDocs).toHaveBeenNthCalledWith(
+    expect(getDocsFromServer).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         source: 'public_products',
@@ -129,13 +129,13 @@ describe('getCompanyCatalog', () => {
   });
 
   it('does not return catalog data when no published business matches the slug', async () => {
-    vi.mocked(getDocs).mockResolvedValue({ docs: [] } as never);
+    vi.mocked(getDocsFromServer).mockResolvedValue({ docs: [] } as never);
 
     await expect(getCompanyCatalog('unknown-business')).resolves.toBeNull();
   });
 
   it('rejects malformed slugs before querying public catalog data', async () => {
     await expect(getCompanyCatalog('studio/aurora')).resolves.toBeNull();
-    expect(getDocs).not.toHaveBeenCalled();
+    expect(getDocsFromServer).not.toHaveBeenCalled();
   });
 });

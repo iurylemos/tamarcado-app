@@ -8,6 +8,7 @@ import {
   consoleLoggingIntegration,
   captureException,
   addBreadcrumb,
+  getClient,
   type Span,
 } from '@sentry/react';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
@@ -42,6 +43,14 @@ export function initializeMonitoring(): void {
     console.info(
       'Sentry monitoring is disabled because no DSN is provided or the environment is development.',
     );
+
+    return;
+  }
+
+  const sentryClient = getClient();
+
+  if (sentryClient) {
+    console.info('Sentry client is already initialized.');
 
     return;
   }

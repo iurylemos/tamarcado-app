@@ -5,6 +5,7 @@ import {
   feedbackIntegration,
   setTag,
   getCurrentScope,
+  getClient,
 } from '@sentry/react';
 import { SentryUtil } from '../utils/sentry.util';
 
@@ -17,6 +18,14 @@ export function initializeMonitoring(): void {
     console.info(
       'Sentry monitoring is disabled because no DSN is provided or the environment is development.',
     );
+
+    return;
+  }
+
+  const sentryClient = getClient();
+
+  if (sentryClient) {
+    console.info('Sentry client is already initialized.');
 
     return;
   }

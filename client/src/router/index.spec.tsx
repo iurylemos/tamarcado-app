@@ -1,13 +1,13 @@
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCompanyCatalog } from './services/catalog.service';
-import { listAvailability } from './services/availability.service';
-import { App } from './App';
-import { renderWithQueryClient } from './test/render';
+import { getCompanyCatalog } from '../services/catalog.service';
+import { listAvailability } from '../services/availability.service';
+import { renderWithQueryClient } from '../test/render';
+import ClientRouter from '.';
 
-vi.mock('./services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
-vi.mock('./services/availability.service', () => ({ listAvailability: vi.fn(async () => []) }));
+vi.mock('../services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
+vi.mock('../services/availability.service', () => ({ listAvailability: vi.fn(async () => []) }));
 
 afterEach(cleanup);
 
@@ -47,7 +47,7 @@ describe('App routes', () => {
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <App />
+        <ClientRouter />
       </MemoryRouter>,
     );
 
@@ -80,7 +80,7 @@ describe('App routes', () => {
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
-        <App />
+        <ClientRouter />
       </MemoryRouter>,
     );
 
@@ -94,7 +94,7 @@ describe('App routes', () => {
   it('shows neutral guidance at the root without company or service discovery', async () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/']}>
-        <App />
+        <ClientRouter />
       </MemoryRouter>,
     );
 
@@ -116,7 +116,7 @@ describe('App routes', () => {
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/']}>
-        <App />
+        <ClientRouter />
       </MemoryRouter>,
     );
 
