@@ -21,7 +21,9 @@ export function initializeMonitoring(): void {
     return;
   }
 
-  if (getClient()) {
+  const sentryClient = getClient();
+
+  if (sentryClient) {
     console.info('Sentry client is already initialized.');
 
     return;
