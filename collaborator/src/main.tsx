@@ -1,8 +1,12 @@
-import { StrictMode } from 'react';
+import { StrictMode, type FC, type JSX } from 'react';
 import { createRoot, type RootOptions } from 'react-dom/client';
-import { reactErrorHandler } from '@sentry/react';
+import { reactErrorHandler, withErrorBoundary } from '@sentry/react';
+import { initializeMonitoring } from './config/sentry.config';
 import CollaboratorRouter from './router';
+import FallbackError from './components/atoms/FallbackError';
 import './styles/index.css';
+
+initializeMonitoring();
 
 const root = document.getElementById('root');
 
@@ -14,8 +18,15 @@ const optionsRoot: RootOptions = {
   onRecoverableError: reactErrorHandler(),
 };
 
-createRoot(root, optionsRoot).render(
+const App: FC = (): JSX.Element => (
   <StrictMode>
     <CollaboratorRouter />
-  </StrictMode>,
+  </StrictMode>
 );
+
+const AppFallback: FC = withErrorBoundary(App, {
+  fallback: <FallbackError />,
+  onError: reactErrorHandler(),
+});
+
+createRoot(root, optionsRoot).render(<AppFallback />);

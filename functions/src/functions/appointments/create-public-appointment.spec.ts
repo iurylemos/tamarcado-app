@@ -132,9 +132,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
-      customizationSelections: [
-        { attributeId: 'lash-service', optionId: 'volume-brasileiro' },
-      ],
+      customizationSelections: [{ attributeId: 'lash-service', optionId: 'volume-brasileiro' }],
     });
     const appointment = (
       await db.collection('appointments').doc(result.appointmentId).get()
@@ -198,8 +196,12 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       }),
     ).rejects.toMatchObject({ code: 'invalid-argument' });
     expect(
-      (await db.collection('appointments').where('productId', '==', customizationTestProductId).get())
-        .docs,
+      (
+        await db
+          .collection('appointments')
+          .where('productId', '==', customizationTestProductId)
+          .get()
+      ).docs,
     ).toHaveLength(0);
   });
 
@@ -225,8 +227,12 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       }),
     ).rejects.toMatchObject({ code: 'invalid-argument' });
     expect(
-      (await db.collection('appointments').where('productId', '==', customizationTestProductId).get())
-        .docs,
+      (
+        await db
+          .collection('appointments')
+          .where('productId', '==', customizationTestProductId)
+          .get()
+      ).docs,
     ).toHaveLength(0);
   });
 
@@ -518,7 +524,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     };
 
     await expect(processAppointmentNotification(result.appointmentId, provider)).rejects.toThrow(
-      'temporary worker failure',
+      'Appointment notification processing failed.',
     );
     const job = await db
       .collection('appointment_notification_jobs')
@@ -547,6 +553,16 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       customerPhone: '(11) 99999-0009',
       whatsappOptIn: false,
     });
+    const notificationJob = await db
+      .collection('appointment_notification_jobs')
+      .doc(booking.appointmentId)
+      .get();
+    const correlationId = notificationJob.data()?.correlationId;
+    expect(correlationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(correlationId).not.toBe(booking.appointmentId);
+
     await processAppointmentNotification(booking.appointmentId, {
       name: 'test',
       sendTemplate: vi.fn().mockResolvedValue({ providerMessageId: 'message-2' }),
@@ -570,6 +586,17 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     expect(
       entries.every(
         (fields) => typeof (fields as { durationMs?: unknown }).durationMs === 'number',
+      ),
+    ).toBe(true);
+    const correlatedEntries = entries.filter((fields) =>
+      ['appointment_registration', 'notification_processing'].includes(
+        (fields as { operation: string }).operation,
+      ),
+    );
+    expect(correlatedEntries).toHaveLength(6);
+    expect(
+      correlatedEntries.every(
+        (fields) => (fields as { correlationId?: unknown }).correlationId === correlationId,
       ),
     ).toBe(true);
     expect(JSON.stringify(entries)).not.toMatch(/Private Customer Name|11999990009|message body/i);

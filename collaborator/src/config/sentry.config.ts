@@ -1,12 +1,4 @@
-import {
-  init,
-  browserTracingIntegration,
-  replayIntegration,
-  feedbackIntegration,
-  setTag,
-  getCurrentScope,
-  getClient,
-} from '@sentry/react';
+import { init, setTag, getCurrentScope, getClient, browserTracingIntegration } from '@sentry/react';
 import { SentryUtil } from '../utils/sentry.util';
 
 export function initializeMonitoring(): void {
@@ -32,20 +24,31 @@ export function initializeMonitoring(): void {
   init({
     dsn,
     environment,
-    integrations: [
-      browserTracingIntegration(),
-      replayIntegration(),
-      feedbackIntegration({
-        colorScheme: 'system',
-      }),
-    ],
-    tracesSampleRate: 1.0,
-    tracePropagationTargets: [
-      /^\//,
-      /^https:\/\/southamerica-east1-tamarcado-dad82\.cloudfunctions.net/,
-    ],
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
+    release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: {
+        request: false,
+        response: false,
+      },
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: {
+        inputs: false,
+        outputs: false,
+      },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: {
+        document: false,
+        variables: false,
+      },
+    },
+    integrations: [browserTracingIntegration()],
+    tracesSampleRate: 0.1,
+    beforeSend: SentryUtil.sanitizeEvent,
+    beforeBreadcrumb: SentryUtil.sanitizeBreadcrumb,
   });
 
   setTag('app', 'collaborator');

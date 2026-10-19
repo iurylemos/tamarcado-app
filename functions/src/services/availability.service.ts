@@ -283,12 +283,14 @@ function logAvailabilityDuration(
   stage: string,
   startedAt: number,
   requestColdStart: boolean,
+  correlationId?: string,
 ): void {
   logger.info('booking.performance', {
     operation,
     stage,
     durationMs: Math.round(performance.now() - startedAt),
     coldStart: requestColdStart,
+    ...(correlationId ? { correlationId } : {}),
   });
 }
 
@@ -659,6 +661,7 @@ export async function isRequestedSlotAvailable(
     'conflict_reads',
     conflictReadsStartedAt,
     requestColdStart,
+    input.correlationId,
   );
 
   const evaluationStartedAt = performance.now();
@@ -715,6 +718,7 @@ export async function isRequestedSlotAvailable(
     'slot_evaluation',
     evaluationStartedAt,
     requestColdStart,
+    input.correlationId,
   );
 
   return validSchedule && !hasAppointmentConflict && !hasReservationConflict && !hasBlockConflict;

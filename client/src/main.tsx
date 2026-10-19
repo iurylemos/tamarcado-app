@@ -1,12 +1,16 @@
-import { StrictMode, type JSX } from 'react';
+import { StrictMode, type FC, type JSX } from 'react';
 import { createRoot, hydrateRoot, type RootOptions } from 'react-dom/client';
+import { reactErrorHandler, withErrorBoundary } from '@sentry/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { companyCatalogQueryKey, queryClient } from './services/query-client';
-import { reactErrorHandler } from '@sentry/react';
+import { initializeMonitoring } from './config/sentry.config';
+import FallbackError from './components/atoms/FallbackError';
 import SentryProvider from './contexts/sentry/sentry.provider';
 import ClientRouter from './router';
 import './styles/index.css';
+
+initializeMonitoring();
 
 const optionsRoot: RootOptions = {
   onUncaughtError: reactErrorHandler(),
@@ -24,7 +28,7 @@ if (ssrData) {
   queryClient.setQueryData(companyCatalogQueryKey(ssrData.catalog.business.slug), ssrData.catalog);
 }
 
-const app: JSX.Element = (
+const App: FC = (): JSX.Element => (
   <StrictMode>
     <BrowserRouter>
       <SentryProvider>
@@ -36,5 +40,10 @@ const app: JSX.Element = (
   </StrictMode>
 );
 
-if (ssrData) hydrateRoot(root, app, optionsRoot);
-else createRoot(root, optionsRoot).render(app);
+const AppFallback: FC = withErrorBoundary(App, {
+  fallback: <FallbackError />,
+  onError: reactErrorHandler(),
+});
+
+if (ssrData) hydrateRoot(root, <AppFallback />, optionsRoot);
+else createRoot(root, optionsRoot).render(<AppFallback />);

@@ -1,4 +1,4 @@
-﻿import { createHash } from 'node:crypto';
+﻿import { createHash, randomUUID } from 'node:crypto';
 import { Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
@@ -160,11 +160,7 @@ async function resolveEffectiveGallery(
   selections: ProductCustomizationSelection[],
 ): Promise<ProductImage[]> {
   const defaults = defaultProductImages(product);
-  if (
-    defaults.length < 1 ||
-    defaults.length > 10 ||
-    !defaults.every(isProductImage)
-  ) {
+  if (defaults.length < 1 || defaults.length > 10 || !defaults.every(isProductImage)) {
     throw new HttpsError('internal', 'A galeria padrão do serviço está inválida.');
   }
   if (selections.length === 0) return defaults;
@@ -225,6 +221,7 @@ export async function createPublicAppointment(
 
   const requestStartedAt = performance.now();
   const requestColdStart = bookingColdStart;
+  const correlationId = randomUUID();
   bookingColdStart = false;
 
   try {
@@ -303,6 +300,7 @@ export async function createPublicAppointment(
       stage: 'shared_data_resolution',
       durationMs: Math.round(performance.now() - resolutionStartedAt),
       coldStart: requestColdStart,
+      correlationId,
     });
 
     const timezone = String(tenant.timezone);
@@ -329,6 +327,7 @@ export async function createPublicAppointment(
       timezone,
       bookingIntervalMinutes,
       coldStart: requestColdStart,
+      correlationId,
     });
 
     if (!slotAvailable) {
@@ -422,6 +421,7 @@ export async function createPublicAppointment(
       transaction.create(notificationJobRef, {
         appointmentId,
         tenantId: business.tenantId,
+        correlationId,
         status: 'pending',
         createdAt,
         updatedAt: createdAt,
@@ -433,16 +433,19 @@ export async function createPublicAppointment(
       stage: 'transaction',
       durationMs: Math.round(performance.now() - transactionStartedAt),
       coldStart: requestColdStart,
+      correlationId,
     });
     return { appointmentId, status: 'pending' };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
+
     if (isFirestoreIndexUnavailableError(error)) {
       throw new HttpsError(
         'unavailable',
         'Estamos atualizando a disponibilidade dos horários. Tente novamente em alguns minutos.',
       );
     }
+
     if (error instanceof DomainError) {
       const code =
         error.code === 'NOT_FOUND'
@@ -454,6 +457,7 @@ export async function createPublicAppointment(
               : 'internal';
       throw new HttpsError(code, error.message);
     }
+
     throw error;
   } finally {
     logger.info('booking.performance', {
@@ -461,6 +465,7 @@ export async function createPublicAppointment(
       stage: 'total',
       durationMs: Math.round(performance.now() - requestStartedAt),
       coldStart: requestColdStart,
+      correlationId,
     });
   }
 }
