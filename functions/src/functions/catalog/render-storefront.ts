@@ -2,9 +2,9 @@ import {
   findPublicBusiness,
   listPublicProductRecords,
 } from '../../services/public-catalog.service';
+import { logUnexpectedFailure } from '../../services/diagnostic-logging.service';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
 import type { Response } from 'firebase-functions/v1';
-import { logger } from 'firebase-functions';
 import { DomainError } from '../../../../shared/domain/errors';
 import { renderPublicContent } from '../../../../client/src/entry-server.js';
 import type {
@@ -165,7 +165,10 @@ export const renderStorefront = onRequest(
         return;
       }
 
-      logger.error('Error rendering storefront for slug:', error);
+      logUnexpectedFailure(
+        { functionName: 'renderStorefront', operation: 'storefront_render', stage: 'render' },
+        error,
+      );
       response.status(500).send('Erro interno do servidor.');
     }
   },

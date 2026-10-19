@@ -6,4 +6,5 @@ export interface RequestedSlotValidationInput {
   timezone: string;
   bookingIntervalMinutes: number;
   coldStart?: boolean;
+  correlationId?: string;
 }

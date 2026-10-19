@@ -1,6 +1,8 @@
 # Implementation Tasks: Observability and Logs
 
-**Branch**: `008-observability-and-logs` (planned; not created) | **Date**: 2026-10-14 | **Spec**: `specs/008-observability-and-logs/spec.md` | **Plan**: `specs/008-observability-and-logs/plan.md`
+**Branch**: `008-observability-and-logs` (planned; not created) | **Updated**: 2026-10-18 | **Spec**: `specs/008-observability-and-logs/spec.md` | **Plan**: `specs/008-observability-and-logs/plan.md`
+
+**Audit baseline**: `audit.md` (2026-10-17). A checked subtask means the repository evidence is present; it does not prove deployed configuration, production delivery, or account-level settings. Do not mark externally verifiable work complete without production/staging evidence.
 
 ---
 
@@ -9,32 +11,28 @@
 ### Phase 1: Frontend Error Monitoring (Sentry)
 
 #### T001 — Add Sentry dependencies to each frontend workspace
-- [ ] Add `@sentry/react` to `client/package.json`, `collaborator/package.json`, `backoffice/package.json`
-- [ ] Add `@sentry/vite-plugin` to root `package.json` as build-time dependency
+- [x] `@sentry/react` is already declared for the three frontend applications
+- [x] `@sentry/vite-plugin` is already declared as a build-time dependency
 - [ ] Verify compatibility with React 19 / Vite 8
 - [ ] Run `npm install` in all workspaces
 
 #### T002 — Create monitoring initializer modules
-- [ ] Create `client/src/monitoring/index.ts` — Sentry init before `createRoot` in `client/src/main.tsx:9-30`
-- [ ] Create `collaborator/src/monitoring/index.ts` — Sentry init before hydration in collaborator `main.tsx`
-- [ ] Create `backoffice/src/monitoring/index.ts` — Sentry init before hydration in backoffice `main.tsx`
-- [ ] Configure per-app DSN via `VITE_SENTRY_DSN`, environment via `VITE_SENTRY_ENVIRONMENT`, release via `VITE_SENTRY_RELEASE`
-- [ ] Set `sendDefaultPii: false`, disable replay, request-body capture, console/network breadcrumbs, user-interaction recording
+- [x] Sentry initialization is present in `client`, `collaborator`, and `backoffice`
+- [x] DSN and environment configuration are present for all three applications
+- [ ] Normalize release identity between build artifacts and frontend events; `collaborator` does not set an event release and build/event defaults are not uniform
+- [ ] Verify a consistent privacy-first configuration across all applications; replay and tracing are currently enabled in `collaborator` and `backoffice`
 
 #### T003 — Implement safe route context breadcrumbs
-- [ ] Add route-template breadcrumb in `client/src/App.tsx` router
-- [ ] Add route-template breadcrumb in `collaborator/src/router/index.tsx`
-- [ ] Add route-template breadcrumb in `backoffice/src/router/index.tsx`
-- [ ] Use safe route patterns only (no query strings/fragments)
-- [ ] Do NOT enable Sentry browser tracing or route transactions
+- [x] Route breadcrumbs/context are present in all three applications
+- [x] `client` restricts route context and sanitizes telemetry
+- [ ] Verify that `collaborator` and `backoffice` route context excludes query strings, fragments, and unsafe route data
+- [ ] Review the existing tracing configuration against the approved scope; tracing is enabled in all three applications and sampled at 100% in `collaborator` and `backoffice`
 
 #### T004 — Implement beforeSend/breadcrumb sanitization policy
-- [ ] Add `beforeSend` handler to allowlist safe fields only
-- [ ] Discard query strings, fragments, arbitrary breadcrumb messages
-- [ ] Remove user/request/auth context from events
-- [ ] Redact/replace exception messages that can contain user-controlled data
-- [ ] Preserve stack frames where they pass privacy tests
-- [ ] Add deduplication logic for duplicate React error boundary + global handler reports
+- [x] `client` has explicit event/span/breadcrumb sanitization and disables user-data collection
+- [ ] Add equivalent pre-transmission sanitization to `collaborator` and `backoffice`; the audit found no equivalent `beforeSend` policy
+- [ ] Verify safe handling of exception messages, request/auth context, breadcrumbs, and stack frames in all applications
+- [ ] Verify duplicate suppression across all applications; current route breadcrumb deduplication in two applications does not establish error-event deduplication
 
 #### T005 — Wrap rendered trees with Sentry Error Boundary
 - [ ] Wrap `client/src/main.tsx` root with Sentry Error Boundary (preserve existing fallback)
@@ -43,14 +41,9 @@
 - [ ] Ensure existing user-facing error behavior unchanged
 
 #### T006 — Configure Sentry Vite plugin for private source maps
-- [ ] Add `@sentry/vite-plugin` to `client/vite.config.ts`
-- [ ] Add `@sentry/vite-plugin` to `collaborator/vite.config.ts`
-- [ ] Add `@sentry/vite-plugin` to `backoffice/vite.config.ts`
-- [ ] Configure production builds to:
-  - Generate hidden source maps
-  - Upload to matching private Sentry project
-  - Remove `.map` files from `dist/` after successful upload
-  - Fail build if any `*.map` remains (artifact assertion)
+- [x] Sentry Vite plugin configuration is present in all three frontend builds
+- [x] Production builds conditionally generate hidden source maps, upload them when a token is supplied, and remove maps after upload
+- [ ] Fail closed when upload is unsuccessful or any public `*.map` remains; `collaborator` and `backoffice` can currently generate public maps when no token is supplied
 - [ ] Use `SENTRY_AUTH_TOKEN` server-side only (never in `VITE_` vars, `.env.example`, source control, or bundles)
 - [ ] Configure org/project as non-secret build settings
 
@@ -102,6 +95,7 @@
 - [ ] Keep correlation field out of browser performance logs and user-facing responses
 
 #### T012 — Functions unit tests (Vitest)
+- [x] Existing `booking.performance` metrics and tests from feature 005 are the baseline; do not add duplicate timing events for the covered paths
 - [ ] Test logging helper (if created) with spies on Firebase logger:
   - Structured fields, severity, allowed error category, exact redaction, logger failure not changing operation behavior
   - If duration added to uncovered operation: assert presence/type there; assert NO new duration record for feature-005-covered paths
@@ -133,11 +127,10 @@
 - [ ] Functions: no monitoring secret or new Sentry env var needed
 
 #### T014 — CI/CD release process integration
-- [ ] Identify existing release process that runs Hosting build/deploy commands
-- [ ] Supply `SENTRY_AUTH_TOKEN` through approved secret mechanism
-- [ ] Configure staging and release secrets before enabling production guard
-- [ ] Failed upload must NOT silently publish source maps or claim symbolicated diagnostics
-- [ ] No `.github/workflows/` found — use project's actual release mechanism
+- [ ] Integrate the private source-map upload and release identity requirements with the approved release workflow defined by Spec 009; no automated workflow is present in the audit baseline
+- [ ] Supply `SENTRY_AUTH_TOKEN` through the approved restricted secret mechanism
+- [ ] Configure and verify staging/release secrets before enabling any production guard
+- [ ] Ensure a failed upload cannot silently publish source maps or claim symbolicated diagnostics
 
 #### T015 — Repository validation commands
 - [ ] Run `npm test` — all workspace tests pass
@@ -185,6 +178,8 @@ T009 → T010 → T011 → T012
 T013 → T014 → T015 → T016 → T017 → T018
 ```
 
+**Cross-spec dependency**: T014 depends on the approved release workflow and restricted credential path established by Spec 009 (tasks T004-T007). T008 remains responsible for the source-map artifact safety checks; T016 remains responsible for non-production telemetry verification.
+
 ## Acceptance Criteria (from plan.md Review Criteria)
 
 1. **No duplicate performance instrumentation** — Regression tests assert covered event counts, operation/stage values, duration semantics remain intact
@@ -200,4 +195,5 @@ T013 → T014 → T015 → T016 → T017 → T018
 - **Privacy/noise**: Default console/network breadcrumbs, raw exception messages, provider errors, high-volume expected failures, retries → allowlisted fields, one logging boundary, deduplication, non-production smoke tests
 - **Correlation field**: Persisted with notification job for job's lifecycle; grants no access; verify existing rules deny client reads/writes; never copied to public responses
 - **Release credential**: Missing/misconfigured token blocks monitored production build → configure staging/release secrets first; failed upload must not silently publish maps
+- **Audit boundary**: The audit verifies repository configuration only. Sentry/GCP accounts, deployed Hosting artifacts, billing, quotas, alerting, and production behavior remain unverified until explicit external validation is recorded.
 - **No production changes**: No production Firebase state, deployment, seed/import, or real monitoring events changed during implementation

@@ -5,6 +5,7 @@ export type AppointmentNotificationJobStatus = 'pending' | 'completed' | 'failed
 export interface AppointmentNotificationJobDocument {
   appointmentId: string;
   tenantId: string;
+  correlationId: string;
   status: AppointmentNotificationJobStatus;
   createdAt: Timestamp;
   updatedAt: Timestamp;

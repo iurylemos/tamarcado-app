@@ -1,11 +1,9 @@
 import {
   init,
-  browserTracingIntegration,
   setTag,
   getCurrentScope,
   metrics,
   startSpan,
-  consoleLoggingIntegration,
   captureException,
   addBreadcrumb,
   getClient,
@@ -13,27 +11,6 @@ import {
 } from '@sentry/react';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
 import { SentryUtil } from '../utils/sentry.util';
-import { FirebaseUtil } from '../utils/firebase.util';
-
-function functionsTraceTarget(): RegExp | null {
-  if (import.meta.env.DEV) {
-    return /^http:\/\/127\.0\.0\.1:5001\/[^/]+\/southamerica-east1\//;
-  }
-
-  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-
-  if (!projectId) {
-    return null;
-  }
-
-  const escapedProjectId = projectId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  return new RegExp(`^https://${FirebaseUtil.region}-${escapedProjectId}\\.cloudfunctions\\.net/`);
-}
-
-function isFunctionsRequest(url: string): boolean {
-  return functionsTraceTarget()?.test(url) ?? false;
-}
 
 export function initializeMonitoring(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -55,23 +32,12 @@ export function initializeMonitoring(): void {
     return;
   }
 
-  const functionsTarget = functionsTraceTarget();
-
   init({
     dsn,
     environment,
     release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
     dataCollection: SentryUtil.dataCollection,
-    tracesSampleRate: 0.1,
-    tracePropagationTargets: functionsTarget ? [functionsTarget] : [],
-    integrations: [
-      browserTracingIntegration({
-        shouldCreateSpanForRequest: isFunctionsRequest,
-      }),
-      consoleLoggingIntegration({ levels: ['info', 'warn', 'error'] }),
-    ],
     beforeSend: SentryUtil.sanitizeEvent,
-    beforeSendSpan: SentryUtil.beforeSendSpan,
     beforeBreadcrumb: SentryUtil.sanitizeBreadcrumb,
   });
 

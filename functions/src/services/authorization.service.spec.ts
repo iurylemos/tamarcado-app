@@ -91,23 +91,16 @@ describe('authorization service', () => {
     });
   });
 
-  it('logs which token claim differs without logging claim values', async () => {
+  it('logs safe denial metadata without identity or claim values', async () => {
     await expect(authorizeActor(makeRequest({ professionalId: undefined }))).rejects.toMatchObject({
       code: 'permission-denied',
     });
 
-    expect(mocks.warn).toHaveBeenCalledWith(
-      'Authorization rejected: token claims do not match the user document.',
-      {
-        uid: 'user-a',
-        claimMatches: {
-          active: true,
-          tenantId: true,
-          role: true,
-          professionalId: false,
-        },
-      },
-    );
+    expect(mocks.warn).toHaveBeenCalledWith('authorization.rejected', {
+      operation: 'authorize_actor',
+      outcome: 'denied',
+      reason: 'claims_mismatch',
+    });
   });
 
   it('rejects a collaborator outside their professional scope and a role not allowed for the operation', async () => {

@@ -12,6 +12,11 @@ import type {
 } from './whatsapp-provider.interface';
 import { WhatsAppProviderError } from './whatsapp-provider.interface';
 import { whatsappProvider } from './whatsapp-provider.service';
+import {
+  logProviderDeliveryFailure,
+  logUnexpectedFailure,
+  safeCorrelationId,
+} from './diagnostic-logging.service';
 import type {
   AppointmentParticipants,
   AppointmentCustomerEvent as CustomerEvent,
@@ -118,13 +123,13 @@ async function tenantContext(tenantId: string): Promise<{ name: string; timezone
 }
 
 // Notifications are best-effort: a WhatsApp failure must never undo or block an appointment change.
-async function safely(label: string, task: () => Promise<unknown>): Promise<boolean> {
+async function safely(task: () => Promise<unknown>): Promise<boolean> {
   try {
     await task();
     return true;
   } catch (error: unknown) {
     if (!(error instanceof WhatsAppProviderError)) throw error;
-    logger.warn(`WhatsApp provider delivery failed: ${label}`, { code: error.code });
+    logProviderDeliveryFailure();
     return false;
   }
 }
@@ -135,7 +140,7 @@ export async function notifyCustomer(
   provider: WhatsAppProvider = whatsappProvider,
 ): Promise<boolean> {
   if (!appointment.whatsappOptIn) return true;
-  return safely(`customer:${event}`, async () => {
+  return safely(async () => {
     const { name, timezone } = await tenantContext(appointment.tenantId);
     await provider.sendTemplate(buildCustomerMessage(event, appointment, name, timezone));
   });
@@ -146,7 +151,7 @@ export async function notifyCollaboratorOfRequest(
   appointment: AppointmentDocument,
   provider: WhatsAppProvider = whatsappProvider,
 ): Promise<boolean> {
-  return safely('collaborator:requested', async (): Promise<void> => {
+  return safely(async (): Promise<void> => {
     const existsProfessional = await firestore
       .collection(collections.professionals)
       .doc(appointment.professionalId)
@@ -193,6 +198,7 @@ export async function processAppointmentNotification(
   const startedAt = performance.now();
   const coldStart = notificationWorkerColdStart;
   notificationWorkerColdStart = false;
+  let correlationId: string | undefined;
   try {
     const jobRef = firestore.collection(collections.appointmentNotificationJobs).doc(jobId);
     const jobSnapshot = await jobRef.get();
@@ -201,6 +207,7 @@ export async function processAppointmentNotification(
     if (!jobSnapshot.exists || !job) {
       throw new Error('Appointment notification job was not found.');
     }
+    correlationId = safeCorrelationId(job.correlationId);
     if (job.status !== 'pending') return;
 
     const appointment = await loadAppointment(job.appointmentId);
@@ -214,12 +221,24 @@ export async function processAppointmentNotification(
         : { failureCode: 'provider_delivery_failed' }),
       updatedAt: Timestamp.now(),
     });
+  } catch (error: unknown) {
+    logUnexpectedFailure(
+      {
+        functionName: 'processAppointmentNotification',
+        operation: 'appointment_notification',
+        stage: 'worker',
+        ...(correlationId ? { correlationId } : {}),
+      },
+      error,
+    );
+    throw new Error('Appointment notification processing failed.');
   } finally {
     logger.info('booking.performance', {
       operation: 'notification_processing',
       stage: 'worker_total',
       durationMs: Math.round(performance.now() - startedAt),
       coldStart,
+      ...(correlationId ? { correlationId } : {}),
     });
   }
 }

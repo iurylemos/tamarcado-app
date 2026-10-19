@@ -6,6 +6,8 @@ const httpsCallable = vi.hoisted(() => vi.fn());
 const sentryMocks = vi.hoisted(() => ({
   startSpan: vi.fn(),
   metrics: { distribution: vi.fn() },
+  addBreadcrumb: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 vi.mock('firebase/functions', () => ({ httpsCallable }));
@@ -15,7 +17,9 @@ vi.mock('@sentry/react', () => sentryMocks);
 describe('booking service timing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sentryMocks.startSpan.mockImplementation((_options, callback) => callback());
+    sentryMocks.startSpan.mockImplementation((_options, callback) =>
+      callback({ setAttribute: vi.fn() }),
+    );
   });
 
   afterEach(() => {
@@ -23,7 +27,6 @@ describe('booking service timing', () => {
   });
 
   it('logs search duration without customer data', async () => {
-    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const result = { date: '2030-02-04', slots: [] };
     httpsCallable.mockReturnValue(async () => ({ data: result }));
 
@@ -35,15 +38,6 @@ describe('booking service timing', () => {
       }),
     ).resolves.toEqual(result);
 
-    expect(info).toHaveBeenCalledWith(
-      'booking.performance',
-      expect.objectContaining({
-        operation: 'availability_search',
-        stage: 'client_request',
-        durationMs: expect.any(Number),
-      }),
-    );
-    expect(info).toHaveBeenCalledTimes(1);
     expect(sentryMocks.startSpan).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'client.availability_search',
@@ -63,11 +57,12 @@ describe('booking service timing', () => {
       },
     );
     expect(sentryMocks.metrics.distribution).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(info.mock.calls)).not.toMatch(/Maria Silva|11999990000|mensagem/i);
+    expect(JSON.stringify(sentryMocks.metrics.distribution.mock.calls)).not.toMatch(
+      /Maria Silva|11999990000|mensagem/i,
+    );
   });
 
   it('logs appointment duration without customer data', async () => {
-    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     httpsCallable.mockReturnValue(async () => ({
       data: { appointmentId: 'appointment-1', status: 'pending' },
     }));
@@ -84,15 +79,6 @@ describe('booking service timing', () => {
       }),
     ).resolves.toMatchObject({ appointmentId: 'appointment-1', status: 'pending' });
 
-    expect(info).toHaveBeenCalledWith(
-      'booking.performance',
-      expect.objectContaining({
-        operation: 'appointment_registration',
-        stage: 'client_request',
-        durationMs: expect.any(Number),
-      }),
-    );
-    expect(info).toHaveBeenCalledTimes(1);
     expect(sentryMocks.startSpan).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'client.appointment_registration',
@@ -112,11 +98,12 @@ describe('booking service timing', () => {
       },
     );
     expect(sentryMocks.metrics.distribution).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(info.mock.calls)).not.toMatch(/Maria Silva|11999990000|mensagem/i);
+    expect(JSON.stringify(sentryMocks.metrics.distribution.mock.calls)).not.toMatch(
+      /Maria Silva|11999990000|mensagem/i,
+    );
   });
 
   it('records request latency when the callable fails without logging its error payload', async () => {
-    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const failure = new Error('Provider rejected phone 11999990000');
     httpsCallable.mockReturnValue(async () => {
       throw failure;
@@ -130,16 +117,7 @@ describe('booking service timing', () => {
       }),
     ).rejects.toBe(failure);
 
-    expect(info).toHaveBeenCalledTimes(1);
-    expect(info).toHaveBeenCalledWith(
-      'booking.performance',
-      expect.objectContaining({
-        operation: 'availability_search',
-        stage: 'client_request',
-        durationMs: expect.any(Number),
-      }),
-    );
     expect(sentryMocks.metrics.distribution).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(info.mock.calls)).not.toContain('11999990000');
+    expect(JSON.stringify(sentryMocks.metrics.distribution.mock.calls)).not.toContain('11999990000');
   });
 });

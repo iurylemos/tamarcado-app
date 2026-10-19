@@ -6,17 +6,30 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { defineConfig, loadEnv } from 'vite';
 import type { ViteUserConfig as UserConfig } from 'vitest/config';
+import { verifySentryArtifactsPlugin } from '../shared/plugins/verify-sentry-artifacts.plugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const isProduction = process.env.NODE_ENV === 'production';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode }): UserConfig => {
   const env = loadEnv(mode, root, '');
-  const sentryAuthToken = env.SENTRY_AUTH_TOKEN || process.env.SENTRY_AUTH_TOKEN;
-  const canUploadSourceMaps = isProduction && Boolean(sentryAuthToken);
-  const sentryOrg = env.SENTRY_ORG || process.env.SENTRY_ORG || 'ta-marcado';
-  const sentryProject = env.SENTRY_PROJECT || process.env.SENTRY_PROJECT || 'javascript-react';
-  const sentryRelease = env.SENTRY_RELEASE || process.env.SENTRY_RELEASE || 'tamarcado@0.0.1';
+
+  const isProduction = mode === 'production';
+
+  const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN ?? env.SENTRY_AUTH_TOKEN;
+
+  const sentryDsn = process.env.VITE_SENTRY_DSN ?? env.VITE_SENTRY_DSN;
+
+  const sentryEnvironment =
+    process.env.VITE_SENTRY_ENVIRONMENT ?? env.VITE_SENTRY_ENVIRONMENT ?? 'development';
+  const sentryEnabled = isProduction && Boolean(sentryDsn) && sentryEnvironment !== 'development';
+
+  if (sentryEnabled && !sentryAuthToken) {
+    throw new Error('SENTRY_AUTH_TOKEN is required for monitored production builds.');
+  }
+  const sentryRelease =
+    process.env.SENTRY_RELEASE ||
+    env.SENTRY_RELEASE ||
+    (process.env.GITHUB_SHA ? `tamarcado@${process.env.GITHUB_SHA}` : 'tamarcado@0.1.0');
 
   const config: UserConfig = {
     plugins: [
@@ -34,10 +47,10 @@ export default defineConfig(({ mode }) => {
       }),
       sentryVitePlugin({
         authToken: sentryAuthToken,
-        org: sentryOrg,
-        project: sentryProject,
+        org: process.env.SENTRY_ORG || env.SENTRY_ORG || 'tamarcado',
+        project: process.env.SENTRY_PROJECT_CLIENT || env.SENTRY_PROJECT_CLIENT || 'client',
         telemetry: false,
-        disable: !canUploadSourceMaps,
+        disable: !sentryEnabled,
         release: { name: sentryRelease },
         sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
         bundleSizeOptimizations: {
@@ -48,7 +61,13 @@ export default defineConfig(({ mode }) => {
           excludeTracing: true,
         },
       }),
+      verifySentryArtifactsPlugin({
+        app: 'client',
+        outDir: path.join(root, 'dist'),
+        authToken: sentryAuthToken,
+      }),
     ],
+    define: { 'import.meta.env.VITE_SENTRY_RELEASE': JSON.stringify(sentryRelease) },
     resolve: {
       alias: {
         '@shared': path.resolve(root, '../shared/domain'),
@@ -64,12 +83,12 @@ export default defineConfig(({ mode }) => {
             asset.name?.endsWith('.css') ? 'assets/app.css' : 'assets/[name][extname]',
         },
       },
-      sourcemap: canUploadSourceMaps ? 'hidden' : false,
+      sourcemap: sentryEnabled ? 'hidden' : false,
     },
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx'],
+      include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx', 'src/**/*.test.tsx'],
       restoreMocks: true,
     },
   };

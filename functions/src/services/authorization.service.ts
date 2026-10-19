@@ -46,9 +46,10 @@ export async function authorizeActor(
   };
 
   if (Object.values(claimMatches).some((matches) => !matches)) {
-    logger.warn('Authorization rejected: token claims do not match the user document.', {
-      uid: auth.uid,
-      claimMatches,
+    logger.warn('authorization.rejected', {
+      operation: 'authorize_actor',
+      outcome: 'denied',
+      reason: 'claims_mismatch',
     });
 
     throw new HttpsError('permission-denied', 'Sua sessão não corresponde ao acesso atual.');
