@@ -21,15 +21,21 @@ export default defineConfig(({ mode }): UserConfig => {
 
   const sentryEnvironment =
     process.env.VITE_SENTRY_ENVIRONMENT ?? env.VITE_SENTRY_ENVIRONMENT ?? 'development';
+
   const sentryEnabled = isProduction && Boolean(sentryDsn) && sentryEnvironment !== 'development';
 
   if (sentryEnabled && !sentryAuthToken) {
     throw new Error('SENTRY_AUTH_TOKEN is required for monitored production builds.');
   }
+
   const sentryRelease =
     process.env.SENTRY_RELEASE ||
     env.SENTRY_RELEASE ||
     (process.env.GITHUB_SHA ? `tamarcado@${process.env.GITHUB_SHA}` : 'tamarcado@0.1.0');
+
+  const org = process.env.SENTRY_ORG || env.SENTRY_ORG || 'tamarcado';
+
+  const project = process.env.SENTRY_PROJECT_CLIENT || env.SENTRY_PROJECT_CLIENT || 'client';
 
   const config: UserConfig = {
     plugins: [
@@ -47,8 +53,8 @@ export default defineConfig(({ mode }): UserConfig => {
       }),
       sentryVitePlugin({
         authToken: sentryAuthToken,
-        org: process.env.SENTRY_ORG || env.SENTRY_ORG || 'tamarcado',
-        project: process.env.SENTRY_PROJECT_CLIENT || env.SENTRY_PROJECT_CLIENT || 'client',
+        org,
+        project,
         telemetry: false,
         disable: !sentryEnabled,
         release: { name: sentryRelease },

@@ -7,6 +7,7 @@ import {
   captureException,
   addBreadcrumb,
   getClient,
+  browserTracingIntegration,
   type Span,
 } from '@sentry/react';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
@@ -39,6 +40,8 @@ export function initializeMonitoring(): void {
     dataCollection: SentryUtil.dataCollection,
     beforeSend: SentryUtil.sanitizeEvent,
     beforeBreadcrumb: SentryUtil.sanitizeBreadcrumb,
+    integrations: [browserTracingIntegration()],
+    tracesSampleRate: 0.1,
   });
 
   setTag('app', 'client');

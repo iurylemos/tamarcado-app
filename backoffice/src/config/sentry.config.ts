@@ -1,4 +1,4 @@
-import { init, setTag, getCurrentScope, getClient } from '@sentry/react';
+import { init, setTag, getCurrentScope, getClient, browserTracingIntegration } from '@sentry/react';
 import { SentryUtil } from '../utils/sentry.util';
 
 export function initializeMonitoring(): void {
@@ -46,6 +46,8 @@ export function initializeMonitoring(): void {
         variables: false,
       },
     },
+    integrations: [browserTracingIntegration()],
+    tracesSampleRate: 0.1,
     beforeSend: SentryUtil.sanitizeEvent,
     beforeBreadcrumb: SentryUtil.sanitizeBreadcrumb,
   });

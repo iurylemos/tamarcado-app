@@ -31,17 +31,18 @@ export default defineConfig(({ mode }): UserConfig => {
     env.SENTRY_RELEASE ||
     (process.env.GITHUB_SHA ? `tamarcado@${process.env.GITHUB_SHA}` : 'tamarcado@0.1.0');
 
+  const org = process.env.SENTRY_ORG || env.SENTRY_ORG || 'tamarcado';
+  const project =
+    process.env.SENTRY_PROJECT_COLLABORATOR || env.SENTRY_PROJECT_COLLABORATOR || 'collaborator';
+
   return {
     plugins: [
       react(),
       tailwindcss(),
       sentryVitePlugin({
         authToken: sentryAuthToken,
-        org: process.env.SENTRY_ORG || env.SENTRY_ORG || 'tamarcado',
-        project:
-          process.env.SENTRY_PROJECT_COLLABORATOR ||
-          env.SENTRY_PROJECT_COLLABORATOR ||
-          'collaborator',
+        org,
+        project,
         telemetry: false,
         disable: !sentryEnabled,
         release: { name: sentryRelease },
