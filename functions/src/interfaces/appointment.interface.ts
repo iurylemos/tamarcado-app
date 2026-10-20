@@ -34,3 +34,9 @@ export type AppointmentDataTime = {
   appointments: CollaboratorAppointmentResponse[];
   timezone: string;
 };
+
+export interface UpdateAppointmentInput {
+  appointmentId: string;
+  startsAt: string;
+  professionalId: string;
+}

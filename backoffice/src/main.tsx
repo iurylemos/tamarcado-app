@@ -2,6 +2,9 @@ import { StrictMode, type JSX, type FC } from 'react';
 import { createRoot, type RootOptions } from 'react-dom/client';
 import { reactErrorHandler, withErrorBoundary } from '@sentry/react';
 import { initializeMonitoring } from './config/sentry.config';
+import { BrowserRouter } from 'react-router-dom';
+import SentryProvider from './contexts/sentry/sentry.provider';
+import AuthProvider from './contexts/auth/auth.provider';
 import FallbackError from './components/atoms/FallbackError';
 import BackofficeRouter from './router';
 import './styles/index.css';
@@ -20,7 +23,13 @@ const optionsRoot: RootOptions = {
 
 const App: FC = (): JSX.Element => (
   <StrictMode>
-    <BackofficeRouter />
+    <BrowserRouter>
+      <SentryProvider>
+        <AuthProvider>
+          <BackofficeRouter />
+        </AuthProvider>
+      </SentryProvider>
+    </BrowserRouter>
   </StrictMode>
 );
 

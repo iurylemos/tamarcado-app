@@ -115,10 +115,12 @@ export const renderStorefront = onRequest(
       }
 
       const business = await findPublicBusiness(slug);
+
       const [productRecords, htmlText] = await Promise.all([
         listPublicProductRecords(business),
         shell.text(),
       ]);
+
       const publicBusiness: CompanySummary = {
         id: business.id,
         name: business.name,
@@ -127,31 +129,34 @@ export const renderStorefront = onRequest(
         description: business.description,
         logoUrl: business.logoUrl,
       };
+
+      const products = productRecords.map(
+        ({
+          id,
+          name,
+          description,
+          imageUrl,
+          customizationAttributes,
+          defaultImages,
+          imageGalleries,
+          priceCents,
+          durationMinutes,
+        }): PublicProductSummary => ({
+          id,
+          name,
+          description,
+          imageUrl,
+          ...(customizationAttributes ? { customizationAttributes } : {}),
+          ...(defaultImages ? { defaultImages } : {}),
+          ...(imageGalleries ? { imageGalleries } : {}),
+          priceCents,
+          durationMinutes,
+        }),
+      );
+
       const catalog: CompanyCatalog = {
         business: publicBusiness,
-        products: productRecords.map(
-          ({
-            id,
-            name,
-            description,
-            imageUrl,
-            customizationAttributes,
-            defaultImages,
-            imageGalleries,
-            priceCents,
-            durationMinutes,
-          }): PublicProductSummary => ({
-            id,
-            name,
-            description,
-            imageUrl,
-            ...(customizationAttributes ? { customizationAttributes } : {}),
-            ...(defaultImages ? { defaultImages } : {}),
-            ...(imageGalleries ? { imageGalleries } : {}),
-            priceCents,
-            durationMinutes,
-          }),
-        ),
+        products,
       };
 
       response
@@ -169,6 +174,7 @@ export const renderStorefront = onRequest(
         { functionName: 'renderStorefront', operation: 'storefront_render', stage: 'render' },
         error,
       );
+
       response.status(500).send('Erro interno do servidor.');
     }
   },

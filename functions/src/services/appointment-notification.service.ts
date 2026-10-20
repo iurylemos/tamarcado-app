@@ -140,6 +140,7 @@ export async function notifyCustomer(
   provider: WhatsAppProvider = whatsappProvider,
 ): Promise<boolean> {
   if (!appointment.whatsappOptIn) return true;
+
   return safely(async () => {
     const { name, timezone } = await tenantContext(appointment.tenantId);
     await provider.sendTemplate(buildCustomerMessage(event, appointment, name, timezone));
@@ -172,7 +173,9 @@ export async function notifyCollaboratorOfRequest(
     }
 
     const { timezone } = await tenantContext(appointment.tenantId);
+
     const message = buildCollaboratorMessage(appointmentId, appointment, timezone);
+
     await provider.sendTemplate({ ...message, phoneE164: String(professional.phoneE164) });
   });
 }
@@ -186,6 +189,7 @@ export async function notifyAppointmentRequested(
     notifyCustomer('requested', appointment, provider),
     notifyCollaboratorOfRequest(appointmentId, appointment, provider),
   ]);
+
   return results.every(Boolean);
 }
 
@@ -201,24 +205,34 @@ export async function processAppointmentNotification(
   let correlationId: string | undefined;
   try {
     const jobRef = firestore.collection(collections.appointmentNotificationJobs).doc(jobId);
+
     const jobSnapshot = await jobRef.get();
+
     const job = jobSnapshot.data() as AppointmentNotificationJobDocument | undefined;
 
     if (!jobSnapshot.exists || !job) {
       throw new Error('Appointment notification job was not found.');
     }
+
     correlationId = safeCorrelationId(job.correlationId);
+
     if (job.status !== 'pending') return;
 
     const appointment = await loadAppointment(job.appointmentId);
+
     if (!appointment) throw new Error('Appointment for notification job was not found.');
 
     const delivered = await notifyAppointmentRequested(job.appointmentId, appointment, provider);
-    await jobRef.update({
-      status: delivered ? 'completed' : 'failed',
+
+    const props = {
       ...(delivered
         ? { failureCode: FieldValue.delete() }
         : { failureCode: 'provider_delivery_failed' }),
+    };
+
+    await jobRef.update({
+      status: delivered ? 'completed' : 'failed',
+      ...props,
       updatedAt: Timestamp.now(),
     });
   } catch (error: unknown) {
@@ -247,5 +261,6 @@ export async function loadAppointment(
   appointmentId: string,
 ): Promise<AppointmentDocument | undefined> {
   const snapshot = await firestore.collection(collections.appointments).doc(appointmentId).get();
+
   return snapshot.data() as AppointmentDocument | undefined;
 }

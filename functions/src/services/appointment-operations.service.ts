@@ -24,6 +24,11 @@ import type {
   ListAppointmentsInput,
   UpdateAppointmentInputData,
 } from '../interfaces/appointment.interface';
+import type { TenantDocument } from '../model/tenant.model';
+
+type UpdateAppointmentResult = UpdateAppointmentInput & {
+  endsAt: string;
+};
 
 function nextLocalDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
@@ -59,7 +64,7 @@ function appointmentResponse(
 
 export async function listAppointments(
   actor: AuthorizedActor,
-  input: ListAppointmentsInput = {},
+  input: ListAppointmentsInput,
 ): Promise<AppointmentDataTime> {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new HttpsError('invalid-argument', 'Os filtros de agendamento são inválidos.');
@@ -69,20 +74,21 @@ export async function listAppointments(
     throw new HttpsError('invalid-argument', 'Informe uma data válida no formato AAAA-MM-DD.');
   }
 
-  if (
-    input.statuses !== undefined &&
-    (!Array.isArray(input.statuses) ||
-      input.statuses.some(
-        (status) => !['pending', 'confirmed', 'cancelled', 'completed'].includes(status),
-      ))
-  ) {
+  const verifyStatus =
+    !Array.isArray(input.statuses) ||
+    input.statuses.some(
+      (status) => !['pending', 'confirmed', 'cancelled', 'completed'].includes(status),
+    );
+
+  if (input.statuses !== undefined && verifyStatus) {
     throw new HttpsError('invalid-argument', 'Um ou mais filtros de status são inválidos.');
   }
 
   const tenantSnapshot = await firestore.collection(collections.tenants).doc(actor.tenantId).get();
-  const tenant = tenantSnapshot.data();
 
-  if (!tenantSnapshot.exists || typeof tenant?.timezone !== 'string') {
+  const tenant = tenantSnapshot.data() as TenantDocument;
+
+  if (!tenantSnapshot.exists || typeof tenant.timezone !== 'string') {
     throw new HttpsError('failed-precondition', 'O fuso horário da empresa não está configurado.');
   }
 
@@ -136,13 +142,16 @@ export async function updateAppointmentStatus(
 
   const result = await firestore.runTransaction(async (transaction) => {
     const appointmentSnapshot = await transaction.get(appointmentRef);
-    const appointment = appointmentSnapshot.data() as AppointmentDocument | undefined;
+    const appointment = appointmentSnapshot.data() as AppointmentDocument;
+
     if (!appointmentSnapshot.exists || appointment?.tenantId !== actor.tenantId) {
       throw new HttpsError('not-found', 'Agendamento não encontrado.');
     }
+
     if (actor.professionalId && actor.professionalId !== appointment.professionalId) {
       throw new HttpsError('permission-denied', 'Você não tem acesso a este agendamento.');
     }
+
     if (!canTransitionAppointment(appointment.status, nextStatus)) {
       throw new HttpsError('failed-precondition', 'Esta mudança de status não é permitida.');
     }
@@ -205,7 +214,7 @@ function minutesFromLocalTime(value: string): number | undefined {
 export async function updateAppointment(
   actor: AuthorizedActor,
   input: UpdateAppointmentInput,
-): Promise<{ appointmentId: string; startsAt: string; endsAt: string; professionalId: string }> {
+): Promise<UpdateAppointmentResult> {
   if (
     !input ||
     typeof input.appointmentId !== 'string' ||
@@ -440,23 +449,31 @@ export async function updateAppointment(
     }
 
     const desiredIds = new Set(desiredReservationRefs.map((reference) => reference.id));
-    oldReservations.docs.forEach((reservation) => {
+
+    for (const reservation of oldReservations.docs) {
       if (reservation.data().tenantId === actor.tenantId && !desiredIds.has(reservation.id)) {
         transaction.delete(reservation.ref);
       }
-    });
+    }
+
     const createdAt = Timestamp.now();
-    targetReservations.forEach((reservation, index) => {
+
+    for (const reservation of targetReservations) {
       if (!reservation.exists) {
-        transaction.create(desiredReservationRefs[index]!, {
-          tenantId: actor.tenantId,
-          professionalId: input.professionalId,
-          appointmentId: input.appointmentId,
-          bucketStartAt: Timestamp.fromMillis(buckets[index]!),
-          createdAt,
-        });
+        const index = targetReservations.indexOf(reservation);
+
+        if (desiredReservationRefs[index] && buckets[index]) {
+          transaction.create(desiredReservationRefs[index], {
+            tenantId: actor.tenantId,
+            professionalId: input.professionalId,
+            appointmentId: input.appointmentId,
+            bucketStartAt: Timestamp.fromMillis(buckets[index]),
+            createdAt,
+          });
+        }
       }
-    });
+    }
+
     transaction.update(appointmentRef, {
       startsAt: Timestamp.fromDate(startsAt),
       endsAt: Timestamp.fromDate(endsAt),
@@ -465,6 +482,7 @@ export async function updateAppointment(
       updatedAt: createdAt,
       updatedBy: actor.uid,
     });
+
     return {
       appointmentId: input.appointmentId,
       startsAt: startsAt.toISOString(),
@@ -514,6 +532,7 @@ export async function listEligibleAppointmentProfessionals(
   const professionals = await Promise.all(
     assignments.docs.map(async (assignmentSnapshot) => {
       const assignment = assignmentSnapshot.data();
+
       if (
         assignment.tenantId !== actor.tenantId ||
         assignment.productId !== appointment.productId ||

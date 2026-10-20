@@ -84,13 +84,18 @@ emulatorOnly('appointment customization listing compatibility', () => {
   });
 
   it('returns immutable customization and image snapshots while preserving legacy response fields', async () => {
-    const response = await listAppointments({ tenantId, uid: 'test-user' } as AuthorizedActor);
+    const response = await listAppointments({ tenantId, uid: 'test-user' } as AuthorizedActor, {
+      date: undefined,
+    });
+
     const customized = response.appointments.find(
       (appointment) => appointment.id === 'customized-appointment-test',
     );
+
     const legacy = response.appointments.find(
       (appointment) => appointment.id === 'legacy-appointment-test',
     );
+
     expect(customized).toMatchObject({
       customizationSnapshot: [
         {
