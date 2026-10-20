@@ -12,7 +12,7 @@ export const updateAppointmentCallable = onCall(
   async (request: CallableRequest<Record<string, unknown>>) => {
     const actor = await authorizeActor(request, ['collaborator']);
 
-    const data = request.data;
+    const { data } = request;
 
     if (typeof data !== 'object' || data === null) {
       throw new HttpsError('invalid-argument', 'Informe os novos dados do agendamento.');

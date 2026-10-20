@@ -26,6 +26,10 @@ import type {
 } from '../interfaces/appointment.interface';
 import type { TenantDocument } from '../model/tenant.model';
 
+type UpdateAppointmentResult = UpdateAppointmentInput & {
+  endsAt: string;
+};
+
 function nextLocalDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
   const next = new Date(Date.UTC(year!, month! - 1, day! + 1));
@@ -206,10 +210,6 @@ function minutesFromLocalTime(value: string): number | undefined {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
 }
-
-type UpdateAppointmentResult = UpdateAppointmentInput & {
-  endsAt: string;
-};
 
 export async function updateAppointment(
   actor: AuthorizedActor,
@@ -532,6 +532,7 @@ export async function listEligibleAppointmentProfessionals(
   const professionals = await Promise.all(
     assignments.docs.map(async (assignmentSnapshot) => {
       const assignment = assignmentSnapshot.data();
+
       if (
         assignment.tenantId !== actor.tenantId ||
         assignment.productId !== appointment.productId ||

@@ -7,6 +7,6 @@ export const calculateSalesReportCallable = onCall(
   callableOptionsBackoffice,
   async (request: CallableRequest<Record<string, unknown>>) => {
     const actor = await authorizeActor(request, ['backoffice']);
-    return calculateSalesReport(actor.tenantId, request.data);
+    return await calculateSalesReport(actor.tenantId, request.data);
   },
 );
