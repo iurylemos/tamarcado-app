@@ -8,9 +8,9 @@ export interface AuthorizedActor extends UserDocument {
   uid: string;
 }
 
-function isUserDocument(value: unknown): value is UserDocument {
-  if (typeof value !== 'object' || value === null) return false;
-  const user = value as Record<string, unknown>;
+function isUserDocument(user: UserDocument): boolean {
+  if (typeof user !== 'object' || user === null) return false;
+
   return (
     typeof user.tenantId === 'string' &&
     (user.role === 'collaborator' || user.role === 'backoffice') &&
@@ -32,7 +32,7 @@ export async function authorizeActor(
   }
 
   const snapshot = await firestore.collection(collections.users).doc(auth.uid).get();
-  const user: unknown = snapshot.data();
+  const user = snapshot.data() as UserDocument;
 
   if (!isUserDocument(user) || user.active !== true) {
     throw new HttpsError('permission-denied', 'Esta conta está inativa ou sem acesso.');

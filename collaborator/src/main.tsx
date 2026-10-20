@@ -5,6 +5,9 @@ import { initializeMonitoring } from './config/sentry.config';
 import CollaboratorRouter from './router';
 import FallbackError from './components/atoms/FallbackError';
 import './styles/index.css';
+import { BrowserRouter } from 'react-router-dom';
+import SentryProvider from './contexts/sentry/sentry.provider';
+import AuthProvider from './contexts/auth/auth.provider';
 
 initializeMonitoring();
 
@@ -20,7 +23,13 @@ const optionsRoot: RootOptions = {
 
 const App: FC = (): JSX.Element => (
   <StrictMode>
-    <CollaboratorRouter />
+    <BrowserRouter>
+      <SentryProvider>
+        <AuthProvider>
+          <CollaboratorRouter />
+        </AuthProvider>
+      </SentryProvider>
+    </BrowserRouter>
   </StrictMode>
 );
 

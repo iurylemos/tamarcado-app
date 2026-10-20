@@ -4,18 +4,17 @@ import { createContact, setContactConsent } from '../../services/contact.service
 import { callableOptionsCollaboratorAndBackoffice } from '../../options/callable.option';
 import { SaveContactData } from '../../interfaces/contact.interface';
 
-function record(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null) {
-    throw new HttpsError('invalid-argument', 'Dados inválidos.');
-  }
-  return value as Record<string, unknown>;
-}
-
 export const createContactCallable = onCall(
   callableOptionsCollaboratorAndBackoffice,
-  async (request: CallableRequest<unknown>): Promise<SaveContactData> => {
+  async (request: CallableRequest<Record<string, unknown>>): Promise<SaveContactData> => {
     const actor = await authorizeActor(request, ['collaborator', 'backoffice']);
-    const data = record(request.data);
+
+    if (typeof request.data !== 'object' || request.data === null) {
+      throw new HttpsError('invalid-argument', 'Dados inválidos.');
+    }
+
+    const { data } = request;
+
     if (typeof data.connectionId !== 'string' || typeof data.phone !== 'string') {
       throw new HttpsError('invalid-argument', 'Informe a conexão e o telefone do contato.');
     }
@@ -29,10 +28,14 @@ export const createContactCallable = onCall(
 
 export const setContactConsentCallable = onCall(
   callableOptionsCollaboratorAndBackoffice,
-  async (request: CallableRequest<unknown>): Promise<{ ok: boolean }> => {
+  async (request: CallableRequest<Record<string, unknown>>): Promise<{ ok: boolean }> => {
     const actor = await authorizeActor(request, ['collaborator', 'backoffice']);
 
-    const data = record(request.data);
+    if (typeof request.data !== 'object' || request.data === null) {
+      throw new HttpsError('invalid-argument', 'Dados inválidos.');
+    }
+
+    const { data } = request;
 
     if (typeof data.contactId !== 'string' || typeof data.optIn !== 'boolean') {
       throw new HttpsError('invalid-argument', 'Informe o contato e o consentimento.');
