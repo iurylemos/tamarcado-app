@@ -26,16 +26,23 @@ import {
   productGalleryDocumentId,
   type ProductGalleryDocument,
 } from '../model/product-gallery.model';
+import type { BookingSnapshot } from '../interfaces/booking.interface';
 
-let bookingColdStart = true;
+type BookingCustomizationData = {
+  selections: ProductCustomizationSelection[];
+  snapshot?: Array<BookingSnapshot>;
+};
 
 const validName = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length <= 100;
+
 const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   if (typeof value !== 'object' || value === null) {
     throw new HttpsError('invalid-argument', 'Os dados do agendamento estão incompletos.');
   }
+
   const input = value as Record<string, unknown>;
+
   if (
     typeof input.businessSlug !== 'string' ||
     typeof input.productId !== 'string' ||
@@ -48,16 +55,21 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   ) {
     throw new HttpsError('invalid-argument', 'Revise os dados do agendamento e tente novamente.');
   }
+
   let customizationSelections: ProductCustomizationSelection[] | undefined;
+
   if (input.customizationSelections !== undefined) {
     if (!Array.isArray(input.customizationSelections)) {
       throw new HttpsError('invalid-argument', 'As opções selecionadas são inválidas.');
     }
+
     customizationSelections = input.customizationSelections.map((value) => {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) {
         throw new HttpsError('invalid-argument', 'As opções selecionadas são inválidas.');
       }
+
       const selection = value as Record<string, unknown>;
+
       if (
         typeof selection.attributeId !== 'string' ||
         !selection.attributeId.trim() ||
@@ -66,9 +78,11 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
       ) {
         throw new HttpsError('invalid-argument', 'As opções selecionadas são inválidas.');
       }
+
       return { attributeId: selection.attributeId, optionId: selection.optionId };
     });
   }
+
   if (
     input.selectedImageId !== undefined &&
     (typeof input.selectedImageId !== 'string' ||
@@ -77,6 +91,7 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   ) {
     throw new HttpsError('invalid-argument', 'A imagem selecionada é inválida.');
   }
+
   return {
     businessSlug: input.businessSlug,
     productId: input.productId,
@@ -93,27 +108,21 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
 function validateCustomizationSelections(
   attributes: ProductCustomizationAttribute[] | undefined,
   selections: ProductCustomizationSelection[] | undefined,
-): {
-  selections: ProductCustomizationSelection[];
-  snapshot?: Array<{
-    attributeId: string;
-    attributeLabel: string;
-    optionId: string;
-    optionLabel: string;
-  }>;
-} {
+): BookingCustomizationData {
   if (!attributes?.length) {
     if (selections?.length) {
       throw new HttpsError('invalid-argument', 'Este serviço não possui opções de personalização.');
     }
     return { selections: [] };
   }
+
   if (!selections || selections.length !== attributes.length) {
     throw new HttpsError(
       'invalid-argument',
       'Selecione exatamente uma opção para cada atributo do serviço.',
     );
   }
+
   const selectionByAttribute = new Map<string, string>();
   for (const selection of selections) {
     if (selectionByAttribute.has(selection.attributeId)) {
@@ -137,6 +146,7 @@ function validateCustomizationSelections(
       optionLabel: option.label,
     };
   });
+
   return {
     selections: snapshot.map(({ attributeId, optionId }) => ({ attributeId, optionId })),
     snapshot,
@@ -145,7 +155,9 @@ function validateCustomizationSelections(
 
 function isProductImage(value: unknown): value is ProductImage {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+
   const image = value as Record<string, unknown>;
+
   return (
     typeof image.id === 'string' &&
     typeof image.storagePath === 'string' &&
@@ -160,9 +172,11 @@ async function resolveEffectiveGallery(
   selections: ProductCustomizationSelection[],
 ): Promise<ProductImage[]> {
   const defaults = defaultProductImages(product);
+
   if (defaults.length < 1 || defaults.length > 10 || !defaults.every(isProductImage)) {
     throw new HttpsError('internal', 'A galeria padrão do serviço está inválida.');
   }
+
   if (selections.length === 0) return defaults;
 
   const combinationKey = productGalleryCombinationKey(selections);
@@ -171,7 +185,9 @@ async function resolveEffectiveGallery(
     .collection(collections.productImageGalleries)
     .doc(galleryId)
     .get();
+
   const gallery = gallerySnapshot.data() as ProductGalleryDocument | undefined;
+
   if (
     !gallerySnapshot.exists ||
     !gallery ||
@@ -182,6 +198,7 @@ async function resolveEffectiveGallery(
   ) {
     return defaults;
   }
+
   if (
     !Array.isArray(gallery.images) ||
     gallery.images.length < 1 ||
@@ -190,6 +207,7 @@ async function resolveEffectiveGallery(
   ) {
     throw new HttpsError('internal', 'A galeria de imagens do serviço está inválida.');
   }
+
   return gallery.images;
 }
 
@@ -220,18 +238,19 @@ export async function createPublicAppointment(
   }
 
   const requestStartedAt = performance.now();
-  const requestColdStart = bookingColdStart;
   const correlationId = randomUUID();
-  bookingColdStart = false;
 
   try {
     const resolutionStartedAt = performance.now();
+
     const business = await findPublicBusiness(input.businessSlug);
+
     const [tenantSnapshot, product, professionalSnapshot] = await Promise.all([
       firestore.collection(collections.tenants).doc(business.tenantId).get(),
       findBookableProduct(business, input.productId),
       firestore.collection(collections.professionals).doc(input.professionalId).get(),
     ]);
+
     const tenant = tenantSnapshot.data();
     const professional = professionalSnapshot.data();
 
@@ -266,45 +285,52 @@ export async function createPublicAppointment(
         'Este profissional não atende o serviço selecionado.',
       );
     }
+
     const customization = validateCustomizationSelections(
       product.customizationAttributes,
       input.customizationSelections,
     );
+
     const priceCents = resolveProductPriceCents(
       product.priceCents,
       product.variantPrices,
       customization.selections,
     );
+
     if (priceCents === undefined) {
       throw new HttpsError(
         'failed-precondition',
         'O preço desta combinação de opções não está disponível.',
       );
     }
+
     const effectiveImages = await resolveEffectiveGallery(
       business,
       product,
       customization.selections,
     );
+
     const selectedImage = input.selectedImageId
       ? effectiveImages.find((image) => image.id === input.selectedImageId)
       : effectiveImages[0];
+
     if (!selectedImage) {
       throw new HttpsError(
         'invalid-argument',
         'A imagem selecionada não pertence à galeria deste serviço.',
       );
     }
+
     logger.info('booking.performance', {
       operation: 'appointment_registration',
       stage: 'shared_data_resolution',
       durationMs: Math.round(performance.now() - resolutionStartedAt),
-      coldStart: requestColdStart,
       correlationId,
     });
 
     const timezone = String(tenant.timezone);
     const bookingIntervalMinutes = Number(tenant.bookingIntervalMinutes);
+
     if (
       !Number.isInteger(bookingIntervalMinutes) ||
       bookingIntervalMinutes < 5 ||
@@ -312,6 +338,7 @@ export async function createPublicAppointment(
     ) {
       throw new HttpsError('internal', 'O intervalo de agendamento da empresa é inválido.');
     }
+
     const local = getZonedDateTimeParts(startsAt, timezone);
     const localDate = `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
 
@@ -326,7 +353,6 @@ export async function createPublicAppointment(
       durationMinutes: product.durationMinutes,
       timezone,
       bookingIntervalMinutes,
-      coldStart: requestColdStart,
       correlationId,
     });
 
@@ -366,6 +392,7 @@ export async function createPublicAppointment(
       .doc(appointmentId);
 
     const transactionStartedAt = performance.now();
+
     await firestore.runTransaction(async (transaction: Transaction): Promise<void> => {
       const reservations = await Promise.all(
         reservationRefs.map((reference) => transaction.get(reference)),
@@ -409,15 +436,19 @@ export async function createPublicAppointment(
         updatedAt: createdAt,
         createdBy: 'public-customer',
       });
-      buckets.forEach((bucket, index) => {
-        transaction.create(reservationRefs[index]!, {
-          tenantId: business.tenantId,
-          professionalId: input.professionalId,
-          appointmentId,
-          bucketStartAt: Timestamp.fromMillis(bucket),
-          createdAt,
-        });
-      });
+
+      for (const [index, bucket] of buckets.entries()) {
+        if (reservationRefs[index]) {
+          transaction.create(reservationRefs[index], {
+            tenantId: business.tenantId,
+            professionalId: input.professionalId,
+            appointmentId,
+            bucketStartAt: Timestamp.fromMillis(bucket),
+            createdAt,
+          });
+        }
+      }
+
       transaction.create(notificationJobRef, {
         appointmentId,
         tenantId: business.tenantId,
@@ -432,9 +463,9 @@ export async function createPublicAppointment(
       operation: 'appointment_registration',
       stage: 'transaction',
       durationMs: Math.round(performance.now() - transactionStartedAt),
-      coldStart: requestColdStart,
       correlationId,
     });
+
     return { appointmentId, status: 'pending' };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
@@ -464,7 +495,6 @@ export async function createPublicAppointment(
       operation: 'appointment_registration',
       stage: 'total',
       durationMs: Math.round(performance.now() - requestStartedAt),
-      coldStart: requestColdStart,
       correlationId,
     });
   }

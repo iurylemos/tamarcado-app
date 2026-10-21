@@ -662,7 +662,9 @@ export async function isRequestedSlotAvailable(
   );
 
   const evaluationStartedAt = performance.now();
+
   const interval = { startsAt: startsAtMs, endsAt: endsAtMs };
+
   const validSchedule = hoursSnapshot.docs.some((document) => {
     const hours = document.data() as WorkingHoursDocument;
     if (hours.tenantId !== input.tenantId || hours.professionalId !== input.professionalId) {

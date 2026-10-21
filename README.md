@@ -1,6 +1,12 @@
-# Tamarcado — Multi-Tenant Service Booking and Business Management Platform
+# Tá Marcado — Multi-Tenant Service Booking and Business Management Platform
 
 **A platform that connects customers with service businesses and simplifies appointment scheduling and daily operations.**
+
+**Demos:**
+
+- Customer: https://tamarcado-dad82.web.app/empresa/soft-stylus
+- Collaborator: https://tamarcado-dad82-collaborator.web.app/
+- Backoffice: https://tamarcado-dad82-backoffice.web.app/
 
 [![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -12,15 +18,13 @@
 
 ---
 
-<a id="english"></a>
-
 ## English
 
 ### Business Problem
 
 Service businesses often manage customer discovery, appointment scheduling, team calendars, and customer communication through disconnected tools and manual conversations.
 
-Tamarcado aims to bring these workflows together in a multi-tenant SaaS platform, allowing customers to discover services and request appointments while businesses manage their catalogs, teams, and schedules.
+Tá Marcado aims to bring these workflows together in a multi-tenant SaaS platform, allowing customers to discover services and request appointments while businesses manage their catalogs, teams, and schedules.
 
 ### Real-World Use Case
 
@@ -36,7 +40,7 @@ The platform is designed for different service-business segments. The exact capa
 
 ### Architecture
 
-Tamarcado is organized as an npm monorepo with three independent web applications and a shared backend.
+Tá Marcado is organized as an npm monorepo with three independent web applications and a shared backend.
 
 | Workspace        | Responsibility                                                       |
 | ---------------- | -------------------------------------------------------------------- |
@@ -133,7 +137,7 @@ Additional emulator-based tests are available through the repository scripts.
 
 ### Results and Metrics
 
-Tamarcado is being developed as a practical software engineering project focused on service booking, multi-tenant access control, and operational workflows.
+Tá Marcado is being developed as a practical software engineering project focused on service booking, multi-tenant access control, and operational workflows.
 
 No verified business outcome metrics, such as conversion improvement, time saved per booking, or production traffic volume, are published in this README. Performance and reliability claims should be added only when supported by reproducible measurements.
 
@@ -171,7 +175,7 @@ Never commit credentials, API keys, provider secrets, or production environment 
 
 Negócios de serviços frequentemente gerenciam a descoberta de clientes, os agendamentos, as agendas da equipe e a comunicação por meio de ferramentas desconectadas e conversas manuais.
 
-O Tamarcado busca reunir esses fluxos em uma plataforma SaaS multi-tenant, permitindo que clientes encontrem serviços e solicitem horários enquanto as empresas administram seus catálogos, equipes e agendas.
+O Tá Marcado busca reunir esses fluxos em uma plataforma SaaS multi-tenant, permitindo que clientes encontrem serviços e solicitem horários enquanto as empresas administram seus catálogos, equipes e agendas.
 
 ### Contexto de Uso Real
 
@@ -187,7 +191,7 @@ A plataforma foi projetada para diferentes segmentos de serviços. As funcionali
 
 ### Arquitetura
 
-O Tamarcado utiliza um monorepo npm com três aplicações web independentes e um backend compartilhado.
+O Tá Marcado utiliza um monorepo npm com três aplicações web independentes e um backend compartilhado.
 
 | Workspace        | Responsabilidade                                        |
 | ---------------- | ------------------------------------------------------- |
@@ -284,7 +288,7 @@ O projeto também disponibiliza scripts adicionais para testes com emuladores.
 
 ### Resultados e Métricas
 
-O Tamarcado está sendo desenvolvido como um projeto prático de engenharia de software, com foco em agendamento de serviços, controle de acesso multi-tenant e fluxos operacionais.
+O Tá Marcado está sendo desenvolvido como um projeto prático de engenharia de software, com foco em agendamento de serviços, controle de acesso multi-tenant e fluxos operacionais.
 
 Este README não apresenta métricas de resultados de negócio verificadas, como aumento de conversão, tempo economizado por agendamento ou volume de tráfego em produção. Indicadores de performance e confiabilidade devem ser incluídos somente quando sustentados por medições reproduzíveis.
 
