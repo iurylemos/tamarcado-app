@@ -2,12 +2,12 @@ import { StrictMode, type FC, type JSX } from 'react';
 import { createRoot, type RootOptions } from 'react-dom/client';
 import { reactErrorHandler, withErrorBoundary } from '@sentry/react';
 import { initializeMonitoring } from './config/sentry.config';
+import { BrowserRouter } from 'react-router-dom';
 import CollaboratorRouter from './router';
 import FallbackError from './components/atoms/FallbackError';
-import './styles/index.css';
-import { BrowserRouter } from 'react-router-dom';
 import SentryProvider from './contexts/sentry/sentry.provider';
 import AuthProvider from './contexts/auth/auth.provider';
+import './styles/index.css';
 
 initializeMonitoring();
 
