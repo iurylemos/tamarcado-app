@@ -258,12 +258,22 @@ export default function BookingPage(): JSX.Element {
 
   const refreshAvailability = useCallback(
     async (bookedDate: string, selectedSlot: AvailableSlot): Promise<void> => {
-      const queryKey = ReactQueryConfig.availabilityQueryKey(slug, productId, date);
-      await ReactQueryConfig.queryClient.invalidateQueries({ queryKey });
+      const queryKey = ReactQueryConfig.availabilityQueryKey(slug, productId, bookedDate);
 
-      const refreshedSlots = await ReactQueryConfig.queryClient.query<AvailableSlot[]>({
+      await ReactQueryConfig.queryClient.invalidateQueries({
         queryKey,
-        queryFn: () => listAvailability({ businessSlug: slug, productId, date }),
+        exact: true,
+        refetchType: 'none',
+      });
+
+      const refreshedSlots = await ReactQueryConfig.queryClient.query({
+        queryKey,
+        queryFn: () =>
+          listAvailability({
+            businessSlug: slug,
+            productId,
+            date: bookedDate,
+          }),
         staleTime: 0,
       });
 
@@ -273,15 +283,18 @@ export default function BookingPage(): JSX.Element {
         (slot) =>
           slot.professionalId !== selectedProfessionalId || slot.startsAt !== selectedSlot.startsAt,
       );
+
       setSlots(currentSlots);
+
       const availableProfessionals = eligibleProfessionals(currentSlots);
+
       setSelectedProfessionalId((current) =>
         availableProfessionals.some((professional) => professional.id === current)
           ? current
           : (availableProfessionals[0]?.id ?? ''),
       );
     },
-    [slug, productId, date, selectedProfessionalId],
+    [slug, productId, selectedProfessionalId],
   );
 
   const submitBooking = async (values: BookingFormValues): Promise<void> => {
