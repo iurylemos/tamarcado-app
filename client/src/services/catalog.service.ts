@@ -73,6 +73,7 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
         images: data.images as ProductImage[],
       };
     });
+
   const visibleProducts: PublicProductSummary[] = products.docs
     .filter((snapshot) => snapshot.data().tenantId === tenantId)
     .map((snapshot) => {
@@ -100,5 +101,6 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
       (product) =>
         Number.isInteger(product.priceCents) && Number.isInteger(product.durationMinutes),
     );
+
   return { business, products: visibleProducts };
 }

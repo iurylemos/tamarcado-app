@@ -2,7 +2,7 @@ import { useMemo, type JSX } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCompanyCatalog } from '../services/catalog.service';
-import { companyCatalogQueryKey } from '../services/query-client';
+import { ReactQueryConfig } from '../config/react-query.config';
 import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 
 type CompanyCatalogStatus = 'loading' | 'error' | 'unavailable' | 'not-found' | 'ready';
@@ -11,7 +11,7 @@ export default function CompanyCatalogPage(): JSX.Element {
   const { slug = '' } = useParams();
 
   const catalogQuery = useQuery({
-    queryKey: companyCatalogQueryKey(slug),
+    queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
     queryFn: () => getCompanyCatalog(slug),
     enabled: Boolean(slug),
   });
