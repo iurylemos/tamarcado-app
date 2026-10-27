@@ -7,6 +7,8 @@ import BookingAvailability from '../BookingAvailability/BookingAvailability';
 import BookingCustomerDetails from '../BookingCustomerDetails/BookingCustomerDetails';
 import BookingReceiptDialog from '../BookingReceiptDialog/BookingReceiptDialog';
 
+type BookingReadyProps = Extract<BookingTemplateProps, { status: 'ready' }>;
+
 export default function BookingReady({
   slug,
   catalog,
@@ -38,12 +40,12 @@ export default function BookingReady({
   onSubmit,
   onShare,
   onCloseReceipt,
-}: Extract<BookingTemplateProps, { status: 'ready' }>): JSX.Element {
+}: Readonly<BookingReadyProps>): JSX.Element {
   return (
     <>
       <MarketBackground />
       <main className="page stack market-page booking-page">
-        <a className="market-back-link" href={`/empresa/${slug}`}>
+        <a aria-label="Voltar ao catálogo" className="market-back-link" href={`/empresa/${slug}`}>
           ← Voltar ao catálogo
         </a>
 
