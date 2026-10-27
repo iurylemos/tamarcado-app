@@ -1,5 +1,5 @@
-import type { CompanyCatalog } from '../src/interfaces/company.interface';
-import type { PublicCatalogStatus } from './types';
+import type { CompanyCatalog } from './company.interface';
+import type { PublicCatalogStatus } from './catalog.interface';
 
 declare global {
   namespace Vike {
@@ -9,5 +9,3 @@ declare global {
     }
   }
 }
-
-export {};
