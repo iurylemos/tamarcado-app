@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import type { JSX } from 'react';
+import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '../services/appointment.service';
 import { listAvailability, searchAvailability } from '../services/availability.service';
@@ -8,6 +9,11 @@ import CompanyCatalogPage from './CompanyCatalogPage';
 import { addDaysToDate, getNextBookableDate } from '../utils/date.util';
 import BookingPage from './BookingPage';
 import { renderWithQueryClient } from '../test/render';
+
+function BookingRoutePage(): JSX.Element {
+  const { slug = '', productId = '' } = useParams();
+  return <BookingPage slug={slug} productId={productId} />;
+}
 
 vi.mock('../services/availability.service', () => ({
   listAvailability: vi.fn(),
@@ -63,7 +69,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -120,7 +126,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-cilios']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -142,7 +148,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -169,7 +175,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -196,7 +202,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -241,7 +247,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -286,7 +292,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -312,7 +318,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -341,7 +347,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -377,7 +383,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -494,7 +500,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -597,7 +603,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -649,7 +655,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -680,7 +686,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -710,7 +716,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -751,7 +757,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -766,7 +772,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -782,7 +788,7 @@ describe('BookingPage professional selection', () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -805,7 +811,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -837,7 +843,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -856,7 +862,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -883,7 +889,7 @@ describe('BookingPage professional selection', () => {
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -927,20 +933,25 @@ describe('BookingPage professional selection', () => {
     );
   });
 
-  it('returns to the matching catalog after one activation', async () => {
+  it('links back to the matching catalog', async () => {
     vi.mocked(listAvailability).mockResolvedValue([]);
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
-          <Route path="/empresa/:slug/agendar/:productId" element={<BookingPage />} />
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+          <Route
+            path="/empresa/:slug"
+            element={<CompanyCatalogPage slug="studio-aurora" />}
+          />
         </Routes>
       </MemoryRouter>,
     );
 
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('link', { name: /Voltar ao catálogo/ }));
-    expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Voltar ao catálogo/ })).toHaveAttribute(
+      'href',
+      '/empresa/studio-aurora',
+    );
   });
 });

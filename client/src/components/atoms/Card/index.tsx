@@ -1,5 +1,4 @@
 import type { JSX, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 
 type CardProps = {
   title: string;
@@ -29,9 +28,9 @@ export default function Card({
         {detail && <p className="muted">{detail}</p>}
         {children}
         {href && (
-          <Link className="button" to={href}>
+          <a className="button" href={href}>
             {actionLabel}
-          </Link>
+          </a>
         )}
       </div>
     </article>

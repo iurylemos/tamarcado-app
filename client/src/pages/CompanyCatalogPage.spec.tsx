@@ -1,5 +1,4 @@
 import { cleanup, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
@@ -30,13 +29,7 @@ describe('CompanyCatalogPage', () => {
   it('shows service card skeletons while the catalog request is pending', () => {
     vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
 
-    const { container } = renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    const { container } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Carregando catálogo');
     expect(screen.getByRole('status')).toHaveClass('skeleton-status');
@@ -56,13 +49,7 @@ describe('CompanyCatalogPage', () => {
   it('shows the catalog error without leaving loading skeletons', async () => {
     vi.mocked(getCompanyCatalog).mockRejectedValue(new Error('network error'));
 
-    const { container } = renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    const { container } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Não foi possível carregar este catálogo.',
@@ -75,13 +62,7 @@ describe('CompanyCatalogPage', () => {
       Object.assign(new Error('service unavailable'), { code: 'unavailable' }),
     );
 
-    renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(
       await screen.findByText('Este catálogo está temporariamente indisponível. Tente novamente.'),
@@ -92,11 +73,7 @@ describe('CompanyCatalogPage', () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue(null);
 
     renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/slug-inexistente']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <CompanyCatalogPage slug="slug-inexistente" initialStatus="not-found" initialCatalog={null} />,
     );
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
@@ -105,13 +82,7 @@ describe('CompanyCatalogPage', () => {
   it('rejects a malformed slug without rendering another business catalog', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue(null);
 
-    renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/Slug%2Fmalformado']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithQueryClient(<CompanyCatalogPage slug="Slug/malformado" />);
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
     expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado');
@@ -128,13 +99,7 @@ describe('CompanyCatalogPage', () => {
       products: [],
     });
 
-    const { container } = renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    const { container } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(
       await screen.findByText('Esta empresa ainda não publicou serviços.'),
@@ -165,13 +130,7 @@ describe('CompanyCatalogPage', () => {
     openGraphTitle.setAttribute('content', 'Tá Marcado | Catálogos de negócios');
     document.head.append(openGraphTitle);
 
-    const { unmount } = renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    const { unmount } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
     expect(document.querySelector('.skeleton-card')).not.toBeInTheDocument();
@@ -219,13 +178,7 @@ describe('CompanyCatalogPage', () => {
       products: [],
     });
 
-    renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(
       await screen.findByRole('complementary', { name: 'Instalar catálogo de Studio Aurora' }),
@@ -244,13 +197,7 @@ describe('CompanyCatalogPage', () => {
     });
 
     const originalTitle = document.title;
-    const { unmount } = renderWithQueryClient(
-      <MemoryRouter initialEntries={['/empresa/studio-aurora']}>
-        <Routes>
-          <Route path="/empresa/:slug" element={<CompanyCatalogPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    const { unmount } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
     expect(await screen.findByText('Esta empresa ainda não publicou serviços.')).toBeInTheDocument();
     expect(document.querySelector('link[rel="manifest"]')).toHaveAttribute(

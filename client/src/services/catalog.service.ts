@@ -1,5 +1,3 @@
-import { collection, getDocsFromServer, limit, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase.config';
 import type {
   CompanyCatalog,
   CompanySummary,
@@ -14,6 +12,11 @@ import { isValidBusinessSlug } from '../utils/business-slug.util';
 
 export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | null> {
   if (!isValidBusinessSlug(slug)) return null;
+
+  const [{ collection, getDocsFromServer, limit, query, where }, { db }] = await Promise.all([
+    import('firebase/firestore'),
+    import('../config/firebase.config'),
+  ]);
 
   const businesses = await getDocsFromServer(
     query(
@@ -73,6 +76,7 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
         images: data.images as ProductImage[],
       };
     });
+
   const visibleProducts: PublicProductSummary[] = products.docs
     .filter((snapshot) => snapshot.data().tenantId === tenantId)
     .map((snapshot) => {
@@ -100,5 +104,6 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
       (product) =>
         Number.isInteger(product.priceCents) && Number.isInteger(product.durationMinutes),
     );
+
   return { business, products: visibleProducts };
 }
