@@ -1,5 +1,57 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment node
+
+import { once } from 'node:events';
+import { Writable } from 'node:stream';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createDevMiddleware, renderPage } from 'vike/server';
 import { renderPublicContent } from './entry-server';
+import type { CompanyCatalog } from './interfaces/company.interface';
+
+const clientRoot = process.cwd();
+
+let closeDevServer: (() => Promise<void>) | undefined;
+
+beforeAll(async () => {
+  const { viteServer } = await createDevMiddleware({ root: clientRoot });
+  closeDevServer = () => viteServer.close();
+});
+
+afterAll(async () => {
+  await closeDevServer?.();
+});
+
+async function renderVikePage(
+  urlOriginal: string,
+  initialCatalog?: CompanyCatalog,
+): Promise<string> {
+  const pageContext = await renderPage({
+    urlOriginal: `http://localhost${urlOriginal}`,
+    headersOriginal: { 'user-agent': 'Mozilla/5.0' },
+    ...(initialCatalog ? { initialCatalog } : {}),
+  });
+
+  if (!pageContext.httpResponse) throw new Error(`No HTTP response for ${urlOriginal}`);
+
+  const chunks: Buffer[] = [];
+  const destination = new Writable({
+    write(chunk: Buffer | string, _encoding, callback) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      callback();
+    },
+  });
+
+  pageContext.httpResponse.pipe(destination);
+  await once(destination, 'finish');
+
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+function createCatalog(name: string, slug: string): CompanyCatalog {
+  return {
+    business: { id: slug, name, slug, segment: 'beauty' },
+    products: [],
+  };
+}
 
 describe('renderPublicContent', () => {
   it('server-renders the same crawlable catalog links as the client template', () => {
@@ -24,5 +76,40 @@ describe('renderPublicContent', () => {
     expect(markup).toContain('<h1>Studio Aurora</h1>');
     expect(markup).toContain('href="/empresa/studio-aurora/agendar/service-corte"');
     expect(markup).toContain('Corte e finalização');
+  });
+});
+
+describe('Vike SSR integration', () => {
+  it('renders neutral root guidance and React Query hydration markup', async () => {
+    const markup = await renderVikePage('/');
+
+    expect(markup).toContain('Acesse o catálogo do seu negócio');
+    expect(markup).toContain('class="_rqd_"');
+  });
+
+  it('keeps an uninjected Vike dev request loading until the browser fetches its catalog', async () => {
+    const markup = await renderVikePage('/empresa/studio-aurora');
+
+    expect(markup).toContain('Carregando catálogo...');
+    expect(markup).not.toContain('Empresa não encontrada.');
+  });
+
+  it('keeps concurrent tenant renders isolated and serializes hydrated catalog queries', async () => {
+    const [studio, barbershop] = await Promise.all([
+      renderVikePage('/empresa/studio-aurora', createCatalog('Studio Aurora', 'studio-aurora')),
+      renderVikePage(
+        '/empresa/barbearia-lunar',
+        createCatalog('Barbearia Lunar', 'barbearia-lunar'),
+      ),
+    ]);
+
+    expect(studio).toContain('Studio Aurora');
+    expect(studio).not.toContain('Barbearia Lunar');
+    expect(barbershop).toContain('Barbearia Lunar');
+    expect(barbershop).not.toContain('Studio Aurora');
+    expect(studio).toContain('company-catalog');
+    expect(barbershop).toContain('company-catalog');
+    expect(studio).toContain('application/json');
+    expect(barbershop).toContain('application/json');
   });
 });

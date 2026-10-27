@@ -6,7 +6,7 @@ export default tseslint.config(
   { ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/coverage/**', '**/*.min.js'] },
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['**/*.{ts,tsx,mts}'],
     plugins: { react, 'react-hooks': reactHooks },
     settings: { react: { version: 'detect' } },
     rules: {

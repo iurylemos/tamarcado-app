@@ -25,5 +25,5 @@
       "@shared/*": ["../shared/domain/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "pages"]
 }

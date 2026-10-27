@@ -319,9 +319,13 @@ async function loadBoundedAvailabilityContext(
     findBookableProduct(business, input.productId),
   ]);
 
+  if (!tenantSnapshot.exists) {
+    throw new DomainError('NOT_BOOKABLE', 'Esta empresa não está aceitando agendamentos.');
+  }
+
   const tenant = tenantSnapshot.data() as TenantDocument;
 
-  if (!tenantSnapshot.exists || tenant.active !== true) {
+  if (tenant.active !== true) {
     throw new DomainError('NOT_BOOKABLE', 'Esta empresa não está aceitando agendamentos.');
   }
 
@@ -339,6 +343,9 @@ async function loadBoundedAvailabilityContext(
     ...new Set(Array.from({ length: 31 }, (_, offset) => isoWeekday(addDays(input.date, offset)))),
   ];
 
+  const windowStartTimestamp = Timestamp.fromDate(windowStart);
+  const windowEndTimestamp = Timestamp.fromDate(windowEnd);
+
   const [assignmentsSnapshot, blocksSnapshot] = await Promise.all([
     firestore
       .collection(collections.professionalProducts)
@@ -346,25 +353,35 @@ async function loadBoundedAvailabilityContext(
       .where('productId', '==', product.id)
       .where('active', '==', true)
       .get(),
+
     firestore
       .collection(collections.blockedPeriods)
       .where('tenantId', '==', business.tenantId)
-      .where('startsAt', '<', Timestamp.fromDate(windowEnd))
-      .where('endsAt', '>', Timestamp.fromDate(windowStart))
+      .where('startsAt', '<', windowEndTimestamp)
+      .where('endsAt', '>', windowStartTimestamp)
       .get(),
   ]);
 
-  logAvailabilityDuration('availability_search', 'shared_data_resolution', sharedStartedAt);
+  const assignedIds = [
+    ...new Set(
+      assignmentsSnapshot.docs
+        .map((document) => document.data())
+        .filter(
+          (assignment) =>
+            assignment.tenantId === business.tenantId &&
+            assignment.productId === product.id &&
+            assignment.active === true,
+        )
+        .map((assignment) => String(assignment.professionalId))
+        .filter(Boolean),
+    ),
+  ];
 
-  const assignedIds = assignmentsSnapshot.docs
-    .map((document) => document.data())
-    .filter(
-      (assignment) =>
-        assignment.tenantId === business.tenantId &&
-        assignment.productId === product.id &&
-        assignment.active,
-    )
-    .map((assignment) => String(assignment.professionalId));
+  const blockedPeriods = blocksSnapshot.docs
+    .map((document) => document.data() as BlockedPeriodDocument)
+    .filter((item) => item.tenantId === business.tenantId);
+
+  logAvailabilityDuration('availability_search', 'shared_data_resolution', sharedStartedAt);
 
   const conflictReadsStartedAt = performance.now();
 
@@ -372,7 +389,8 @@ async function loadBoundedAvailabilityContext(
     firestore.collection(collections.professionals).doc(id),
   );
 
-  const professionalSnapshots = await firestore.getAll(...professionalRefs);
+  const professionalSnapshots =
+    professionalRefs.length > 0 ? await firestore.getAll(...professionalRefs) : [];
 
   const professionals: ProfessionalRecord[] = professionalSnapshots
     .filter((snapshot) => snapshot.exists)
@@ -380,77 +398,74 @@ async function loadBoundedAvailabilityContext(
       ...(snapshot.data() as Omit<ProfessionalRecord, 'id'>),
       id: snapshot.id,
     }))
-    .filter((professional) => professional.tenantId === business.tenantId && professional.active);
+    .filter(
+      (professional) => professional.tenantId === business.tenantId && professional.active === true,
+    );
 
-  const schedules = await Promise.all(
-    professionals.map(
-      async (professional: ProfessionalRecord): Promise<BoundedProfessionalSchedule> => {
-        const [hoursSnapshot, appointmentsSnapshot, reservationsSnapshot] = await Promise.all([
-          firestore
-            .collection(collections.workingHours)
-            .where('tenantId', '==', business.tenantId)
-            .where('professionalId', '==', professional.id)
-            .where('dayOfWeek', 'in', weekdays)
-            .where('active', '==', true)
-            .get(),
-          firestore
-            .collection(collections.appointments)
-            .where('tenantId', '==', business.tenantId)
-            .where('professionalId', '==', professional.id)
-            .where('status', 'in', ['pending', 'confirmed'])
-            .where('startsAt', '<', Timestamp.fromDate(windowEnd))
-            .where('endsAt', '>', Timestamp.fromDate(windowStart))
-            .get(),
-          firestore
-            .collection(collections.bookingReservations)
-            .where('tenantId', '==', business.tenantId)
-            .where('professionalId', '==', professional.id)
-            .where('bucketStartAt', '>=', Timestamp.fromDate(windowStart))
-            .where('bucketStartAt', '<', Timestamp.fromDate(windowEnd))
-            .get(),
-        ]);
+  const schedules: BoundedProfessionalSchedule[] = await Promise.all(
+    professionals.map(async (professional): Promise<BoundedProfessionalSchedule> => {
+      const [hoursSnapshot, appointmentsSnapshot, reservationsSnapshot] = await Promise.all([
+        firestore
+          .collection(collections.workingHours)
+          .where('tenantId', '==', business.tenantId)
+          .where('professionalId', '==', professional.id)
+          .where('dayOfWeek', 'in', weekdays)
+          .where('active', '==', true)
+          .get(),
 
-        const hours = hoursSnapshot.docs
-          .map((document) => document.data() as WorkingHoursDocument)
-          .filter(
-            (item) =>
-              item.tenantId === business.tenantId && item.professionalId === professional.id,
-          );
+        firestore
+          .collection(collections.appointments)
+          .where('tenantId', '==', business.tenantId)
+          .where('professionalId', '==', professional.id)
+          .where('status', 'in', ['pending', 'confirmed'])
+          .where('startsAt', '<', windowEndTimestamp)
+          .where('endsAt', '>', windowStartTimestamp)
+          .get(),
 
-        const appointments = appointmentsSnapshot.docs
-          .map((document) => document.data() as AppointmentDocument)
-          .filter(
-            (item) =>
-              item.tenantId === business.tenantId &&
-              item.status !== 'cancelled' &&
-              item.status !== 'completed',
-          );
+        firestore
+          .collection(collections.bookingReservations)
+          .where('tenantId', '==', business.tenantId)
+          .where('professionalId', '==', professional.id)
+          .where('bucketStartAt', '>=', windowStartTimestamp)
+          .where('bucketStartAt', '<', windowEndTimestamp)
+          .get(),
+      ]);
 
-        const reservations = reservationsSnapshot.docs
-          .map((document) => document.data() as BookingReservationDocument)
-          .filter(
-            (item) =>
-              item.tenantId === business.tenantId && item.professionalId === professional.id,
-          )
-          .map((item) => item.bucketStartAt.toDate().getTime());
+      const hours = hoursSnapshot.docs
+        .map((document) => document.data() as WorkingHoursDocument)
+        .filter(
+          (item) => item.tenantId === business.tenantId && item.professionalId === professional.id,
+        );
 
-        const blocks = blocksSnapshot.docs
-          .map((document) => document.data() as BlockedPeriodDocument)
-          .filter(
-            (item) =>
-              item.tenantId === business.tenantId &&
-              (!item.professionalId || item.professionalId === professional.id),
-          );
+      const appointments = appointmentsSnapshot.docs
+        .map((document) => document.data() as AppointmentDocument)
+        .filter(
+          (item) =>
+            item.tenantId === business.tenantId &&
+            item.professionalId === professional.id &&
+            item.status !== 'cancelled' &&
+            item.status !== 'completed',
+        );
 
-        return {
-          professional,
-          hours,
-          appointments,
-          reservations,
-          blocks,
-        };
-      },
-    ),
+      const reservations = reservationsSnapshot.docs
+        .map((document) => document.data() as BookingReservationDocument)
+        .filter(
+          (item) => item.tenantId === business.tenantId && item.professionalId === professional.id,
+        )
+        .map((item) => item.bucketStartAt.toDate().getTime());
+
+      const blocks = blockedPeriods.filter(
+        (item) => !item.professionalId || item.professionalId === professional.id,
+      );
+
+      return {
+        professional,
+        hours,
+        appointments,
+        reservations,
+        blocks,
+      };
+    }),
   );
 
   logAvailabilityDuration('availability_search', 'conflict_reads', conflictReadsStartedAt);

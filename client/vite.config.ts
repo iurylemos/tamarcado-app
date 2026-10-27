@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import vike from 'vike/plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { defineConfig, loadEnv } from 'vite';
@@ -23,8 +24,9 @@ export default defineConfig(({ mode }): UserConfig => {
     process.env.VITE_SENTRY_ENVIRONMENT ?? env.VITE_SENTRY_ENVIRONMENT ?? 'development';
 
   const sentryEnabled = isProduction && Boolean(sentryDsn) && sentryEnvironment !== 'development';
+  const skipSentryUpload = process.env.TAMARCADO_SKIP_SENTRY_UPLOAD === 'true';
 
-  if (sentryEnabled && !sentryAuthToken) {
+  if (sentryEnabled && !sentryAuthToken && !skipSentryUpload) {
     throw new Error('SENTRY_AUTH_TOKEN is required for monitored production builds.');
   }
 
@@ -40,13 +42,14 @@ export default defineConfig(({ mode }): UserConfig => {
   const config: UserConfig = {
     plugins: [
       react(),
+      vike(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['pwa-icon.svg'],
         manifest: false,
         workbox: {
-          navigateFallback: '/index.html',
+          navigateFallback: null,
           runtimeCaching: [],
         },
         devOptions: { enabled: false },
@@ -56,7 +59,7 @@ export default defineConfig(({ mode }): UserConfig => {
         org,
         project,
         telemetry: false,
-        disable: !sentryEnabled,
+        disable: !sentryEnabled || skipSentryUpload,
         release: { name: sentryRelease },
         sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
         bundleSizeOptimizations: {
@@ -79,18 +82,7 @@ export default defineConfig(({ mode }): UserConfig => {
         '@shared': path.resolve(root, '../shared/domain'),
       },
     },
-    build: {
-      cssCodeSplit: false,
-      rollupOptions: {
-        output: {
-          entryFileNames: 'assets/app.js',
-          chunkFileNames: 'assets/[name].js',
-          assetFileNames: (asset: { name?: string }) =>
-            asset.name?.endsWith('.css') ? 'assets/app.css' : 'assets/[name][extname]',
-        },
-      },
-      sourcemap: sentryEnabled ? 'hidden' : false,
-    },
+    build: { sourcemap: sentryEnabled ? 'hidden' : false },
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],

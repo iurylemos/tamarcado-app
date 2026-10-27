@@ -4,18 +4,26 @@
   "version": "0.1.0",
   "main": "lib/functions/src/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc --ignoreConfig --noEmit --strict --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --esModuleInterop --skipLibCheck scripts/build.mts && node scripts/build.mts",
     "test": "vitest run --config vitest.config.ts",
     "seed:emulator": "npm run build && node lib/functions/test/fixtures/seed-emulator.js",
     "seed:production": "npm run build && node lib/functions/test/fixtures/seed-production.js",
     "import:company": "npm run build && node lib/functions/test/fixtures/import-company.js"
   },
   "dependencies": {
+    "@sentry/react": "^11.9.0",
+    "@tanstack/react-query": "^5.104.1",
     "firebase-admin": "^14.5.0",
     "firebase-functions": "^7.4.0",
+    "framer-motion": "^14.6.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "twilio": "^5.10.6"
+    "react-streaming": "^0.4.19",
+    "twilio": "^5.10.6",
+    "vike": "^0.4.268",
+    "vike-react": "^0.6.31",
+    "vike-react-query": "^0.1.13",
+    "vite": "^8.3.2"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0"

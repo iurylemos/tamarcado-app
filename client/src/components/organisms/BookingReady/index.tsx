@@ -1,5 +1,4 @@
 import type { JSX } from 'react';
-import { Link } from 'react-router-dom';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import BookingHero from '../../atoms/BookingHero';
@@ -44,9 +43,9 @@ export default function BookingReady({
     <>
       <MarketBackground />
       <main className="page stack market-page booking-page">
-        <Link className="market-back-link" to={`/empresa/${slug}`}>
+        <a className="market-back-link" href={`/empresa/${slug}`}>
           ← Voltar ao catálogo
-        </Link>
+        </a>
 
         <BookingHero />
 

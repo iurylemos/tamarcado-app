@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
-import { useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
 import type { PublicProductSummary, CompanyCatalog } from '../interfaces/company.interface';
 import type { BookingFormValues, BookingReceipt } from '../interfaces/booking.interface';
@@ -10,8 +10,6 @@ import type {
   ProductImageGallery,
 } from '@shared/interfaces/product.interface';
 import type { EligibleProfessional } from '../interfaces/professional.interface';
-import { createAppointment } from '../services/appointment.service';
-import { listAvailability, searchAvailability } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
 import { eligibleProfessionals } from '../services/professional.service';
 import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
@@ -20,20 +18,38 @@ import { ReactQueryConfig } from '../config/react-query.config';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 
-export default function BookingPage(): JSX.Element {
-  const { slug = '', productId = '' } = useParams();
-  const [catalog, setCatalog] = useState<CompanyCatalog | null>(null);
+type BookingPageProps = {
+  slug: string;
+  productId: string;
+  initialCatalog?: CompanyCatalog | null;
+  initialCatalogStatus?: 'ready' | 'not-found' | 'unavailable' | 'error';
+};
+
+export default function BookingPage({
+  slug,
+  productId,
+  initialCatalog,
+  initialCatalogStatus,
+}: Readonly<BookingPageProps>): JSX.Element {
+  const queryClient = useQueryClient();
+  const [catalog, setCatalog] = useState<CompanyCatalog | null>(initialCatalog ?? null);
   const [date, setDate] = useState<string>(getNextBookableDate());
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
   const [selectedStartsAt, setSelectedStartsAt] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(initialCatalog === undefined);
   const [availabilityLoading, setAvailabilityLoading] = useState<boolean>(true);
   const [searchingNextDate, setSearchingNextDate] = useState<boolean>(false);
   const [nextDateSearchComplete, setNextDateSearchComplete] = useState<boolean>(false);
   const [nextDateSearchError, setNextDateSearchError] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>(
+    initialCatalogStatus === 'unavailable'
+      ? 'Este catálogo está temporariamente indisponível. Tente novamente em instantes.'
+      : initialCatalogStatus === 'error'
+        ? 'Não foi possível carregar os dados do serviço.'
+        : '',
+  );
   const [shareError, setShareError] = useState<string>('');
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
   const [customizationSelections, setCustomizationSelections] = useState<
@@ -130,7 +146,7 @@ export default function BookingPage(): JSX.Element {
 
   const loadAvailability = useCallback(
     async (current: boolean): Promise<void> => {
-      const currentCatalog = await ReactQueryConfig.queryClient.query({
+      const currentCatalog = await queryClient.fetchQuery({
         queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
         queryFn: () => getCompanyCatalog(slug),
         staleTime: 0,
@@ -148,9 +164,12 @@ export default function BookingPage(): JSX.Element {
         return;
       }
 
-      const result = await ReactQueryConfig.queryClient.query({
+      const result = await queryClient.fetchQuery({
         queryKey: ReactQueryConfig.availabilitySearchQueryKey(slug, productId, date),
-        queryFn: () => searchAvailability({ businessSlug: slug, productId, date }),
+        queryFn: async () => {
+          const { searchAvailability } = await import('../services/availability.service');
+          return searchAvailability({ businessSlug: slug, productId, date });
+        },
         staleTime: 15_000,
       });
 
@@ -167,14 +186,21 @@ export default function BookingPage(): JSX.Element {
         }
       }
     },
-    [slug, productId, date],
+    [date, productId, queryClient, slug],
   );
 
   useEffect(() => {
+    if (initialCatalog !== undefined) {
+      queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey(slug), initialCatalog);
+      setCatalog(initialCatalog);
+      setLoading(false);
+      return;
+    }
+
     let current = true;
 
-    ReactQueryConfig.queryClient
-      .query({
+    queryClient
+      .fetchQuery({
         queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
         queryFn: () => getCompanyCatalog(slug),
         staleTime: 0,
@@ -192,7 +218,7 @@ export default function BookingPage(): JSX.Element {
     return () => {
       current = false;
     };
-  }, [slug]);
+  }, [initialCatalog, queryClient, slug]);
 
   useEffect(() => {
     selectedDateRef.current = date;
@@ -260,20 +286,22 @@ export default function BookingPage(): JSX.Element {
     async (bookedDate: string, selectedSlot: AvailableSlot): Promise<void> => {
       const queryKey = ReactQueryConfig.availabilityQueryKey(slug, productId, bookedDate);
 
-      await ReactQueryConfig.queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey,
         exact: true,
         refetchType: 'none',
       });
 
-      const refreshedSlots = await ReactQueryConfig.queryClient.query({
+      const refreshedSlots = await queryClient.fetchQuery({
         queryKey,
-        queryFn: () =>
-          listAvailability({
+        queryFn: async () => {
+          const { listAvailability } = await import('../services/availability.service');
+          return listAvailability({
             businessSlug: slug,
             productId,
             date: bookedDate,
-          }),
+          });
+        },
         staleTime: 0,
       });
 
@@ -294,7 +322,7 @@ export default function BookingPage(): JSX.Element {
           : (availableProfessionals[0]?.id ?? ''),
       );
     },
-    [slug, productId, selectedProfessionalId],
+    [productId, queryClient, selectedProfessionalId, slug],
   );
 
   const submitBooking = async (values: BookingFormValues): Promise<void> => {
@@ -312,7 +340,7 @@ export default function BookingPage(): JSX.Element {
         return;
       }
 
-      const currentCatalog = await ReactQueryConfig.queryClient.query({
+      const currentCatalog = await queryClient.fetchQuery({
         queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
         queryFn: () => getCompanyCatalog(slug),
         staleTime: 0,
@@ -331,6 +359,7 @@ export default function BookingPage(): JSX.Element {
         return;
       }
 
+      const { createAppointment } = await import('../services/appointment.service');
       const result = await createAppointment({
         businessSlug: slug,
         productId,
@@ -422,6 +451,10 @@ export default function BookingPage(): JSX.Element {
   );
 
   if (!catalog) {
+    if (initialCatalogStatus === 'not-found') {
+      return <BookingTemplate status="not-found" slug={slug} />;
+    }
+
     if (loading) {
       return (
         <BookingTemplate
@@ -436,7 +469,13 @@ export default function BookingPage(): JSX.Element {
 
     if (error) return <BookingTemplate status="error" slug={slug} error={error} />;
 
-    return <CompanyCatalogPage />;
+    return (
+      <CompanyCatalogPage
+        slug={slug}
+        initialCatalog={catalog}
+        initialStatus={catalog ? 'ready' : 'not-found'}
+      />
+    );
   }
 
   if (!product) return <BookingTemplate status="not-found" slug={slug} />;

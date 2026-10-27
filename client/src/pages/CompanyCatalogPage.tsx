@@ -1,45 +1,54 @@
 import { useMemo, type JSX } from 'react';
-import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getCompanyCatalog } from '../services/catalog.service';
+import type { CompanyCatalog } from '../interfaces/company.interface';
+import type { PublicCatalogStatus } from '../interfaces/catalog.interface';
 import { ReactQueryConfig } from '../config/react-query.config';
+import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 
-type CompanyCatalogStatus = 'loading' | 'error' | 'unavailable' | 'not-found' | 'ready';
+type CompanyCatalogPageProps = {
+  slug: string;
+  initialCatalog?: CompanyCatalog | null;
+  initialStatus?: PublicCatalogStatus;
+};
 
-export default function CompanyCatalogPage(): JSX.Element {
-  const { slug = '' } = useParams();
-
-  const catalogQuery = useQuery({
+export default function CompanyCatalogPage({
+  slug,
+  initialCatalog,
+  initialStatus,
+}: Readonly<CompanyCatalogPageProps>): JSX.Element {
+  const { data, error, isPending, isError } = useQuery({
     queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
     queryFn: () => getCompanyCatalog(slug),
     enabled: Boolean(slug),
+    initialData: initialCatalog,
+    staleTime: ReactQueryConfig.queryStaleTime,
   });
 
-  const catalog = catalogQuery.data ?? null;
+  const catalog = data ?? null;
 
   const isUnavailable = useMemo<boolean>(
     () =>
-      catalogQuery.error !== null &&
-      typeof catalogQuery.error === 'object' &&
-      'code' in catalogQuery.error &&
-      (catalogQuery.error.code === 'unavailable' ||
-        catalogQuery.error.code === 'firestore/unavailable'),
-    [catalogQuery.error],
+      error !== null &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'unavailable' || error.code === 'firestore/unavailable'),
+    [error],
   );
 
-  const status = useMemo<CompanyCatalogStatus>(
+  const status = useMemo<PublicCatalogStatus | 'loading'>(
     () =>
-      catalogQuery.isPending
+      initialStatus ??
+      (isPending
         ? 'loading'
-        : catalogQuery.isError
+        : isError
           ? isUnavailable
             ? 'unavailable'
             : 'error'
           : catalog
             ? 'ready'
-            : 'not-found',
-    [catalogQuery.isPending, catalogQuery.isError, isUnavailable, catalog],
+            : 'not-found'),
+    [initialStatus, isPending, isError, isUnavailable, catalog],
   );
 
   return <CompanyCatalogTemplate catalog={catalog} status={status} />;

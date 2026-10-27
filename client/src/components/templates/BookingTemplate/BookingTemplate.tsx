@@ -1,5 +1,4 @@
 import type { JSX } from 'react';
-import { Link } from 'react-router-dom';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
@@ -13,9 +12,9 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
       <>
         <MarketBackground />
         <main className="page stack market-page booking-page">
-          <Link className="market-back-link" to={`/empresa/${props.slug}`}>
+          <a className="market-back-link" href={`/empresa/${props.slug}`}>
             ← Voltar ao catálogo
-          </Link>
+          </a>
 
           <BookingHero />
 
@@ -78,9 +77,9 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
           <p role="alert" className="error state-card">
             {props.error}
           </p>
-          <Link className="market-back-link" to={`/empresa/${props.slug}`}>
+          <a className="market-back-link" href={`/empresa/${props.slug}`}>
             Voltar ao catálogo
-          </Link>
+          </a>
         </main>
       </>
     );
@@ -92,7 +91,7 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
         <MarketBackground />
         <main className="page market-page state-card">
           <p role="status">Serviço não encontrado.</p>
-          <Link to={`/empresa/${props.slug}`}>Voltar ao catálogo</Link>
+          <a href={`/empresa/${props.slug}`}>Voltar ao catálogo</a>
         </main>
       </>
     );
