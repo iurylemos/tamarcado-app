@@ -1,18 +1,18 @@
 import {
   FieldValue,
-  initializeFirestore,
+  getFirestore,
   type CollectionReference,
   type DocumentData,
   type Firestore,
   type Query,
 } from 'firebase-admin/firestore';
-import { getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getApps, initializeApp } from 'firebase-admin/app';
 import { collections, type CollectionName } from '../config/collections';
 export { professionalProductId } from '../utils/professional-product-id';
 
-const app = getApps().length ? getApp() : initializeApp();
+if (getApps().length === 0) initializeApp();
 
-export const firestore: Firestore = initializeFirestore(app);
+export const firestore: Firestore = getFirestore();
 
 export function rootCollection<T extends DocumentData = DocumentData>(
   name: CollectionName,
