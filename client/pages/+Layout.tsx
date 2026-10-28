@@ -9,14 +9,14 @@ import '../src/styles/index.css';
 type LayoutProps = { children: ReactNode };
 
 function Layout({ children }: Readonly<LayoutProps>): ReactNode {
-  const pageContext = usePageContext();
+  const { urlPathname } = usePageContext();
 
   useEffect(() => {
     initializeMonitoring();
 
-    const breadcrumb = SentryUtil.createSafeRouteBreadcrumb(pageContext.urlPathname);
+    const breadcrumb = SentryUtil.createSafeRouteBreadcrumb(urlPathname);
     if (breadcrumb) addBreadcrumb(breadcrumb);
-  }, [pageContext.urlPathname]);
+  }, [urlPathname]);
 
   return (
     <>

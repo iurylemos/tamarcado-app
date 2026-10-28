@@ -7,7 +7,7 @@ export default function Page(): JSX.Element {
 
   let msg: string = '';
 
-  const { abortReason, abortStatusCode } = pageContext;
+  const { abortReason, abortStatusCode, is404 } = pageContext;
 
   if (typeof abortReason === 'object' && abortReason.notAdmin) {
     msg = 'Você não pode acessar esta página porque não é um administrador.';
@@ -19,9 +19,7 @@ export default function Page(): JSX.Element {
     msg =
       'Você não pode acessar esta página porque não está autenticado. Faça login para continuar.';
   } else {
-    msg = pageContext.is404
-      ? 'Esta página não existe.'
-      : 'Algo deu errado. Tente novamente mais tarde.';
+    msg = is404 ? 'Esta página não existe.' : 'Algo deu errado. Tente novamente mais tarde.';
   }
 
   return (
@@ -88,6 +86,7 @@ export default function Page(): JSX.Element {
         <p className="mx-auto mt-5 max-w-md text-base leading-7 text-slate-600 sm:text-lg">
           Não conseguimos encontrar esta página. Ela pode ter sido removida ou o endereço pode estar
           incorreto.
+          <br />
           {msg}
         </p>
 
