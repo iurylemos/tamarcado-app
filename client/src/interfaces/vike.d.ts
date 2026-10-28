@@ -7,5 +7,8 @@ declare global {
       initialCatalog?: CompanyCatalog | null;
       initialCatalogStatus?: PublicCatalogStatus;
     }
+    interface PageContext {
+      abortReason?: string | { notAdmin: true };
+    }
   }
 }

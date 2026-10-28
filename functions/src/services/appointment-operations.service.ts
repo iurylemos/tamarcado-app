@@ -169,9 +169,11 @@ export async function updateAppointmentStatus(
     });
 
     if (nextStatus === 'cancelled' || nextStatus === 'completed') {
-      reservations.docs.forEach((reservation) => {
-        if (reservation.data().tenantId === actor.tenantId) transaction.delete(reservation.ref);
-      });
+      for (const reservationDocument of reservations.docs) {
+        if (reservationDocument.data().tenantId === actor.tenantId) {
+          transaction.delete(reservationDocument.ref);
+        }
+      }
     }
 
     return { appointmentId, status: nextStatus };
