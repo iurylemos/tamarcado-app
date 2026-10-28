@@ -9,20 +9,18 @@ import type {
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
 import { isValidBusinessSlug } from '../utils/business-slug.util';
+import { collection, getDocsFromServer, limit, query, where } from 'firebase/firestore';
+import { db } from '../config/firebase.config';
 
 export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | null> {
   if (!isValidBusinessSlug(slug)) return null;
-
-  const [{ collection, getDocsFromServer, limit, query, where }, { db }] = await Promise.all([
-    import('firebase/firestore'),
-    import('../config/firebase.config'),
-  ]);
 
   const businesses = await getDocsFromServer(
     query(
       collection(db, 'public_businesses'),
       where('slug', '==', slug),
       where('published', '==', true),
+      limit(1),
     ),
   );
 
@@ -39,6 +37,7 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
     getDocsFromServer(
       query(
         collection(db, 'public_products'),
+        where('tenantId', '==', tenantId),
         where('businessSlug', '==', slug),
         where('active', '==', true),
         where('published', '==', true),
@@ -64,21 +63,18 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
     logoUrl: rawBusiness.logoUrl as string | undefined,
   };
 
-  const publicGalleries = galleries.docs
-    .filter((snapshot) => snapshot.data().tenantId === tenantId)
-    .map((snapshot) => {
-      const data = snapshot.data();
-      return {
-        id: snapshot.id,
-        productId: data.productId as string,
-        combinationKey: data.combinationKey as string,
-        selections: data.selections as ProductCustomizationSelection[],
-        images: data.images as ProductImage[],
-      };
-    });
+  const publicGalleries = galleries.docs.map((snapshot) => {
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      productId: data.productId as string,
+      combinationKey: data.combinationKey as string,
+      selections: data.selections as ProductCustomizationSelection[],
+      images: data.images as ProductImage[],
+    };
+  });
 
   const visibleProducts: PublicProductSummary[] = products.docs
-    .filter((snapshot) => snapshot.data().tenantId === tenantId)
     .map((snapshot) => {
       const data = snapshot.data();
       return {

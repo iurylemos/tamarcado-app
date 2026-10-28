@@ -36,32 +36,40 @@ export async function listCustomerHistory(
       canContactOnWhatsApp: boolean;
     }
   >();
-  appointmentsSnapshot.docs.forEach((snapshot) => {
-    const appointment = snapshot.data() as AppointmentDocument;
+
+  for (const appointmentDocument of appointmentsSnapshot.docs) {
+    const appointment = appointmentDocument.data() as AppointmentDocument;
+
     if (
       appointment.tenantId !== actor.tenantId ||
       (actor.professionalId && appointment.professionalId !== actor.professionalId) ||
       !appointment.customerPhoneE164
     ) {
-      return;
+      continue;
     }
+
     const startsAt = appointment.startsAt.toDate();
     const existing = customers.get(appointment.customerPhoneE164) ?? {
       completed: [],
       latestAppointmentAt: startsAt,
       canContactOnWhatsApp: false,
     };
+
     if (!existing.name && appointment.customerName) existing.name = appointment.customerName;
+
     if (appointment.status === 'completed') existing.completed.push(startsAt);
+
     if (startsAt > existing.latestAppointmentAt) existing.latestAppointmentAt = startsAt;
+
     if (
       appointment.whatsappOptIn === true &&
       (appointment.status === 'pending' || appointment.status === 'confirmed')
     ) {
       existing.canContactOnWhatsApp = true;
     }
+
     customers.set(appointment.customerPhoneE164, existing);
-  });
+  }
 
   const result = [...customers.entries()].map(([phoneE164, customer]) => {
     const latestAttendance = customer.completed.reduce<Date | undefined>(

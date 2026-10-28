@@ -11,6 +11,7 @@ import type {
   CompanySummary,
   PublicProductSummary,
 } from '../../../../client/src/interfaces/company.interface';
+import { renderPage } from 'vike/server';
 
 type PublicCatalogStatus = 'ready' | 'not-found' | 'unavailable' | 'error';
 
@@ -124,16 +125,13 @@ export const renderStorefront = onRequest(
     }
 
     try {
-      const { renderPage } = await import('vike/server');
       const host = request.get('host') ?? request.hostname;
       const origin = `${request.protocol}://${host}`;
       const pageContext = await renderPage({
         urlOriginal: request.originalUrl || request.url || request.path,
         headersOriginal: { 'user-agent': request.get('user-agent') ?? '' },
         origin,
-        ...(initialCatalogStatus
-          ? { initialCatalogStatus, initialCatalog }
-          : {}),
+        ...(initialCatalogStatus ? { initialCatalogStatus, initialCatalog } : {}),
       });
 
       if (!pageContext.httpResponse) {
@@ -147,9 +145,7 @@ export const renderStorefront = onRequest(
       response
         .set(
           'Cache-Control',
-          statusCode && statusCode >= 400
-            ? 'no-store'
-            : 'public, max-age=60, s-maxage=300',
+          statusCode && statusCode >= 400 ? 'no-store' : 'public, max-age=60, s-maxage=300',
         )
         .status(statusCode ?? pageContext.httpResponse.statusCode);
 

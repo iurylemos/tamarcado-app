@@ -206,19 +206,19 @@ export async function listAvailableSlots(input: ListAvailabilityInput): Promise<
 
   const results: AvailableSlot[] = [];
 
-  professionalSnapshots.forEach((snapshot, index) => {
-    const data = snapshot.data() as Omit<ProfessionalRecord, 'id'> | undefined;
+  for (const [index, professionalDocument] of professionalSnapshots.entries()) {
+    const data = professionalDocument.data() as Omit<ProfessionalRecord, 'id'> | undefined;
 
     if (
-      !snapshot.exists ||
+      !professionalDocument.exists ||
       data?.tenantId !== business.tenantId ||
       !data.active ||
       !schedules[index]
     ) {
-      return;
+      continue;
     }
 
-    const professional: ProfessionalRecord = { ...data, id: snapshot.id };
+    const professional: ProfessionalRecord = { ...data, id: professionalDocument.id };
     const { hours, appointments, reservations } = schedules[index];
 
     const blocks = dayBlocks
@@ -266,7 +266,7 @@ export async function listAvailableSlots(input: ListAvailabilityInput): Promise<
         });
       }
     }
-  });
+  }
 
   return results.sort((first, second) => first.startsAt.localeCompare(second.startsAt));
 }

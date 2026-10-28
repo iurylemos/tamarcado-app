@@ -171,10 +171,11 @@ export async function getCollaboratorEmails(tenantId: string): Promise<Record<st
     .where('role', '==', 'collaborator')
     .get();
   const emails: Record<string, string> = {};
-  result.docs.forEach((doc) => {
-    const data = doc.data() as UserDocument;
+
+  for (const userDocument of result.docs) {
+    const data = userDocument.data() as UserDocument;
     if (data.professionalId && data.email) emails[data.professionalId] = data.email;
-  });
+  }
   return emails;
 }
 

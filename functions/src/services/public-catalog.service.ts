@@ -59,26 +59,27 @@ export async function listPublicProductRecords(
   ]);
 
   const galleriesByProduct = new Map<string, ProductImageGallery[]>();
-  gallerySnapshot.docs.forEach((document) => {
-    const gallery = document.data() as PublicProductGalleryDocument;
+
+  for (const galleryDocument of gallerySnapshot.docs) {
+    const gallery = galleryDocument.data() as PublicProductGalleryDocument;
     if (
       gallery.tenantId !== business.tenantId ||
       gallery.businessSlug !== business.slug ||
       gallery.published !== true ||
       typeof gallery.productId !== 'string'
     ) {
-      return;
+      continue;
     }
     const galleries = galleriesByProduct.get(gallery.productId) ?? [];
     galleries.push({
-      id: gallery.id || document.id,
+      id: gallery.id || galleryDocument.id,
       productId: gallery.productId,
       combinationKey: gallery.combinationKey,
       selections: gallery.selections,
       images: gallery.images,
     });
     galleriesByProduct.set(gallery.productId, galleries);
-  });
+  }
 
   return snapshot.docs
     .map((document) => ({ id: document.id, ...(document.data() as PublicProductDocument) }))
@@ -89,15 +90,15 @@ export async function listPublicProductRecords(
       ...product,
       ...(galleriesByProduct.has(product.id)
         ? {
-            imageGalleries: galleriesByProduct.get(product.id)!.map(
-              ({ id, productId, combinationKey, selections, images }) => ({
+            imageGalleries: galleriesByProduct
+              .get(product.id)!
+              .map(({ id, productId, combinationKey, selections, images }) => ({
                 id,
                 productId,
                 combinationKey,
                 selections,
                 images,
-              }),
-            ),
+              })),
           }
         : {}),
     }));
