@@ -63,4 +63,10 @@ export interface BackofficeWorkspace {
 }
 
 export type BackofficeSection =
-  'dashboard' | 'company' | 'products' | 'professionals' | 'availability' | 'reports';
+  | 'dashboard'
+  | 'company'
+  | 'products'
+  | 'professionals'
+  | 'availability'
+  | 'reports'
+  | 'ai-analysis';

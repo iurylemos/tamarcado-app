@@ -19,6 +19,8 @@ export const collections = {
   providerWebhookEvents: 'provider_webhook_events',
   providerOutbox: 'provider_outbox',
   appointmentNotificationJobs: 'appointment_notification_jobs',
+  aiAnalysisExecutions: 'ai_analysis_executions',
+  aiAnalysisProposals: 'ai_analysis_proposals',
 } as const;
 
 export type CollectionName = (typeof collections)[keyof typeof collections];
