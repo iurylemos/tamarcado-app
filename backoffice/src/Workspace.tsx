@@ -8,6 +8,7 @@ import AvailabilityPage from './pages/AvailabilityPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
+import AIAnalysisPage from './pages/AIAnalysisPage';
 import LoadingScreen from './components/atoms/LoadingScreen/LoadingScreen';
 
 const sectionLabels: Record<BackofficeSection, string> = {
@@ -17,6 +18,7 @@ const sectionLabels: Record<BackofficeSection, string> = {
   professionals: 'Equipe',
   availability: 'Agenda',
   reports: 'Relatórios',
+  'ai-analysis': 'Análise com IA',
 };
 
 export default function BackofficeWorkspace(): JSX.Element {
@@ -99,7 +101,9 @@ export default function BackofficeWorkspace(): JSX.Element {
                         ? '▦'
                         : item === 'reports'
                           ? '$'
-                          : '◷'}
+                          : item === 'ai-analysis'
+                            ? '✦'
+                            : '◷'}
               </span>
               {sectionLabels[item]}
               {item === 'products' && (
@@ -180,6 +184,7 @@ export default function BackofficeWorkspace(): JSX.Element {
               professionals={workspace.professionals}
             />
           )}
+          {section === 'ai-analysis' && <AIAnalysisPage timezone={workspace.company.timezone} />}
         </div>
       </main>
     </div>

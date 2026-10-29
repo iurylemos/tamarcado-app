@@ -64,6 +64,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /ai_analysis_executions/{executionId} {
+      allow read, write: if false;
+    }
+
+    match /ai_analysis_proposals/{proposalId} {
+      allow read, write: if false;
+    }
+
     match /{collection}/{documentId} {
       allow read, write: if false;
     }

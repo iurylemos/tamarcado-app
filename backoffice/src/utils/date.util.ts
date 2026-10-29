@@ -57,4 +57,15 @@ export class DateUtil {
 
     return localDateTimeToUtc(date, time, timezone).toISOString();
   }
+
+  public static dateValue(year: number, month: number): string {
+    return `${year}-${String(month).padStart(2, '0')}-01`;
+  }
+
+  public static defaultPeriod(timezone: string): { start: string; end: string } {
+    const { year, month } = getZonedDateTimeParts(new Date(), timezone);
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    return { start: this.dateValue(year, month), end: this.dateValue(nextYear, nextMonth) };
+  }
 }

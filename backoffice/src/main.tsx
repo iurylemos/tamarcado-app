@@ -35,7 +35,8 @@ const App: FC = (): JSX.Element => (
 
 const AppFallback: FC = withErrorBoundary(App, {
   fallback: <FallbackError />,
-  onError: reactErrorHandler(),
+  onError: (error: unknown, componentStack: string) =>
+    reactErrorHandler()(error, { componentStack }),
 });
 
 createRoot(root, optionsRoot).render(<AppFallback />);
