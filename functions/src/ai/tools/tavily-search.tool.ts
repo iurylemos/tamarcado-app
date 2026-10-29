@@ -7,12 +7,13 @@ import {
 } from '../utils/tavily.util';
 import { AnalysisUtil } from '../utils/analysis.util';
 import { reportSourcesSchema } from '../schemas/report.schema';
+import { tavilyApiKey } from '../config/analysis.secrets';
 
 export async function searchMarketEvidence(
   goal: string,
   apiKey?: string,
 ): Promise<TavilyResearchSource[]> {
-  const currentApiKey = apiKey ?? process.env.TAVILY_API_KEY;
+  const currentApiKey = apiKey ?? tavilyApiKey.value();
 
   if (!currentApiKey) throw new TavilyUtilSearchConfigurationError();
 

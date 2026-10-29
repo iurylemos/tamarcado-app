@@ -1,8 +1,4 @@
 import { AggregatedMetrics } from '../../model/ai-analysis.model';
-import type { InsightsInput } from '../interfaces/insights.interface';
-import { GrowthWorkflowDependencies } from '../interfaces/workflow.interface';
-import { generateInsights } from '../providers/llm.provider';
-import { searchMarketEvidence } from '../tools/tavily-search.tool';
 
 export class WorkflowUtilStageError extends Error {
   constructor(
@@ -16,12 +12,9 @@ export class WorkflowUtilStageError extends Error {
 export class WorkflowUtilStageTimeoutError extends Error {}
 
 export class WorkflowUtil {
-  public static readonly defaultDependencies: GrowthWorkflowDependencies = {
-    search: (goal: string) => searchMarketEvidence(goal),
-    generate: (input: InsightsInput, signal?: AbortSignal) =>
-      generateInsights(input, undefined, signal),
-    now: () => new Date(),
-  };
+  public static now(): Date {
+    return new Date();
+  }
 
   public static isMarketResearchRequired(goal: string): boolean {
     return /\b(mercado|concorr[eê]ncia|concorrentes|tend[eê]ncia|benchmark|setor|ind[uú]stria|pre[cç]o|demanda externa)\b/i.test(

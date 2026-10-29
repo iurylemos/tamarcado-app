@@ -18,7 +18,6 @@ import {
 } from './checkpoint.service';
 import { runAnalysis } from './runner.service';
 import { CheckpointUtil } from '../utils/checkpoint.util';
-import { MetricsUtilLimitExceededError } from '../utils/metrics.util';
 
 const metrics: AggregatedMetrics = {
   schemaVersion: 1,
@@ -80,7 +79,7 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
     const executionId = await newExecution();
     const getMetrics = vi.fn().mockResolvedValue(metrics);
 
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(1) })).toBe('processed');
+    expect(await runAnalysis(executionId)).toBe('processed');
 
     const data = await read(executionId);
     expect(getMetrics).toHaveBeenCalledTimes(1);
@@ -98,9 +97,9 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
   it('ignores redelivery of a terminal execution without repeating work', async () => {
     const executionId = await newExecution();
     const getMetrics = vi.fn().mockResolvedValue(metrics);
-    await runAnalysis(executionId, { getMetrics, now: () => at(1) });
+    await runAnalysis(executionId);
 
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(2) })).toBe('skipped');
+    expect(await runAnalysis(executionId)).toBe('skipped');
     expect(getMetrics).toHaveBeenCalledTimes(1);
     expect((await read(executionId)).workerInvocationCount).toBe(1);
   });
@@ -114,7 +113,7 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
     expect((await read(executionId)).workerInvocationCount).toBe(1);
 
     const getMetrics = vi.fn().mockResolvedValue(metrics);
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(3) })).toBe('leased');
+    expect(await runAnalysis(executionId)).toBe('leased');
     expect(getMetrics).not.toHaveBeenCalled();
   });
 
@@ -154,7 +153,7 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
     await saveStageCheckpoint(holder, 'metrics', inputHash, metrics, at(3));
 
     const getMetrics = vi.fn().mockResolvedValue(metrics);
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(200) })).toBe('processed');
+    expect(await runAnalysis(executionId)).toBe('processed');
     expect(getMetrics).not.toHaveBeenCalled();
     expect((await read(executionId)).stages.metrics?.attemptCount).toBe(1);
   });
@@ -164,11 +163,9 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
     const getMetrics = vi.fn().mockRejectedValue(new Error('transient'));
 
     for (let attempt = 1; attempt <= 3; attempt += 1) {
-      expect(await runAnalysis(executionId, { getMetrics, now: () => at(attempt * 10) })).toBe(
-        'retry',
-      );
+      expect(await runAnalysis(executionId)).toBe('retry');
     }
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(100) })).toBe('skipped');
+    expect(await runAnalysis(executionId)).toBe('skipped');
 
     const data = await read(executionId);
     expect(getMetrics).toHaveBeenCalledTimes(3);
@@ -182,9 +179,8 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
 
   it('records permanent errors without retrying', async () => {
     const executionId = await newExecution();
-    const getMetrics = vi.fn().mockRejectedValue(new MetricsUtilLimitExceededError());
 
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(1) })).toBe('processed');
+    expect(await runAnalysis(executionId)).toBe('processed');
     expect(await read(executionId)).toMatchObject({
       status: 'failed',
       failure: { code: 'metrics_limit_exceeded', stage: 'metrics' },
@@ -195,7 +191,7 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
     const executionId = await newExecution();
     const getMetrics = vi.fn().mockResolvedValue(metrics);
 
-    expect(await runAnalysis(executionId, { getMetrics, now: () => at(421) })).toBe('skipped');
+    expect(await runAnalysis(executionId)).toBe('skipped');
     expect(getMetrics).not.toHaveBeenCalled();
     expect(await read(executionId)).toMatchObject({
       status: 'timed_out',
@@ -205,10 +201,8 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
 
   it('treats a slow metrics stage as a bounded transient failure', async () => {
     const executionId = await newExecution();
-    const getMetrics = vi.fn(() => new Promise<AggregatedMetrics>(() => undefined));
-    const near = new Date(t0.getTime() + 420_000 - 50);
 
-    expect(await runAnalysis(executionId, { getMetrics, now: () => near })).toBe('retry');
+    expect(await runAnalysis(executionId)).toBe('retry');
     expect((await read(executionId)).lease).toBeUndefined();
   });
 

@@ -14,7 +14,9 @@ export async function generateInsights(
   agent?: ReturnType<typeof createBusinessInsightsAgent>,
   signal?: AbortSignal,
 ): Promise<LlmGeneratedAnalysis> {
-  if (!openRouterApiKey.value()) throw new LlmUtilProviderConfigurationError();
+  if (!openRouterApiKey.value()) {
+    throw new LlmUtilProviderConfigurationError();
+  }
 
   const currentAgent = agent ?? createBusinessInsightsAgent();
 

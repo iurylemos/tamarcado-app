@@ -5,7 +5,7 @@ vi.hoisted(() => {
 });
 
 import { collections } from '../../config/collections';
-import type { AggregatedMetrics, AnalysisExecutionDocument } from '../../model/ai-analysis.model';
+import type { AnalysisExecutionDocument } from '../../model/ai-analysis.model';
 import { firestore } from '../../services/firestore.service';
 import {
   assertLocalEmulator,
@@ -19,18 +19,6 @@ import { TavilyResearchSource } from '../interfaces/tavily.interface';
 
 const createdTenants: string[] = [];
 const now = new Date('2030-02-01T12:00:00.000Z');
-
-const metrics: AggregatedMetrics = {
-  schemaVersion: 1,
-  period: { start: '2030-02-01', endExclusive: '2030-03-01', timezone: 'America/Sao_Paulo' },
-  coverage: 'sufficient',
-  appointmentCount: 12,
-  statusCounts: { pending: 1, confirmed: 2, cancelled: 3, completed: 6 },
-  completedSalesCents: { available: true, value: 120000 },
-  completedCommissionCents: { available: true, value: 15000 },
-  occupancy: { available: false, limitation: 'Capacidade indisponível.' },
-  periodComparison: { available: false, limitation: 'Comparação indisponível.' },
-};
 
 const source: TavilyResearchSource = {
   title: 'Panorama público',
@@ -123,17 +111,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
         usage: { inputTokens: 100, outputTokens: 200, totalTokens: 300 },
       }));
 
-    expect(
-      await runAnalysis(executionId, {
-        getMetrics: vi.fn().mockResolvedValue(metrics),
-        search,
-        generate,
-        now: () => now,
-        newOwner: function (): string {
-          throw new Error('Function not implemented.');
-        },
-      }),
-    ).toBe('processed');
+    expect(await runAnalysis(executionId)).toBe('processed');
 
     const execution = await readExecution(executionId);
     expect(search).toHaveBeenCalledTimes(1);
@@ -158,18 +136,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
     const executionId = await createExecution('Analisar os indicadores internos da empresa');
     const search = vi.fn().mockResolvedValue([]);
 
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search,
-      generate: vi.fn().mockImplementation(async (input: { sources: TavilyResearchSource[] }) => ({
-        report: validReport(input.sources),
-        usage: { inputTokens: null, outputTokens: null, totalTokens: null },
-      })),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     expect(search).not.toHaveBeenCalled();
     expect((await readExecution(executionId)).status).toBe('succeeded');
@@ -181,18 +148,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
     );
     const search = vi.fn().mockResolvedValue([]);
 
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search,
-      generate: vi.fn().mockResolvedValue({
-        report: validReport(),
-        usage: { inputTokens: null, outputTokens: null, totalTokens: null },
-      }),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     const query = search.mock.calls[0]?.[0] as string;
     expect(query).toContain('tendências do mercado');
@@ -202,20 +158,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
 
   it('rejects malformed structured output before saving a report', async () => {
     const executionId = await createExecution('Analisar indicadores internos');
-    const malformedReport = { ...validReport(), summary: '' };
-
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search: vi.fn().mockResolvedValue([]),
-      generate: vi.fn().mockResolvedValue({
-        report: malformedReport,
-        usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
-      }),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     const execution = await readExecution(executionId);
     expect(execution).toMatchObject({
@@ -228,19 +171,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
   it('records provider spending-limit failures without persisting provider details', async () => {
     const executionId = await createExecution('Analisar indicadores internos');
 
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search: vi.fn().mockResolvedValue([]),
-      generate: vi
-        .fn()
-        .mockRejectedValue(
-          new Error('OpenRouter spending limit reached; provider details must remain private.'),
-        ),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     const execution = await readExecution(executionId);
     expect(execution).toMatchObject({
@@ -260,18 +191,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
       source: { type: 'metric', reference: 'occupancy' },
     });
 
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search: vi.fn().mockResolvedValue([]),
-      generate: vi.fn().mockResolvedValue({
-        report: invalidReport,
-        usage: { inputTokens: null, outputTokens: null, totalTokens: null },
-      }),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     const execution = await readExecution(executionId);
     expect(execution.status).toBe('failed');
@@ -284,18 +204,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
     const invalidReport = validReport();
     invalidReport.inferences[0]!.evidenceReferences = ['missing-fact'];
 
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search: vi.fn().mockResolvedValue([]),
-      generate: vi.fn().mockResolvedValue({
-        report: invalidReport,
-        usage: { inputTokens: null, outputTokens: null, totalTokens: null },
-      }),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     const execution = await readExecution(executionId);
     expect(execution).toMatchObject({
@@ -310,18 +219,7 @@ describe.skipIf(!emulatorAvailable)('growth analysis workflow', () => {
     const invalidReport = validReport([source]);
     invalidReport.sources = [];
 
-    await runAnalysis(executionId, {
-      getMetrics: vi.fn().mockResolvedValue(metrics),
-      search: vi.fn().mockResolvedValue([source]),
-      generate: vi.fn().mockResolvedValue({
-        report: invalidReport,
-        usage: { inputTokens: null, outputTokens: null, totalTokens: null },
-      }),
-      now: () => now,
-      newOwner: function (): string {
-        throw new Error('Function not implemented.');
-      },
-    });
+    await runAnalysis(executionId);
 
     const execution = await readExecution(executionId);
     expect(execution.status).toBe('failed');

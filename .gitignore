@@ -22,3 +22,5 @@ functions/test/fixtures/templates/*.csv
 !functions/test/fixtures/templates/*.example.csv
 # MSW
 public/mockServiceWorker.js
+# Google Cloud Functions Secrets (Emulator)
+functions/.secret.local

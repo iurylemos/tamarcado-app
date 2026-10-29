@@ -1,6 +1,5 @@
 import { logger } from 'firebase-functions';
 import type { LlmGeneratedAnalysis } from '../interfaces/llm.interface';
-import type { GrowthWorkflowDependencies } from '../interfaces/workflow.interface';
 import type { TavilyResearchSource } from '../interfaces/tavily.interface';
 import type { InsightsInput } from '../interfaces/insights.interface';
 import type { AggregatedMetrics, AnalysisExecutionDocument } from '../../model/ai-analysis.model';
@@ -20,6 +19,8 @@ import { reportSchema, reportSourcesSchema, type AnalysisReport } from '../schem
 import { stageBudgetMs } from '../services/limits.service';
 import { aggregatedMetricsSchema } from '../schemas/metrics.schema';
 import { CheckpointUtil } from '../utils/checkpoint.util';
+import { searchMarketEvidence } from '../tools/tavily-search.tool';
+import { generateInsights } from '../providers/llm.provider';
 
 async function withTimeout<T>(
   work: Promise<T>,
@@ -27,7 +28,9 @@ async function withTimeout<T>(
   onTimeout?: () => void,
 ): Promise<T> {
   if (budgetMs <= 0) throw new WorkflowUtilStageTimeoutError();
+
   let timer: NodeJS.Timeout | undefined;
+
   try {
     return await Promise.race([
       work,
@@ -61,10 +64,11 @@ function validateEvidence(
     recommendations: report.recommendations,
   });
 
-  if (
+  const verifyPeriodNotMatching =
     report.period.start !== execution.request.period.start ||
-    report.period.endExclusive !== execution.request.period.endExclusive
-  ) {
+    report.period.endExclusive !== execution.request.period.endExclusive;
+
+  if (verifyPeriodNotMatching) {
     throw new TypeError('Analysis report period does not match the authorized execution.');
   }
 
@@ -166,9 +170,7 @@ export async function continueGrowthAnalysis(
   holder: CheckpointLeaseHolder,
   execution: AnalysisExecutionDocument,
   rawMetrics: AggregatedMetrics,
-  overrides: Partial<GrowthWorkflowDependencies> = {},
 ): Promise<'processed' | 'fenced'> {
-  const deps = { ...WorkflowUtil.defaultDependencies, ...overrides };
   const metrics = aggregatedMetricsSchema.parse(rawMetrics);
   const goal = WorkflowUtil.sanitizeGoal(execution.request.goal);
 
@@ -180,7 +182,7 @@ export async function continueGrowthAnalysis(
       required: WorkflowUtil.isMarketResearchRequired(goal),
     });
 
-    const researchBegin = await beginStage(holder, 'research', researchHash, deps.now());
+    const researchBegin = await beginStage(holder, 'research', researchHash, WorkflowUtil.now());
 
     if (researchBegin.state === 'fenced' || researchBegin.state === 'deadline') return 'fenced';
 
@@ -199,8 +201,8 @@ export async function continueGrowthAnalysis(
     } else {
       if (WorkflowUtil.isMarketResearchRequired(goal)) {
         const currentSourceTimeout = await withTimeout(
-          deps.search(goal),
-          stageBudgetMs('research', execution.deadlineAt, deps.now()),
+          searchMarketEvidence(goal),
+          stageBudgetMs('research', execution.deadlineAt, WorkflowUtil.now()),
         );
 
         sources = currentSourceTimeout ?? [];
@@ -213,7 +215,7 @@ export async function continueGrowthAnalysis(
         'research',
         researchHash,
         sources,
-        deps.now(),
+        WorkflowUtil.now(),
       );
 
       if (checkpoint === 'fenced') {
@@ -232,7 +234,12 @@ export async function continueGrowthAnalysis(
 
     const generationHash = CheckpointUtil.stageHash('generation', generationInput);
 
-    const generationBegin = await beginStage(holder, 'generation', generationHash, deps.now());
+    const generationBegin = await beginStage(
+      holder,
+      'generation',
+      generationHash,
+      WorkflowUtil.now(),
+    );
 
     if (generationBegin.state === 'fenced' || generationBegin.state === 'deadline') return 'fenced';
 
@@ -255,8 +262,8 @@ export async function continueGrowthAnalysis(
       const controller = new AbortController();
 
       generated = await withTimeout(
-        deps.generate(generationInput, controller.signal),
-        stageBudgetMs('generation', execution.deadlineAt, deps.now()),
+        generateInsights(generationInput, undefined, controller.signal),
+        stageBudgetMs('generation', execution.deadlineAt, WorkflowUtil.now()),
         () => controller.abort(),
       );
 
@@ -270,7 +277,7 @@ export async function continueGrowthAnalysis(
         'generation',
         generationHash,
         generated.report,
-        deps.now(),
+        WorkflowUtil.now(),
       );
 
       if (stageCheckoutStatusSaved === 'fenced') {
@@ -287,7 +294,12 @@ export async function continueGrowthAnalysis(
       period: execution.request.period,
     });
 
-    const validationBegin = await beginStage(holder, 'validation', validationHash, deps.now());
+    const validationBegin = await beginStage(
+      holder,
+      'validation',
+      validationHash,
+      WorkflowUtil.now(),
+    );
 
     if (validationBegin.state === 'fenced' || validationBegin.state === 'deadline') return 'fenced';
 
@@ -309,7 +321,7 @@ export async function continueGrowthAnalysis(
       'validation',
       validationHash,
       true,
-      deps.now(),
+      WorkflowUtil.now(),
     );
 
     if (validationBegin.state === 'started' && stageCheckout === 'fenced') {
@@ -325,12 +337,12 @@ export async function continueGrowthAnalysis(
       persistHash,
       report,
       generated.usage,
-      deps.now(),
+      WorkflowUtil.now(),
     );
 
     return persisted === 'completed' ? 'processed' : 'fenced';
   } catch (error: unknown) {
-    await failStage(holder, currentStage, error, deps.now());
+    await failStage(holder, currentStage, error, WorkflowUtil.now());
     return 'processed';
   }
 }

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type SubmitEvent } from 'react';
+import type {
+  AnalysisGoal,
+  AnalysisKey,
+  AnalysisValue,
+  StartAnalysisResponse,
+} from '../interfaces/analysis.interface';
+import { MarkdownUtil } from '../utils/markdown.util';
 import { DateUtil } from '../utils/date.util';
-import {
-  errorMessage,
-  getAnalysisReport,
-  startAnalysis,
-  type GetAnalysisReportResponse,
-  type StartAnalysisResponse,
-} from '../services/ai-analysis.service';
-import { MetricUtil } from '../utils/metric.util';
+import { errorMessage, getAnalysisReport, startAnalysis } from '../services/ai-analysis.service';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type AIAnalysisPageProps = {
   timezone: string;
@@ -20,13 +22,16 @@ export default function AIAnalysisPage({ timezone }: Readonly<AIAnalysisPageProp
   const [end, setEnd] = useState<string>(initial.end);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [copied, setCopied] = useState<boolean>(false);
   const [result, setResult] = useState<StartAnalysisResponse | null>(null);
-  const [analysis, setAnalysis] = useState<Extract<
-    GetAnalysisReportResponse,
-    { status: 'succeeded' }
-  > | null>(null);
-  const pendingKey = useRef<{ signature: string; key: string } | null>(null);
-  const memoGoal = useMemo(() => ({ min: 10, max: 500 }), []);
+  const [analysis, setAnalysis] = useState<AnalysisValue | null>(null);
+  const pendingKey = useRef<AnalysisKey | null>(null);
+  const memoGoal = useMemo<AnalysisGoal>(() => ({ min: 10, max: 500 }), []);
+
+  const markdown = useMemo(
+    () => (analysis ? MarkdownUtil.buildAnalysisMarkdown(analysis) : ''),
+    [analysis],
+  );
 
   useEffect(() => {
     if (!result) return undefined;
@@ -111,6 +116,16 @@ export default function AIAnalysisPage({ timezone }: Readonly<AIAnalysisPageProp
     }
   };
 
+  const copyMarkdown = async (text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
     <section>
       <header className="page-heading">
@@ -149,120 +164,71 @@ export default function AIAnalysisPage({ timezone }: Readonly<AIAnalysisPageProp
         </button>
       </form>
 
-      {error && (
-        <p className="notice error" role="alert">
-          {error}
-        </p>
-      )}
+      <div className="flex flex-col gap-2.5 mb-4">
+        {error && (
+          <p className="notice error" role="alert">
+            {error}
+          </p>
+        )}
 
-      {result && (
-        <p className="notice success" role="status">
-          {analysis
-            ? 'Análise concluída.'
-            : 'Análise solicitada. Estado inicial: Na fila. Estamos preparando o relatório.'}{' '}
-          Código: {result.executionId}
-        </p>
-      )}
+        {result && (
+          <p className="notice success" role="status">
+            {analysis
+              ? 'Análise concluída.'
+              : 'Análise solicitada. Estado inicial: Na fila. Estamos preparando o relatório.'}{' '}
+            Código: {result.executionId}
+          </p>
+        )}
 
-      {result && !analysis && !error && (
-        <p aria-live="polite">Aguardando a conclusão da análise…</p>
-      )}
+        {result && !analysis && !error && (
+          <p aria-live="polite">Aguardando a conclusão da análise…</p>
+        )}
+      </div>
 
       {analysis && (
-        <article className="panel" aria-labelledby="analysis-report-title">
-          <h2 id="analysis-report-title">Relatório da análise</h2>
-          <p>{analysis.report.summary}</p>
+        <article className="ai-response" aria-labelledby="analysis-report-title">
+          <header className="ai-response__header">
+            <div className="ai-response__avatar" aria-hidden="true">
+              AI
+            </div>
 
-          <h3>Métricas do período</h3>
-          <p>
-            Agendamentos: <strong>{analysis.metrics.appointmentCount}</strong>
-            {analysis.metrics.coverage === 'no_data' && ' — sem dados no período.'}
-          </p>
-          <ul>
-            <li>
-              Vendas concluídas:{' '}
-              {MetricUtil.formatMetricCurrency(analysis.metrics.completedSalesCents)}
-            </li>
-            <li>
-              Comissões concluídas:{' '}
-              {MetricUtil.formatMetricCurrency(analysis.metrics.completedCommissionCents)}
-            </li>
-            <li>Métricas de ocupação: {MetricUtil.formatMetric(analysis.metrics.occupancy)}</li>
-            <li>
-              Comparação entre períodos:{' '}
-              {MetricUtil.formatMetric(analysis.metrics.periodComparison)}
-            </li>
-          </ul>
+            <div className="ai-response__identity">
+              <h2 id="analysis-report-title">Análise do Tá Marcado</h2>
+              <p>Relatório gerado por inteligência artificial</p>
+            </div>
 
-          {analysis.report.facts.length > 0 && (
-            <>
-              <h3>Fatos e evidências</h3>
-              <ul>
-                {analysis.report.facts.map((fact) => (
-                  <li key={fact.id}>
-                    {fact.statement}{' '}
-                    <small>
-                      ({fact.source.type}: {fact.source.reference})
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+            <button
+              type="button"
+              className="ai-response__copy"
+              onClick={() => void copyMarkdown(markdown)}
+              aria-label="Copiar relatório completo em Markdown"
+            >
+              {copied ? '✓ Copiado' : '▢ Copiar relatório'}
+            </button>
+          </header>
 
-          {analysis.report.inferences.length > 0 && (
-            <>
-              <h3>Inferências e incertezas</h3>
-              <ul>
-                {analysis.report.inferences.map((inference) => (
-                  <li key={inference.id}>
-                    {inference.statement} <strong>Incerteza:</strong> {inference.uncertainty}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <div className="ai-response__content">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+              }}
+            >
+              {markdown}
+            </ReactMarkdown>
+          </div>
 
-          {analysis.report.recommendations.length > 0 && (
-            <>
-              <h3>Recomendações para avaliação</h3>
-              <ul>
-                {analysis.report.recommendations.map((recommendation) => (
-                  <li key={recommendation.id}>
-                    <strong>{recommendation.title}</strong> ({recommendation.priority}) —{' '}
-                    {recommendation.rationale}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <footer className="ai-response__footer">
+            <span>Conteúdo gerado por IA. Confira as evidências antes de tomar decisões.</span>
 
-          {analysis.report.sources.length > 0 && (
-            <>
-              <h3>Fontes externas</h3>
-              <ul>
-                {analysis.report.sources.map((source) => (
-                  <li key={source.url}>
-                    <a href={source.url} target="_blank" rel="noreferrer">
-                      {source.title}
-                    </a>
-                    <p>{source.snippet}</p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {analysis.report.limitations.length > 0 && (
-            <>
-              <h3>Limitações</h3>
-              <ul>
-                {analysis.report.limitations.map((limitation, index) => (
-                  <li key={`${index}-${limitation}`}>{limitation}</li>
-                ))}
-              </ul>
-            </>
-          )}
+            <button
+              type="button"
+              className="ai-response__copy"
+              onClick={() => void copyMarkdown(markdown)}
+            >
+              Copiar relatório
+            </button>
+          </footer>
         </article>
       )}
     </section>

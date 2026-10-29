@@ -1,6 +1,6 @@
 import { logger } from 'firebase-functions';
 import type { AggregatedMetrics } from '../../model/ai-analysis.model';
-import type { RunnerDependencies, RunnerOutcome } from '../interfaces/runner.interface';
+import type { RunnerOutcome } from '../interfaces/runner.interface';
 import type { CheckpointLeaseHolder } from '../interfaces/checkpoint.interface';
 import { CheckpointUtil } from '../utils/checkpoint.util';
 import { getAggregatedMetrics } from '../tools/authorized-metrics.tool';
@@ -33,15 +33,10 @@ async function withTimeout<T>(work: Promise<T>, budgetMs: number): Promise<T> {
 }
 
 // The runner owns deterministic orchestration; providers only execute their assigned stage.
-export async function runAnalysis(
-  executionId: string,
-  overrides?: Partial<RunnerDependencies>,
-): Promise<RunnerOutcome> {
-  const deps = { ...WorkflowUtil.defaultDependencies, ...overrides };
-
+export async function runAnalysis(executionId: string): Promise<RunnerOutcome> {
   const owner = AnalysisUtil.newOwner();
 
-  const claim = await claimExecution(executionId, owner, deps.now());
+  const claim = await claimExecution(executionId, owner, WorkflowUtil.now());
 
   if (claim.state === 'leased') return 'leased';
 
@@ -51,17 +46,17 @@ export async function runAnalysis(
 
   const inputHash = CheckpointUtil.metricsInputHash(claim.execution);
 
-  const begin = await beginStage(holder, 'metrics', inputHash, deps.now());
+  const begin = await beginStage(holder, 'metrics', inputHash, WorkflowUtil.now());
 
   if (begin.state === 'fenced' || begin.state === 'deadline') return 'fenced';
 
   if (begin.state === 'incompatible') {
-    await recordFailure(holder, 'metrics', 'checkpoint_incompatible', {}, deps.now());
+    await recordFailure(holder, 'metrics', 'checkpoint_incompatible', {}, WorkflowUtil.now());
     return 'processed';
   }
 
   if (begin.state === 'attempt_limit') {
-    await recordFailure(holder, 'metrics', 'attempt_limit_exceeded', {}, deps.now());
+    await recordFailure(holder, 'metrics', 'attempt_limit_exceeded', {}, WorkflowUtil.now());
     return 'processed';
   }
 
@@ -70,7 +65,7 @@ export async function runAnalysis(
   if (begin.state === 'reused') {
     metrics = aggregatedMetricsSchema.parse(begin.output);
   } else if (begin.state === 'started') {
-    const budget = stageBudgetMs('metrics', claim.execution.deadlineAt, deps.now());
+    const budget = stageBudgetMs('metrics', claim.execution.deadlineAt, WorkflowUtil.now());
 
     const metricsPromise = getAggregatedMetrics(executionId);
 
@@ -82,7 +77,7 @@ export async function runAnalysis(
         'metrics',
         inputHash,
         metrics,
-        deps.now(),
+        WorkflowUtil.now(),
       );
 
       if (checkpointResult === 'fenced') {
@@ -90,12 +85,12 @@ export async function runAnalysis(
       }
     } catch (error: unknown) {
       if (error instanceof MetricsUtilLimitExceededError) {
-        await recordFailure(holder, 'metrics', 'metrics_limit_exceeded', {}, deps.now());
+        await recordFailure(holder, 'metrics', 'metrics_limit_exceeded', {}, WorkflowUtil.now());
         return 'processed';
       }
 
       if (error instanceof MetricsUtilUnavailableError) {
-        await recordFailure(holder, 'metrics', 'metrics_unavailable', {}, deps.now());
+        await recordFailure(holder, 'metrics', 'metrics_unavailable', {}, WorkflowUtil.now());
         return 'processed';
       }
 
@@ -106,7 +101,7 @@ export async function runAnalysis(
         timedOut: error,
       });
 
-      await releaseLease(holder, deps.now());
+      await releaseLease(holder, WorkflowUtil.now());
 
       return 'retry';
     }
@@ -114,5 +109,5 @@ export async function runAnalysis(
     return 'fenced';
   }
 
-  return await continueGrowthAnalysis(holder, claim.execution, metrics, deps);
+  return await continueGrowthAnalysis(holder, claim.execution, metrics);
 }
