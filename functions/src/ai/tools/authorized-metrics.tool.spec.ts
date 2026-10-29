@@ -14,11 +14,8 @@ import {
   emulatorAvailable,
   seedAppointment,
 } from '../../../test/ai-analysis-helpers';
-import {
-  buildAggregatedMetrics,
-  getAggregatedMetrics,
-  type MetricsAppointment,
-} from './authorized-metrics.tool';
+import { buildAggregatedMetrics, getAggregatedMetrics } from './authorized-metrics.tool';
+import { MetricsAppointment } from '../interfaces/metrics.interface';
 
 const request: AnalysisRequestSnapshot = {
   schemaVersion: 1,

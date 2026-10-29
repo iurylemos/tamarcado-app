@@ -40,4 +40,5 @@ export { sendAppointmentMessageCallable as sendAppointmentMessage } from './func
 export { providerWebhook } from './functions/messages/process-provider-webhook';
 export { renderStorefront } from './functions/catalog/render-storefront';
 export { startAnalysisCallable as startAnalysis } from './functions/ai-analysis/start-analysis';
+export { getAnalysisReportCallable as getAnalysisReport } from './functions/ai-analysis/get-analysis-report';
 export { processAnalysisCreated } from './functions/ai-analysis/process-analysis-created';

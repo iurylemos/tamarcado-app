@@ -1,7 +1,7 @@
 # Guia de Validação: Agentes de IA e Inteligência de Negócio
 
-Guia para implementação futura. Executar somente em ambiente local/emulator ou projeto
-isolado não produtivo. Nada neste guia autoriza deploy ou chamadas pagas.
+Executar somente em ambiente local/emulator ou projeto isolado não produtivo. Nada neste guia
+autoriza deploy ou chamadas pagas.
 
 ## Pré-requisitos
 
@@ -9,8 +9,12 @@ isolado não produtivo. Nada neste guia autoriza deploy ou chamadas pagas.
 - Firebase Emulator Suite com projeto de demonstração e fixtures sintéticas de pelo menos
   dois tenants.
 - Secrets reais não são necessários para os testes iniciais: Tavily e LLM devem ser mocks.
-- Smoke test de compatibilidade Mastra é gate antes de implementar a feature; smoke live de
-  provider requer orçamento/limites aprovados separadamente.
+- O smoke test obrigatório de compatibilidade Mastra foi aprovado em 2026-10-28; isso não
+  comprova entrega/retry reais da plataforma nem autoriza deploy.
+- A geração usa OpenRouter com `openai/gpt-4o` e limite de 1.024 tokens de saída. Configure
+  um teto de gastos no workspace OpenRouter antes de habilitar chamadas reais; recusas do
+  provider resultam em falha segura da análise, sem persistir relatório parcial. Os testes
+  automatizados não leem a chave nem fazem chamadas reais ao provider.
 
 ## Etapa 0 — Smoke test bloqueante
 
@@ -42,16 +46,19 @@ credenciais ou payloads reais.
 Após aprovação do smoke e implementação:
 
 ```powershell
-npm test --workspace functions
+$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8080'
+$env:GCLOUD_PROJECT='demo-ai-analysis-tests'
+npm run test --workspace functions -- src/ai/smoke/compatibility.spec.ts src/ai/tools/tavily-search.tool.spec.ts src/ai/providers/llm.provider.spec.ts src/ai/workflows/growth-analysis.workflow.spec.ts src/ai/services/runner.service.spec.ts
 npm run build:functions
-npm run test:emulator
 npm test --workspace backoffice
 npm run lint
 npm run format:check
 ```
 
-Mocks devem ser default; nenhuma execução de teste deve acessar Tavily ou LLM real sem opt-in
-explícito. Adaptar seletores apenas aos scripts existentes quando chegar a fase de tasks.
+O comando acima usa um Firestore Emulator já iniciado em `127.0.0.1:8080` e não inicia outra
+instância. Mocks devem ser default; nenhuma execução de teste deve acessar Tavily ou LLM real.
+Para chamadas manuais reais, configure um teto de gastos no workspace OpenRouter e os secrets
+no ambiente Firebase antes de habilitar o worker.
 
 ## Cenário 1 — Autorização e isolamento
 

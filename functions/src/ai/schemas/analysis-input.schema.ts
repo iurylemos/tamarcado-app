@@ -1,48 +1,37 @@
 import { z } from 'zod';
 import { isValidDateString } from '../../../../shared/domain/timezone';
-
-export const analysisLimits = {
-  goalMinLength: 10,
-  goalMaxLength: 500,
-  maxPeriodDays: 366,
-  minPeriodStart: '2000-01-01',
-  idempotencyKeyPattern: /^[A-Za-z0-9_-]{16,128}$/,
-} as const;
-
-const dayMs = 86_400_000;
-
-function toDay(value: string): number {
-  return Date.parse(`${value}T00:00:00.000Z`);
-}
+import { AnalysisUtil } from '../utils/analysis.util';
 
 const calendarDate = z
   .string()
-  .refine((value) => isValidDateString(value) && value >= analysisLimits.minPeriodStart, {
+  .refine((value) => isValidDateString(value) && value >= AnalysisUtil.limit.minPeriodStart, {
     message: 'Data inválida.',
   });
 
-const controlCharacters = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
-
 const goal = z
   .string()
-  .refine((value) => !controlCharacters.test(value), { message: 'Objetivo inválido.' })
+  .refine((value) => !AnalysisUtil.controlCharacters.test(value), { message: 'Objetivo inválido.' })
   .transform((value) => value.replace(/\s+/g, ' ').trim())
-  .pipe(z.string().min(analysisLimits.goalMinLength).max(analysisLimits.goalMaxLength));
+  .pipe(z.string().min(AnalysisUtil.limit.goalMinLength).max(AnalysisUtil.limit.goalMaxLength));
 
 // strict() rejects tenantId, uid, role, provider, tool and secret fields from the client.
 export const startAnalysisInputSchema = z
   .object({
-    idempotencyKey: z.string().regex(analysisLimits.idempotencyKeyPattern),
+    idempotencyKey: z.string().regex(AnalysisUtil.limit.idempotencyKeyPattern),
     goal,
     period: z
       .object({ start: calendarDate, endExclusive: calendarDate })
       .strict()
-      .refine(({ start, endExclusive }) => toDay(endExclusive) > toDay(start), {
-        message: 'O período deve terminar depois de começar.',
-      })
+      .refine(
+        ({ start, endExclusive }) => AnalysisUtil.toDay(endExclusive) > AnalysisUtil.toDay(start),
+        {
+          message: 'O período deve terminar depois de começar.',
+        },
+      )
       .refine(
         ({ start, endExclusive }) =>
-          (toDay(endExclusive) - toDay(start)) / dayMs <= analysisLimits.maxPeriodDays,
+          (AnalysisUtil.toDay(endExclusive) - AnalysisUtil.toDay(start)) / AnalysisUtil.dayMs <=
+          AnalysisUtil.limit.maxPeriodDays,
         { message: 'O período excede o limite permitido.' },
       ),
   })

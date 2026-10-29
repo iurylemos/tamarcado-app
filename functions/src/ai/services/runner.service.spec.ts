@@ -9,17 +9,16 @@ import { collections } from '../../config/collections';
 import type { AggregatedMetrics, AnalysisExecutionDocument } from '../../model/ai-analysis.model';
 import { firestore } from '../../services/firestore.service';
 import { assertLocalEmulator, emulatorAvailable } from '../../../test/ai-analysis-helpers';
-import { MetricsLimitExceededError } from '../tools/authorized-metrics.tool';
 import {
   beginStage,
-  canonicalJson,
   claimExecution,
   createQueuedExecution,
   recordFailure,
   saveStageCheckpoint,
-  sha256,
 } from './checkpoint.service';
 import { runAnalysis } from './runner.service';
+import { CheckpointUtil } from '../utils/checkpoint.util';
+import { MetricsUtilLimitExceededError } from '../utils/metrics.util';
 
 const metrics: AggregatedMetrics = {
   schemaVersion: 1,
@@ -143,8 +142,8 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
     if (holderClaim.state !== 'claimed') throw new Error('claim failed');
     const holder = { executionId, owner: 'owner-1', fencingToken: holderClaim.fencingToken };
     const data = await read(executionId);
-    const inputHash = sha256(
-      canonicalJson({
+    const inputHash = CheckpointUtil.sha256(
+      CheckpointUtil.canonicalJson({
         schemaVersion: 1,
         tenantId: data.tenantId,
         period: data.request.period,
@@ -183,7 +182,7 @@ describe.skipIf(!emulatorAvailable)('analysis runner and checkpoints', () => {
 
   it('records permanent errors without retrying', async () => {
     const executionId = await newExecution();
-    const getMetrics = vi.fn().mockRejectedValue(new MetricsLimitExceededError());
+    const getMetrics = vi.fn().mockRejectedValue(new MetricsUtilLimitExceededError());
 
     expect(await runAnalysis(executionId, { getMetrics, now: () => at(1) })).toBe('processed');
     expect(await read(executionId)).toMatchObject({

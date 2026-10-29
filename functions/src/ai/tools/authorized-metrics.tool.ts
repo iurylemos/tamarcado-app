@@ -9,35 +9,14 @@ import {
   type AnalysisRequestSnapshot,
 } from '../../model/ai-analysis.model';
 import type { AppointmentDocument } from '../../model/appointment.model';
-import { firestore } from '../../services/firestore.service';
+import type { MetricsAppointment } from '../interfaces/metrics.interface';
 import { aggregatedMetricsSchema } from '../schemas/metrics.schema';
-
-export const maxMetricsAppointments = 5000;
-
-export class MetricsLimitExceededError extends Error {
-  constructor() {
-    super('metrics_limit_exceeded');
-  }
-}
-
-export class MetricsUnavailableError extends Error {
-  constructor() {
-    super('metrics_unavailable');
-  }
-}
-
-export type MetricsAppointment = Pick<
-  AppointmentDocument,
-  | 'tenantId'
-  | 'status'
-  | 'productId'
-  | 'productNameSnapshot'
-  | 'productPriceCentsSnapshot'
-  | 'commissionTypeSnapshot'
-  | 'commissionValueSnapshot'
-  | 'professionalId'
-  | 'professionalNameSnapshot'
-> & { startsAt: Date };
+import {
+  MetricsUtil,
+  MetricsUtilLimitExceededError,
+  MetricsUtilUnavailableError,
+} from '../utils/metrics.util';
+import { firestore } from '../../services/firestore.service';
 
 const noDataLimitation = 'Não há agendamentos no período selecionado.';
 
@@ -48,7 +27,8 @@ export function periodBounds(request: AnalysisRequestSnapshot): { startsAt: Date
       endsAt: localDateTimeToUtc(request.period.endExclusive, '00:00', request.timezone),
     };
   } catch (error: unknown) {
-    if (error instanceof RangeError) throw new MetricsUnavailableError();
+    if (error instanceof RangeError) throw new MetricsUtilUnavailableError();
+
     throw error;
   }
 }
@@ -60,6 +40,7 @@ export function buildAggregatedMetrics(
   request: AnalysisRequestSnapshot,
 ): AggregatedMetrics {
   const { startsAt, endsAt } = periodBounds(request);
+
   const inScope = appointments.filter(
     (appointment) =>
       appointment.tenantId === tenantId &&
@@ -68,10 +49,13 @@ export function buildAggregatedMetrics(
   );
 
   const statusCounts = { pending: 0, confirmed: 0, cancelled: 0, completed: 0 };
+
   for (const appointment of inScope) statusCounts[appointment.status] += 1;
 
   const period = { ...request.period, timezone: request.timezone };
+
   const unavailableNoData = { available: false, limitation: noDataLimitation } as const;
+
   const base = {
     schemaVersion: analysisSchemaVersion,
     period,
@@ -87,7 +71,7 @@ export function buildAggregatedMetrics(
     },
   } as const;
 
-  if (inScope.length === 0) {
+  if (!inScope.length) {
     return aggregatedMetricsSchema.parse({
       ...base,
       coverage: 'no_data',
@@ -117,22 +101,27 @@ export async function getAggregatedMetrics(executionId: string): Promise<Aggrega
     .collection(collections.aiAnalysisExecutions)
     .doc(executionId)
     .get();
+
   const execution = snapshot.data() as AnalysisExecutionDocument | undefined;
-  if (!execution?.tenantId || !execution.request) throw new MetricsUnavailableError();
+
+  if (!execution?.tenantId || !execution.request) throw new MetricsUtilUnavailableError();
 
   // Tenant and period come only from the persisted execution, never from agent or client input.
   const { startsAt, endsAt } = periodBounds(execution.request);
+
   const result = await firestore
     .collection(collections.appointments)
     .where('tenantId', '==', execution.tenantId)
     .where('startsAt', '>=', Timestamp.fromDate(startsAt))
     .where('startsAt', '<', Timestamp.fromDate(endsAt))
-    .limit(maxMetricsAppointments + 1)
+    .limit(MetricsUtil.maxMetricsAppointments + 1)
     .get();
-  if (result.size > maxMetricsAppointments) throw new MetricsLimitExceededError();
+
+  if (result.size > MetricsUtil.maxMetricsAppointments) throw new MetricsUtilLimitExceededError();
 
   const appointments = result.docs.map((document): MetricsAppointment => {
     const data = document.data() as AppointmentDocument;
+
     return {
       tenantId: data.tenantId,
       status: data.status,
@@ -146,5 +135,6 @@ export async function getAggregatedMetrics(executionId: string): Promise<Aggrega
       professionalNameSnapshot: data.professionalNameSnapshot,
     };
   });
+
   return buildAggregatedMetrics(appointments, execution.tenantId, execution.request);
 }

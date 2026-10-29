@@ -1,16 +1,16 @@
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { startAnalysisInputSchema } from '../../ai/schemas/analysis-input.schema';
-import {
-  ActiveAnalysisError,
-  AnalysisIdempotencyConflictError,
-  createQueuedExecution,
-} from '../../ai/services/checkpoint.service';
+import { createQueuedExecution } from '../../ai/services/checkpoint.service';
 import { collections } from '../../config/collections';
 import { analysisSchemaVersion } from '../../model/ai-analysis.model';
 import type { TenantDocument } from '../../model/tenant.model';
 import { callableOptionsBackoffice } from '../../options/callable.option';
 import { authorizeActor, type AuthorizedActor } from '../../services/authorization.service';
 import { firestore } from '../../services/firestore.service';
+import {
+  ActiveUtilAnalysisError,
+  AnalysisUtilIdempotencyConflictError,
+} from '../../ai/utils/analysis.util';
 
 export interface StartAnalysisResult {
   executionId: string;
@@ -58,13 +58,14 @@ export async function startAnalysis(
       createdAt: createdAt.toDate().toISOString(),
     };
   } catch (error: unknown) {
-    if (error instanceof AnalysisIdempotencyConflictError) {
+    if (error instanceof AnalysisUtilIdempotencyConflictError) {
       throw new HttpsError(
         'already-exists',
         'Esta chave de solicitação já foi usada com dados diferentes.',
       );
     }
-    if (error instanceof ActiveAnalysisError) {
+
+    if (error instanceof ActiveUtilAnalysisError) {
       throw new HttpsError('failed-precondition', 'Já existe uma análise em andamento.');
     }
     throw error;

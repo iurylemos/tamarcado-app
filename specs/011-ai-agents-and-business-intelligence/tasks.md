@@ -8,7 +8,7 @@
 
 **Objetivo**: provar compatibilidade e recuperação antes de qualquer implementação funcional.
 
-- [X] T001 Executar smoke test não produtivo em Node.js 24/TypeScript 6/NodeNext, no artefato real do workspace `functions/`, cobrindo import/build do Mastra e Tavily, execução de worker v2, checkpoints Firestore, interrupção/retomada, redelivery, concorrência, duplicação, retries e deadline; usar mocks, não chamar providers pagos, implementar o harness em `functions/src/ai/smoke/compatibility.spec.ts`, registrar versões, comandos, resultados e limitações em `specs/011-ai-agents-and-business-intelligence/smoke-test.md`; se runtime, reconstrução ou limites falharem, parar e revisar `specs/011-ai-agents-and-business-intelligence/plan.md` antes de T002
+- [x] T001 Executar smoke test não produtivo em Node.js 24/TypeScript 6/NodeNext, no artefato real do workspace `functions/`, cobrindo import/build do Mastra e Tavily, execução de worker v2, checkpoints Firestore, interrupção/retomada, redelivery, concorrência, duplicação, retries e deadline; usar mocks, não chamar providers pagos, implementar o harness em `functions/src/ai/smoke/compatibility.spec.ts`, registrar versões, comandos, resultados e limitações em `specs/011-ai-agents-and-business-intelligence/smoke-test.md`; se runtime, reconstrução ou limites falharem, parar e revisar `specs/011-ai-agents-and-business-intelligence/plan.md` antes de T002
 
 **Gate**: nenhuma tarefa funcional das fases seguintes começa sem aprovação registrada do T001. A aprovação não autoriza deploy, provisionamento ou alteração de produção.
 
@@ -16,10 +16,10 @@
 
 **Objetivo**: preparar os contratos, dados e controles compartilhados; depende da aprovação do T001 e bloqueia as histórias.
 
-- [X] T002 [P] Definir tipos e transições da execução, etapas, métricas e propostas conforme o modelo aprovado em `functions/src/model/ai-analysis.model.ts`
-- [X] T003 [P] Criar schemas versionados para entrada, agregados, fontes, relatório e proposta, com validação independente em cada fronteira confiável, em `functions/src/ai/schemas/analysis-input.schema.ts`, `functions/src/ai/schemas/metrics.schema.ts`, `functions/src/ai/schemas/report.schema.ts` e `functions/src/ai/schemas/proposal.schema.ts`
-- [X] T004 Implementar coleções e regras Firestore server-only para execuções e propostas, com testes que confirmem negação de acesso pelo cliente, em `functions/src/config/collections.ts`, `firestore.rules` e `functions/test/ai-analysis.rules.spec.ts`
-- [X] T005 Implementar checkpoints transacionais, lease/fencing, idempotência e limites compartilhados de invocação/etapa em `functions/src/ai/services/checkpoint.service.ts` e `functions/src/ai/services/limits.service.ts`
+- [x] T002 [P] Definir tipos e transições da execução, etapas, métricas e propostas conforme o modelo aprovado em `functions/src/model/ai-analysis.model.ts`
+- [x] T003 [P] Criar schemas versionados para entrada, agregados, fontes, relatório e proposta, com validação independente em cada fronteira confiável, em `functions/src/ai/schemas/analysis-input.schema.ts`, `functions/src/ai/schemas/metrics.schema.ts`, `functions/src/ai/schemas/report.schema.ts` e `functions/src/ai/schemas/proposal.schema.ts`
+- [x] T004 Implementar coleções e regras Firestore server-only para execuções e propostas, com testes que confirmem negação de acesso pelo cliente, em `functions/src/config/collections.ts`, `firestore.rules` e `functions/test/ai-analysis.rules.spec.ts`
+- [x] T005 Implementar checkpoints transacionais, lease/fencing, idempotência e limites compartilhados de invocação/etapa em `functions/src/ai/services/checkpoint.service.ts` e `functions/src/ai/services/limits.service.ts`
 
 ## Fase 3: História 1 — Solicitar análise autorizada (Prioridade: P1)
 
@@ -29,17 +29,17 @@
 
 ### Testes da História 1
 
-- [X] T006 [P] [US1] Testar autorização, validação de entrada, derivação de tenant e idempotência da callable `startAnalysis` em `functions/src/functions/ai-analysis/start-analysis.spec.ts`
-- [X] T007 [P] [US1] Testar agregados autorizados, cobertura insuficiente e isolamento entre tenants em `functions/src/ai/tools/authorized-metrics.tool.spec.ts`
-- [X] T008 [P] [US1] Testar envio de solicitação e retorno de estado `queued` no backoffice em `backoffice/src/pages/AIAnalysisPage.spec.tsx`
+- [x] T006 [P] [US1] Testar autorização, validação de entrada, derivação de tenant e idempotência da callable `startAnalysis` em `functions/src/functions/ai-analysis/start-analysis.spec.ts`
+- [x] T007 [P] [US1] Testar agregados autorizados, cobertura insuficiente e isolamento entre tenants em `functions/src/ai/tools/authorized-metrics.tool.spec.ts`
+- [x] T008 [P] [US1] Testar envio de solicitação e retorno de estado `queued` no backoffice em `backoffice/src/pages/AIAnalysisPage.spec.tsx`
 
 ### Implementação da História 1
 
-- [X] T009 [US1] Implementar consulta de métricas agregadas com filtros de tenant/período e definições existentes, sem dados individuais, em `functions/src/ai/tools/authorized-metrics.tool.ts`
-- [X] T010 [US1] Implementar callable autenticada `startAnalysis`, validação do contrato, tenant/timezone server-side, deadline e criação idempotente da execução `queued` em `functions/src/functions/ai-analysis/start-analysis.ts`
-- [X] T011 [US1] Implementar trigger `processAnalysisCreated` e runner determinístico para claim transacional, execução da etapa de métricas, checkpoints e estados terminais em `functions/src/functions/ai-analysis/process-analysis-created.ts` e `functions/src/ai/services/runner.service.ts`
-- [X] T012 [US1] Integrar a callable ao serviço de análise do backoffice, sem aceitar tenant enviado pelo navegador como autoridade, em `backoffice/src/services/ai-analysis.service.ts`
-- [X] T013 [US1] Criar interface acessível para iniciar análise e confirmar estado inicial, seguindo as rotas atuais, em `backoffice/src/pages/AIAnalysisPage.tsx` e `backoffice/src/router/index.tsx`
+- [x] T009 [US1] Implementar consulta de métricas agregadas com filtros de tenant/período e definições existentes, sem dados individuais, em `functions/src/ai/tools/authorized-metrics.tool.ts`
+- [x] T010 [US1] Implementar callable autenticada `startAnalysis`, validação do contrato, tenant/timezone server-side, deadline e criação idempotente da execução `queued` em `functions/src/functions/ai-analysis/start-analysis.ts`
+- [x] T011 [US1] Implementar trigger `processAnalysisCreated` e runner determinístico para claim transacional, execução da etapa de métricas, checkpoints e estados terminais em `functions/src/functions/ai-analysis/process-analysis-created.ts` e `functions/src/ai/services/runner.service.ts`
+- [x] T012 [US1] Integrar a callable ao serviço de análise do backoffice, sem aceitar tenant enviado pelo navegador como autoridade, em `backoffice/src/services/ai-analysis.service.ts`
+- [x] T013 [US1] Criar interface acessível para iniciar análise e confirmar estado inicial, seguindo as rotas atuais, em `backoffice/src/pages/AIAnalysisPage.tsx` e `backoffice/src/router/index.tsx`
 
 ## Fase 4: História 2 — Consultar evidências e recomendações (Prioridade: P1)
 
@@ -49,16 +49,16 @@
 
 ### Testes da História 2
 
-- [ ] T014 [P] [US2] Testar limites, normalização e conteúdo externo não confiável da pesquisa em `functions/src/ai/tools/tavily-search.tool.spec.ts`
-- [ ] T015 [P] [US2] Testar saída estruturada, evidências, incertezas e rejeição de resposta inválida em `functions/src/ai/workflows/growth-analysis.workflow.spec.ts`
+- [x] T014 [P] [US2] Testar limites, normalização, remoção de identificadores/URLs e conteúdo externo não confiável da pesquisa em `functions/src/ai/tools/tavily-search.tool.spec.ts`
+- [x] T015 [P] [US2] Testar saída estruturada, evidências, incertezas e rejeição de resposta inválida em `functions/src/ai/workflows/growth-analysis.workflow.spec.ts`
 
 ### Implementação da História 2
 
-- [ ] T016 [US2] Implementar pesquisa Tavily sanitizada, com no máximo uma pesquisa e três resultados, orçamento de etapa e sem envio de PII ou métricas internas em `functions/src/ai/tools/tavily-search.tool.ts`
-- [ ] T017 [US2] Implementar adapter isolado do provider LLM com saída estruturada e limites obrigatórios de tokens/custo, sem iniciar execução se os limites aprovados não estiverem configurados, em `functions/src/ai/providers/llm.provider.ts`
-- [ ] T018 [US2] Implementar agente de síntese sem tools conectadas e schema versionado que classifique fatos, inferências, evidências e incertezas em `functions/src/ai/agents/business-insights.agent.ts` e `functions/src/ai/schemas/report.schema.ts`
-- [ ] T019 [US2] Implementar workflow de ordem fixa para métricas, pesquisa condicional, geração, validação determinística e persistência de relatório/propostas draft em `functions/src/ai/workflows/growth-analysis.workflow.ts` e `functions/src/ai/services/runner.service.ts`
-- [ ] T020 [US2] Exibir relatório validado, métricas disponíveis/indisponíveis, fontes e limitações na interface de análise em `backoffice/src/pages/AIAnalysisPage.tsx`
+- [x] T016 [US2] Implementar pesquisa Tavily sanitizada, com no máximo uma pesquisa e três resultados, orçamento de etapa e sem envio de PII ou métricas internas em `functions/src/ai/tools/tavily-search.tool.ts`
+- [x] T017 [US2] Implementar adapter OpenRouter/GPT-4o com saída estruturada, teto de tokens e propagação segura de recusas por limite de gastos configurado no workspace do provider em `functions/src/ai/providers/llm.provider.ts`
+- [x] T018 [US2] Implementar agente de síntese sem tools conectadas e schema versionado que classifique fatos, inferências, evidências e incertezas em `functions/src/ai/agents/business-insights.agent.ts` e `functions/src/ai/schemas/report.schema.ts`
+- [x] T019 [US2] Implementar workflow de ordem fixa para métricas, pesquisa condicional, geração, validação determinística e persistência do relatório validado; propostas de ação pertencem à US4, conforme o contrato sem allowlist de ações em `functions/src/ai/workflows/growth-analysis.workflow.ts` e `functions/src/ai/services/runner.service.ts`
+- [x] T020 [US2] Exibir relatório validado, métricas disponíveis/indisponíveis, fontes e limitações na interface de análise em `backoffice/src/pages/AIAnalysisPage.tsx`
 
 ## Fase 5: História 3 — Acompanhar execuções e consultar histórico (Prioridade: P2)
 

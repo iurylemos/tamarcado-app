@@ -85,7 +85,7 @@ export interface StageCheckpoint {
   status: StageStatus;
   attemptCount: number;
   inputHash?: string;
-  output?: AggregatedMetrics;
+  output?: unknown;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
   errorCode?: StageErrorCode;
@@ -112,6 +112,37 @@ export interface AnalysisExecutionDocument {
   activeStage: AnalysisStage;
   stages: Partial<Record<AnalysisStage, StageCheckpoint>>;
   metrics?: AggregatedMetrics;
+  researchSources?: Array<{ title: string; url: string; snippet: string }>;
+  report?: {
+    schemaVersion: number;
+    period: { start: string; endExclusive: string };
+    summary: string;
+    facts: Array<{
+      id: string;
+      statement: string;
+      source: { type: 'metric' | 'web'; reference: string };
+    }>;
+    inferences: Array<{
+      id: string;
+      statement: string;
+      evidenceReferences: string[];
+      uncertainty: string;
+    }>;
+    recommendations: Array<{
+      id: string;
+      title: string;
+      rationale: string;
+      priority: 'low' | 'medium' | 'high';
+      evidenceReferences: string[];
+    }>;
+    limitations: string[];
+    sources: Array<{ title: string; url: string; snippet: string }>;
+  };
+  usage?: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+  };
   failure?: { code: StageErrorCode; stage: AnalysisStage; retryable: boolean };
   createdAt: Timestamp;
   startedAt?: Timestamp;

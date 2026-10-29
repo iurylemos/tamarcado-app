@@ -6,8 +6,9 @@
 **Entrada**: Revisão arquitetural aprovada para priorizar a infraestrutura Firebase
 existente e não exigir novo serviço ou banco pago na primeira entrega.
 
-**Status**: Revisado conforme restrição de orçamento; aguardando aprovação do plano e
-resultado do smoke test obrigatório antes da implementação funcional.
+**Status**: Smoke test T001 aprovado pelo responsável em 2026-10-28. Implementação da US2
+autorizada para validação local; chamadas reais dependem do teto de gastos configurado pelo
+responsável no workspace OpenRouter e não fazem parte dos testes automatizados.
 
 ## Resumo
 
@@ -39,10 +40,11 @@ monorepo é ESM, mas `functions/package.json` não declara `"type": "module"`. C
 efetiva do Mastra e do output do workspace depende do smoke test, não apenas do mínimo de
 runtime documentado.
 
-**Dependências principais**: `firebase-functions@^7.4.0`, `firebase-admin@^14.5.0` e Vitest
-já existem em `functions/`. Mastra e Tavily não estão instalados; nenhum provider de LLM foi
-selecionado. Os módulos de IA ficam isolados em `functions/src/ai/` e usam os serviços e
-autorização existentes, sem criar um quinto workspace na primeira fase.
+**Dependências principais**: `firebase-functions@^7.4.0`, `firebase-admin@^14.5.0`, Vitest,
+Mastra e Tavily estão instalados em `functions/`. O modelo selecionado para síntese é
+`openai/gpt-4o` via OpenRouter (`openrouter/openai/gpt-4o` no roteador Mastra). As chaves
+permanecem em Firebase Secrets; os testes usam mocks e não leem credenciais. Os módulos de IA
+ficam isolados em `functions/src/ai/` e usam os serviços e autorização existentes.
 
 **Armazenamento**: Firestore é o armazenamento principal e único de execução, estado
 consultável, checkpoints de etapa, relatório, proposta, aprovação, idempotência e falha
@@ -84,9 +86,10 @@ considerado retomado até um novo invocation validar o checkpoint e continuar.
   suportado pelo trigger e confirmado no build/runtime; além disso, permitir no máximo uma
   execução ativa por tenant via claim transacional. Não configurar `minInstances`.
 - Provider/saída: um search Tavily limitado a três resultados, uma geração LLM por execução
-  (com no máximo duas novas tentativas elegíveis) e limites de tokens definidos após a
-  seleção do provider e antes de habilitar usuários. Usagem/custo desconhecido é
-  `unavailable`, nunca zero.
+  com saída máxima de 1.024 tokens e resposta estruturada estrita. O responsável configura
+  o teto monetário no workspace OpenRouter; uma recusa por limite encerra a análise sem
+  relatório parcial e o Backoffice mostra erro seguro. A aplicação não estima custo quando o
+  provider não o fornece; uso desconhecido é `unavailable`, nunca zero.
 
 Os números são limites de projeto conservadores para o smoke test e a primeira versão; devem
 ser reduzidos se billing/quotas ou latência exigirem. Aumentá-los requer nova revisão e
@@ -110,13 +113,13 @@ autenticação, disponibilidade ou booking.
 
 ## Comparação de infraestrutura
 
-| Opção | Custo e quotas | Benefícios | Trade-offs e decisão |
-|---|---|---|---|
-| **Functions v2 + Mastra isolado + Firestore** | Reutiliza infraestrutura e regras de billing atuais; pricing oficial lista quotas mensais sem custo de até 2M invocações, 400K GB-s, 200K CPU-s e 5 GB de egress para Functions, sujeitas a região/uso do billing account. Firestore tem quotas gratuitas documentadas para uma database elegível, mas leituras/escritas/armazenamento/rede excedentes são cobrados. Worker por evento tem máximo de 540 s. | Menor quantidade de serviços e menor overhead operacional; autorização, métricas e dados permanecem junto ao backend já confiável. | Selecionada como primeira fase. Inclui `maxInstances/concurrency` limitados, checkpoints explícitos, tentativas limitadas e smoke test de recuperação. Quotas já são compartilhadas com o resto do projeto; teto de 7 min é hipótese a validar. |
-| **Cloud Run sem Cloud Tasks/PostgreSQL** | Cobrança por CPU/memória/tempo, com free tier e escala sob demanda conforme configuração/região. Não requer banco dedicado para iniciar, mas durabilidade ainda precisa de mecanismo próprio. | Isola serviço/dependências e permite request até 60 min; pode ser útil se Functions não suportar runtime/módulos ou latência alvo. | Alternativa futura para worker isolado. O request 504 não garante cancelamento do processo. Ainda exige auth e estado confiável no Firestore. Não provisionar nesta fase. |
-| **Cloud Tasks / Firebase Task Queue Functions** | Cloud Tasks cobra por operações/entregas; a página oficial consultada informa primeiro milhão de operações mensal gratuito por conta, depois cobrança por milhão, além de custos regulares de rede. `onTaskDispatched` tem timeout máximo documentado de 1800 s e depende de Cloud Tasks. | Fila gerenciada, rate limits, retries e dispatch explícitos; melhor isolamento de picos e execução acima do limite de eventos. | Não é requisito da primeira entrega. Considerar quando retry/delivery do trigger Firestore ou throughput virar gargalo, após estimativa e aprovação. Evitar confundir Task Queue Functions com execução sem custo/serviço Cloud Tasks. |
-| **PostgreSQL gerenciado para snapshots Mastra** | Cloud SQL PostgreSQL é cobrado por vCPU/memória, storage e opções como HA/backup; pode criar custo recorrente enquanto provisionado. Preço depende de região e tamanho. | Storage persistente nativo do Mastra para snapshots completos e retomada do próprio workflow. | Não selecionado e sem necessidade demonstrada para a primeira fase. Firestore mantém checkpoints da aplicação. Considerar apenas se o smoke test provar que a recuperação necessária depende de snapshots Mastra indisponíveis com Firestore e após orçamento aprovado. |
-| **Cloud Run + Cloud Tasks + PostgreSQL** | Soma custos dos três serviços, chamadas de IA e Tavily. | Isolamento, filas/retries gerenciados e execução/snapshots mais longos/duráveis. | Arquitetura futura de escala/complexidade, não recomendada enquanto não houver volume, orçamento e necessidade técnica demonstrados. |
+| Opção                                           | Custo e quotas                                                                                                                                                                                                                                                                                                                                                                                              | Benefícios                                                                                                                         | Trade-offs e decisão                                                                                                                                                                                                                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Functions v2 + Mastra isolado + Firestore**   | Reutiliza infraestrutura e regras de billing atuais; pricing oficial lista quotas mensais sem custo de até 2M invocações, 400K GB-s, 200K CPU-s e 5 GB de egress para Functions, sujeitas a região/uso do billing account. Firestore tem quotas gratuitas documentadas para uma database elegível, mas leituras/escritas/armazenamento/rede excedentes são cobrados. Worker por evento tem máximo de 540 s. | Menor quantidade de serviços e menor overhead operacional; autorização, métricas e dados permanecem junto ao backend já confiável. | Selecionada como primeira fase. Inclui `maxInstances/concurrency` limitados, checkpoints explícitos, tentativas limitadas e smoke test de recuperação. Quotas já são compartilhadas com o resto do projeto; teto de 7 min é hipótese a validar.                         |
+| **Cloud Run sem Cloud Tasks/PostgreSQL**        | Cobrança por CPU/memória/tempo, com free tier e escala sob demanda conforme configuração/região. Não requer banco dedicado para iniciar, mas durabilidade ainda precisa de mecanismo próprio.                                                                                                                                                                                                               | Isola serviço/dependências e permite request até 60 min; pode ser útil se Functions não suportar runtime/módulos ou latência alvo. | Alternativa futura para worker isolado. O request 504 não garante cancelamento do processo. Ainda exige auth e estado confiável no Firestore. Não provisionar nesta fase.                                                                                               |
+| **Cloud Tasks / Firebase Task Queue Functions** | Cloud Tasks cobra por operações/entregas; a página oficial consultada informa primeiro milhão de operações mensal gratuito por conta, depois cobrança por milhão, além de custos regulares de rede. `onTaskDispatched` tem timeout máximo documentado de 1800 s e depende de Cloud Tasks.                                                                                                                   | Fila gerenciada, rate limits, retries e dispatch explícitos; melhor isolamento de picos e execução acima do limite de eventos.     | Não é requisito da primeira entrega. Considerar quando retry/delivery do trigger Firestore ou throughput virar gargalo, após estimativa e aprovação. Evitar confundir Task Queue Functions com execução sem custo/serviço Cloud Tasks.                                  |
+| **PostgreSQL gerenciado para snapshots Mastra** | Cloud SQL PostgreSQL é cobrado por vCPU/memória, storage e opções como HA/backup; pode criar custo recorrente enquanto provisionado. Preço depende de região e tamanho.                                                                                                                                                                                                                                     | Storage persistente nativo do Mastra para snapshots completos e retomada do próprio workflow.                                      | Não selecionado e sem necessidade demonstrada para a primeira fase. Firestore mantém checkpoints da aplicação. Considerar apenas se o smoke test provar que a recuperação necessária depende de snapshots Mastra indisponíveis com Firestore e após orçamento aprovado. |
+| **Cloud Run + Cloud Tasks + PostgreSQL**        | Soma custos dos três serviços, chamadas de IA e Tavily.                                                                                                                                                                                                                                                                                                                                                     | Isolamento, filas/retries gerenciados e execução/snapshots mais longos/duráveis.                                                   | Arquitetura futura de escala/complexidade, não recomendada enquanto não houver volume, orçamento e necessidade técnica demonstrados.                                                                                                                                    |
 
 Fontes oficiais, versões consultadas e ressalvas estão em [research.md](./research.md).
 Nenhum serviço gerenciado é considerado “gratuito garantido”; quotas gratuitas dependem de
@@ -409,8 +412,8 @@ camada de IA.
 
 ## Complexity Tracking
 
-| Complexidade | Justificativa | Alternativa mais simples rejeitada |
-|---|---|---|
-| Mastra em Functions existente | Reutiliza runtime, secrets, backend e deployment já mantidos, com módulos isolados. | Novo serviço de execução é desnecessário sem comprovação de limite funcional ou escala. |
-| Checkpoints Firestore explícitos | Necessários para estado consultável e reconstrução controlada, sem confundir status de negócio com state interno Mastra. | Guardar só `running`/resultado final não recupera passo nem chamada interrompida. |
-| Trigger Firestore | Usa recurso já existente para separar resposta callable do trabalho longo; entrega at-least-once será protegida. | Execução síncrona torna callable dependente de duração de provider e não atende UX assíncrona. |
+| Complexidade                     | Justificativa                                                                                                            | Alternativa mais simples rejeitada                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Mastra em Functions existente    | Reutiliza runtime, secrets, backend e deployment já mantidos, com módulos isolados.                                      | Novo serviço de execução é desnecessário sem comprovação de limite funcional ou escala.        |
+| Checkpoints Firestore explícitos | Necessários para estado consultável e reconstrução controlada, sem confundir status de negócio com state interno Mastra. | Guardar só `running`/resultado final não recupera passo nem chamada interrompida.              |
+| Trigger Firestore                | Usa recurso já existente para separar resposta callable do trabalho longo; entrega at-least-once será protegida.         | Execução síncrona torna callable dependente de duração de provider e não atende UX assíncrona. |
