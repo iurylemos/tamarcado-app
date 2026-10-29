@@ -30,5 +30,6 @@ function Layout({ children }: Readonly<LayoutProps>): ReactNode {
 
 export default withErrorBoundary(Layout, {
   fallback: <FallbackError />,
-  onError: reactErrorHandler(),
+  onError: (error: unknown, componentStack: string) =>
+    reactErrorHandler()(error, { componentStack }),
 });
