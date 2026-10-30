@@ -31,7 +31,8 @@ const app = getApps().length
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY || FirebaseUtil.defaultKeyEmulator,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
       projectId,
-      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${projectId}.appspot.com`,
+      storageBucket:
+        import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${projectId}.firebasestorage.app`,
       appId: import.meta.env.VITE_FIREBASE_APP_ID || FirebaseUtil.defaultIdEmulator,
     });
 
