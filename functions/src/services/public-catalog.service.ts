@@ -53,7 +53,9 @@ async function getGalleryCatalog(business: PublicBusinessRecord, productIds: str
 
   if (!productIds.length) return { docs: [] };
 
-  if (productIds.length <= 30) return await galleryBase.where('productId', 'in', productIds).get();
+  if (productIds.length <= 30) {
+    return await galleryBase.where('productId', 'in', productIds).get();
+  }
 
   return await galleryBase.limit(500).get();
 }
