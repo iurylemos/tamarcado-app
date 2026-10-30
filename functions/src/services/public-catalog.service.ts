@@ -1,3 +1,4 @@
+import { FieldPath } from 'firebase-admin/firestore';
 import { collections } from '../config/collections';
 import type { PublicBusinessDocument } from '../model/tenant.model';
 import type { ProductDocument, PublicProductDocument } from '../model/product.model';
@@ -39,24 +40,34 @@ export async function listPublicBusinessRecords(segment?: string): Promise<Publi
 
 export async function listPublicProductRecords(
   business: PublicBusinessRecord,
+  options: { limit?: number; productId?: string } = {},
 ): Promise<Array<PublicProductDocument & { id: string }>> {
-  const [snapshot, gallerySnapshot] = await Promise.all([
-    firestore
-      .collection(collections.publicProducts)
-      .where('businessSlug', '==', business.slug)
-      .where('tenantId', '==', business.tenantId)
-      .where('active', '==', true)
-      .where('published', '==', true)
-      .orderBy('name')
-      .get(),
-    firestore
-      .collection(collections.publicProductGalleries)
-      .where('businessSlug', '==', business.slug)
-      .where('tenantId', '==', business.tenantId)
-      .where('published', '==', true)
-      .limit(500)
-      .get(),
-  ]);
+  const { limit, productId } = options;
+  let productsQuery = firestore
+    .collection(collections.publicProducts)
+    .where('businessSlug', '==', business.slug)
+    .where('tenantId', '==', business.tenantId)
+    .where('active', '==', true)
+    .where('published', '==', true);
+
+  if (productId) productsQuery = productsQuery.where(FieldPath.documentId(), '==', productId);
+
+  const orderedQuery = productsQuery.orderBy('name');
+  const snapshot = await (limit ? orderedQuery.limit(limit) : orderedQuery).get();
+
+  const productIds = snapshot.docs.map((document) => document.id);
+  const galleryBase = firestore
+    .collection(collections.publicProductGalleries)
+    .where('businessSlug', '==', business.slug)
+    .where('tenantId', '==', business.tenantId)
+    .where('published', '==', true);
+  // Firestore 'in' accepts at most 30 values; unbounded listings keep the original capped query.
+  const gallerySnapshot =
+    productIds.length === 0
+      ? { docs: [] }
+      : productIds.length <= 30
+        ? await galleryBase.where('productId', 'in', productIds).get()
+        : await galleryBase.limit(500).get();
 
   const galleriesByProduct = new Map<string, ProductImageGallery[]>();
 
@@ -71,6 +82,7 @@ export async function listPublicProductRecords(
       continue;
     }
     const galleries = galleriesByProduct.get(gallery.productId) ?? [];
+
     galleries.push({
       id: gallery.id || galleryDocument.id,
       productId: gallery.productId,
@@ -78,6 +90,7 @@ export async function listPublicProductRecords(
       selections: gallery.selections,
       images: gallery.images,
     });
+
     galleriesByProduct.set(gallery.productId, galleries);
   }
 

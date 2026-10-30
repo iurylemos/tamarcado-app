@@ -85,7 +85,7 @@ describe('CompanyCatalogPage', () => {
     renderWithQueryClient(<CompanyCatalogPage slug="Slug/malformado" />);
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado');
+    expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado', { pageSize: 10, after: undefined });
   });
 
   it('shows a distinct empty catalog state after a successful empty response', async () => {

@@ -14,8 +14,10 @@ export class ReactQueryConfig {
     'functions/not-found',
   ];
 
-  public static companyCatalogQueryKey(slug: string): string[] {
-    return [this.companyCatalogKey, slug];
+  public static companyCatalogQueryKey(slug: string, productId?: string): string[] {
+    return productId
+      ? [this.companyCatalogKey, slug, 'product', productId]
+      : [this.companyCatalogKey, slug];
   }
 
   public static availabilityQueryKey(

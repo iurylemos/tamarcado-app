@@ -64,7 +64,7 @@ export default function BookingPage({
 
   const product = useMemo<PublicProductSummary | undefined>(
     () =>
-      catalog?.business.slug === slug
+      catalog && catalog.business.slug === slug
         ? catalog.products.find((item) => item.id === productId)
         : undefined,
     [catalog, slug, productId],
@@ -72,7 +72,8 @@ export default function BookingPage({
 
   const effectiveImageGallery = useMemo<ProductImageGallery | undefined>(
     () =>
-      product?.imageGalleries?.find(
+      product &&
+      product.imageGalleries?.find(
         (gallery) =>
           gallery.selections.length === (product.customizationAttributes?.length ?? 0) &&
           gallery.selections.every((selection) =>
@@ -100,9 +101,13 @@ export default function BookingPage({
       return effectiveImageGallery?.images.filter((image) => image.downloadUrl) ?? [];
     }
 
-    return product.defaultImages?.length
-      ? product.defaultImages.filter((image) => image.downloadUrl)
-      : [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }];
+    if (!product.defaultImages) {
+      return [{ id: 'legacy-image', storagePath: '', downloadUrl: product.imageUrl }];
+    }
+
+    const defaultImagesProduct = product.defaultImages.filter((image) => image.downloadUrl);
+
+    return defaultImagesProduct;
   }, [effectiveImageGallery, product]);
 
   const effectiveSelectedImageId = useMemo<string>(
@@ -150,8 +155,8 @@ export default function BookingPage({
   const loadAvailability = useCallback(
     async (current: boolean): Promise<void> => {
       const currentCatalog = await queryClient.query({
-        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
-        queryFn: () => getCompanyCatalog(slug),
+        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug, productId),
+        queryFn: () => getCompanyCatalog(slug, { productId }),
         staleTime: 0,
       });
 
@@ -191,7 +196,10 @@ export default function BookingPage({
 
   useEffect(() => {
     if (initialCatalog !== undefined) {
-      queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey(slug), initialCatalog);
+      queryClient.setQueryData(
+        ReactQueryConfig.companyCatalogQueryKey(slug, productId),
+        initialCatalog,
+      );
       setCatalog(initialCatalog);
       setLoading(false);
       return;
@@ -201,8 +209,8 @@ export default function BookingPage({
 
     queryClient
       .query({
-        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
-        queryFn: () => getCompanyCatalog(slug),
+        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug, productId),
+        queryFn: () => getCompanyCatalog(slug, { productId }),
         staleTime: 0,
       })
       .then((result) => {
@@ -218,7 +226,7 @@ export default function BookingPage({
     return () => {
       current = false;
     };
-  }, [initialCatalog, queryClient, slug]);
+  }, [initialCatalog, productId, queryClient, slug]);
 
   useEffect(() => {
     selectedDateRef.current = date;
@@ -339,8 +347,8 @@ export default function BookingPage({
       }
 
       const currentCatalog = await queryClient.query({
-        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
-        queryFn: () => getCompanyCatalog(slug),
+        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug, productId),
+        queryFn: () => getCompanyCatalog(slug, { productId }),
         staleTime: 0,
       });
 

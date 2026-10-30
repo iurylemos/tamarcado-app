@@ -8,6 +8,9 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn((source, ...constraints) => ({ source, constraints })),
   where: vi.fn((field: string, _operator: string, value: unknown) => ({ field, value })),
   limit: vi.fn((value: number) => ({ limit: value })),
+  orderBy: vi.fn(),
+  startAfter: vi.fn(),
+  documentId: vi.fn(),
 }));
 
 vi.mock('../config/firebase.config', () => ({ db: {} }));
@@ -15,7 +18,7 @@ vi.mock('../config/firebase.config', () => ({ db: {} }));
 describe('getCompanyCatalog', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('loads product and gallery metadata in parallel after resolving the business', async () => {
+  it('loads product and gallery metadata after resolving the business', async () => {
     vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({
         docs: [
@@ -24,6 +27,9 @@ describe('getCompanyCatalog', () => {
             data: () => ({ tenantId: 'tenant-aurora' }),
           },
         ],
+      } as never)
+      .mockResolvedValueOnce({
+        docs: [{ id: 'service-aurora', data: () => ({}) }],
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
@@ -42,7 +48,7 @@ describe('getCompanyCatalog', () => {
           { field: 'tenantId', value: 'tenant-aurora' },
           { field: 'businessSlug', value: 'studio-aurora' },
           { field: 'published', value: true },
-          { limit: 500 },
+          { field: 'productId', value: ['service-aurora'] },
         ]),
       }),
     );
