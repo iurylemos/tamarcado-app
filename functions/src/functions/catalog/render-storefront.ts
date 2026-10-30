@@ -1,23 +1,27 @@
 import { logUnexpectedFailure } from '../../services/diagnostic-logging.service';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
 import type { Response } from 'firebase-functions/v1';
-import { DomainError } from '../../../../shared/domain/errors';
-import {
-  findPublicBusiness,
-  listPublicProductRecords,
-} from '../../services/public-catalog.service';
 import type {
   CompanyCatalog,
   CompanySummary,
   PublicProductSummary,
 } from '../../../../client/src/interfaces/company.interface';
+import type { PublicCatalogStatus } from '../../interfaces/catalog.interface';
+import { DomainError } from '../../../../shared/domain/errors';
+import {
+  findPublicBusiness,
+  listPublicProductRecords,
+} from '../../services/public-catalog.service';
 import { renderPage } from 'vike/server';
 
-type PublicCatalogStatus = 'ready' | 'not-found' | 'unavailable' | 'error';
+async function loadPublicCatalog(slug: string, productId?: string): Promise<CompanyCatalog> {
+  const defaultLimitPageSize: number = 10;
 
-async function loadPublicCatalog(slug: string): Promise<CompanyCatalog> {
   const business = await findPublicBusiness(slug);
-  const productRecords = await listPublicProductRecords(business);
+  const productRecords = await listPublicProductRecords(
+    business,
+    productId ? { productId } : { limit: defaultLimitPageSize },
+  );
 
   const publicBusiness: CompanySummary = {
     id: business.id,
@@ -54,7 +58,11 @@ async function loadPublicCatalog(slug: string): Promise<CompanyCatalog> {
     }),
   );
 
-  return { business: publicBusiness, products };
+  return {
+    business: publicBusiness,
+    products,
+    ...(!productId && productRecords.length === defaultLimitPageSize ? { hasMore: true } : {}),
+  };
 }
 
 function isUnavailableError(error: unknown): boolean {
@@ -85,12 +93,17 @@ export const renderStorefront = onRequest(
     if (segments[0] === 'empresa') {
       const slug = segments[1] ? decodePathSegment(segments[1]) : null;
 
+      const requestedProductId = segments[3] ? decodePathSegment(segments[3]) : null;
+
       if (!slug) {
         initialCatalogStatus = 'not-found';
         statusCode = 404;
       } else {
         try {
-          initialCatalog = await loadPublicCatalog(slug);
+          initialCatalog = await loadPublicCatalog(
+            slug,
+            segments[2] === 'agendar' && requestedProductId ? requestedProductId : undefined,
+          );
           initialCatalogStatus = 'ready';
         } catch (error: unknown) {
           if (error instanceof DomainError && error.code === 'NOT_FOUND') {
@@ -110,8 +123,6 @@ export const renderStorefront = onRequest(
           }
         }
       }
-
-      const requestedProductId = segments[3] ? decodePathSegment(segments[3]) : null;
 
       if (
         initialCatalog &&

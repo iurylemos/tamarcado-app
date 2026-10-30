@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type JSX } from 'react';
+import { useEffect, useMemo, useRef, type JSX } from 'react';
 import { formatBrl } from '../../../../../shared/domain/money.js';
 import type { CompanyCatalog } from '../../../interfaces/company.interface.js';
 import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service.js';
@@ -9,13 +9,36 @@ import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.
 type CompanyCatalogTemplateProps = {
   catalog: CompanyCatalog | null;
   status: 'loading' | 'error' | 'unavailable' | 'not-found' | 'ready';
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 };
 
 export default function CompanyCatalogTemplate({
   catalog,
   status,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: Readonly<CompanyCatalogTemplateProps>): JSX.Element {
   const isLoading = useMemo<boolean>(() => status === 'loading', [status]);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || loadingMore || !onLoadMore) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      { rootMargin: '300px' },
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore, catalog?.products.length]);
 
   useEffect(() => {
     if (status !== 'ready' || !catalog) return;
@@ -139,7 +162,12 @@ export default function CompanyCatalogTemplate({
               {isLoading ? (
                 <Skeleton className="catalog-loading-count" />
               ) : (
-                catalog && <span className="catalog-count">{catalog.products.length} serviços</span>
+                catalog && (
+                  <span className="catalog-count">
+                    {catalog.products.length}
+                    {hasMore ? '+' : ''} serviços
+                  </span>
+                )
               )}
             </div>
             {isLoading ? (
@@ -187,6 +215,11 @@ export default function CompanyCatalogTemplate({
                       </a>
                     </div>
                   ))}
+                  {hasMore && (
+                    <div ref={sentinelRef} aria-hidden="true">
+                      {loadingMore && <SkeletonCard variant="service" imagePlaceholder />}
+                    </div>
+                  )}
                 </section>
               )
             ) : null}

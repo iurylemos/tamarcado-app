@@ -1,3 +1,4 @@
+import { FieldPath } from 'firebase-admin/firestore';
 import { collections } from '../config/collections';
 import type { PublicBusinessDocument } from '../model/tenant.model';
 import type { ProductDocument, PublicProductDocument } from '../model/product.model';
@@ -6,9 +7,15 @@ import type { ProductImageGallery } from '../../../shared/domain/interfaces/prod
 import { firestore } from './firestore.service';
 import { DomainError } from '../../../shared/domain/errors';
 
-export interface PublicBusinessRecord extends PublicBusinessDocument {
+type PublicBusinessRecord = PublicBusinessDocument & {
   id: string;
-}
+};
+
+type PublicProductRecord = PublicProductDocument & { id: string };
+
+type BookedProductRecord = PublicProductDocument & ProductDocument & { id: string };
+
+type PublicProductOptions = { limit?: number; productId?: string };
 
 export async function findPublicBusiness(slug: string): Promise<PublicBusinessRecord> {
   const snapshot = await firestore
@@ -37,31 +44,52 @@ export async function listPublicBusinessRecords(segment?: string): Promise<Publi
     .filter((business) => business.published);
 }
 
+async function getGalleryCatalog(business: PublicBusinessRecord, productIds: string[]) {
+  const galleryBase = firestore
+    .collection(collections.publicProductGalleries)
+    .where('businessSlug', '==', business.slug)
+    .where('tenantId', '==', business.tenantId)
+    .where('published', '==', true);
+
+  if (!productIds.length) return { docs: [] };
+
+  if (productIds.length <= 30) {
+    return await galleryBase.where('productId', 'in', productIds).get();
+  }
+
+  return await galleryBase.limit(500).get();
+}
+
 export async function listPublicProductRecords(
   business: PublicBusinessRecord,
-): Promise<Array<PublicProductDocument & { id: string }>> {
-  const [snapshot, gallerySnapshot] = await Promise.all([
-    firestore
-      .collection(collections.publicProducts)
-      .where('businessSlug', '==', business.slug)
-      .where('tenantId', '==', business.tenantId)
-      .where('active', '==', true)
-      .where('published', '==', true)
-      .orderBy('name')
-      .get(),
-    firestore
-      .collection(collections.publicProductGalleries)
-      .where('businessSlug', '==', business.slug)
-      .where('tenantId', '==', business.tenantId)
-      .where('published', '==', true)
-      .limit(500)
-      .get(),
-  ]);
+  options: PublicProductOptions = {},
+): Promise<Array<PublicProductRecord>> {
+  const { limit, productId } = options;
+
+  let productsQuery = firestore
+    .collection(collections.publicProducts)
+    .where('businessSlug', '==', business.slug)
+    .where('tenantId', '==', business.tenantId)
+    .where('active', '==', true)
+    .where('published', '==', true);
+
+  if (productId) productsQuery = productsQuery.where(FieldPath.documentId(), '==', productId);
+
+  const orderedQuery = productsQuery.orderBy('name');
+
+  const orderQueryLimit = limit ? orderedQuery.limit(limit) : orderedQuery;
+
+  const snapshot = await orderQueryLimit.get();
+
+  const productIds = snapshot.docs.map((document) => document.id);
+
+  const gallerySnapshot = await getGalleryCatalog(business, productIds);
 
   const galleriesByProduct = new Map<string, ProductImageGallery[]>();
 
   for (const galleryDocument of gallerySnapshot.docs) {
     const gallery = galleryDocument.data() as PublicProductGalleryDocument;
+
     if (
       gallery.tenantId !== business.tenantId ||
       gallery.businessSlug !== business.slug ||
@@ -70,7 +98,9 @@ export async function listPublicProductRecords(
     ) {
       continue;
     }
+
     const galleries = galleriesByProduct.get(gallery.productId) ?? [];
+
     galleries.push({
       id: gallery.id || galleryDocument.id,
       productId: gallery.productId,
@@ -78,6 +108,7 @@ export async function listPublicProductRecords(
       selections: gallery.selections,
       images: gallery.images,
     });
+
     galleriesByProduct.set(gallery.productId, galleries);
   }
 
@@ -107,9 +138,9 @@ export async function listPublicProductRecords(
 export async function findBookableProduct(
   business: PublicBusinessRecord,
   productId: string,
-): Promise<PublicProductDocument & ProductDocument & { id: string }> {
+): Promise<BookedProductRecord> {
   const snapshot = await firestore.collection(collections.products).doc(productId).get();
-  const product = snapshot.data();
+  const product = snapshot.data() as ProductDocument;
 
   if (!snapshot.exists || !product || product.tenantId !== business.tenantId) {
     throw new DomainError('NOT_FOUND', 'Serviço não encontrado para esta empresa.');

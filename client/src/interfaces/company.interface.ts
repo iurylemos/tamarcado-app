@@ -18,6 +18,7 @@ export interface CompanySummary {
 export interface CompanyCatalog {
   business: CompanySummary;
   products: PublicProductSummary[];
+  hasMore?: boolean;
 }
 
 export interface PublicProductSummary {

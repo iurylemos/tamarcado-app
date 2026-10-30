@@ -1,10 +1,11 @@
 import { useMemo, type JSX } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import type { CompanyCatalog } from '../interfaces/company.interface';
-import type { PublicCatalogStatus } from '../interfaces/catalog.interface';
+import type { CatalogCursor, PublicCatalogStatus } from '../interfaces/catalog.interface';
 import { ReactQueryConfig } from '../config/react-query.config';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
+import { CatalogUtil } from '../utils/catalog.util';
 
 type CompanyCatalogPageProps = {
   slug: string;
@@ -17,15 +18,38 @@ export default function CompanyCatalogPage({
   initialCatalog,
   initialStatus,
 }: Readonly<CompanyCatalogPageProps>): JSX.Element {
-  const { data, error, isPending, isError } = useQuery({
-    queryKey: ReactQueryConfig.companyCatalogQueryKey(slug),
-    queryFn: () => getCompanyCatalog(slug),
-    enabled: Boolean(slug),
-    initialData: initialCatalog,
-    staleTime: ReactQueryConfig.queryStaleTime,
-  });
+  const { data, error, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useInfiniteQuery({
+      queryKey: [...ReactQueryConfig.companyCatalogQueryKey(slug), 'pages'],
+      queryFn: ({ pageParam }) =>
+        getCompanyCatalog(slug, { pageSize: CatalogUtil.defaultLimitPageSize, after: pageParam }),
+      initialPageParam: undefined as CatalogCursor | undefined,
+      getNextPageParam: (lastPage: CompanyCatalog | null): CatalogCursor | null => {
+        if (!lastPage) return null;
 
-  const catalog = data ?? null;
+        const last = lastPage.products.at(-1);
+
+        return lastPage.hasMore && last ? { id: last.id, name: last.name } : null;
+      },
+      enabled: Boolean(slug),
+      ...(initialCatalog
+        ? {
+            initialData: {
+              pages: [initialCatalog],
+              pageParams: [undefined as CatalogCursor | undefined],
+            },
+          }
+        : {}),
+      staleTime: ReactQueryConfig.queryStaleTime,
+    });
+
+  const catalog = useMemo<CompanyCatalog | null>(() => {
+    const [first] = data?.pages ?? [];
+
+    if (!first) return null;
+
+    return { ...first, products: data!.pages.flatMap((page) => page?.products ?? []) };
+  }, [data]);
 
   const isUnavailable = useMemo<boolean>(
     () =>
@@ -51,5 +75,15 @@ export default function CompanyCatalogPage({
     [initialStatus, isPending, isError, isUnavailable, catalog],
   );
 
-  return <CompanyCatalogTemplate catalog={catalog} status={status} />;
+  return (
+    <CompanyCatalogTemplate
+      catalog={catalog}
+      status={status}
+      hasMore={Boolean(hasNextPage)}
+      loadingMore={isFetchingNextPage}
+      onLoadMore={() => {
+        void fetchNextPage();
+      }}
+    />
+  );
 }

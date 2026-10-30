@@ -10,3 +10,5 @@ export type PublicCatalogData = {
 };
 
 export type PublicScheduleData = Omit<PublicCatalogData, 'productId'>;
+
+export type CatalogCursor = { id: string; name: string };

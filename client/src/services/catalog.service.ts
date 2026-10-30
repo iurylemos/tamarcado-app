@@ -9,10 +9,29 @@ import type {
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
 import { isValidBusinessSlug } from '../utils/business-slug.util';
-import { collection, getDocsFromServer, limit, query, where } from 'firebase/firestore';
+import {
+  collection,
+  documentId,
+  getDocsFromServer,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  where,
+  type QueryConstraint,
+} from 'firebase/firestore';
 import { db } from '../config/firebase.config';
 
-export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | null> {
+export type CompanyCatalogOptions = {
+  productId?: string;
+  pageSize?: number;
+  after?: Pick<PublicProductSummary, 'id' | 'name'>;
+};
+
+export async function getCompanyCatalog(
+  slug: string,
+  options: CompanyCatalogOptions = {},
+): Promise<CompanyCatalog | null> {
   if (!isValidBusinessSlug(slug)) return null;
 
   const businesses = await getDocsFromServer(
@@ -33,26 +52,42 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
 
   if (!tenantId) return null;
 
-  const [products, galleries] = await Promise.all([
-    getDocsFromServer(
-      query(
-        collection(db, 'public_products'),
-        where('tenantId', '==', tenantId),
-        where('businessSlug', '==', slug),
-        where('active', '==', true),
-        where('published', '==', true),
-      ),
-    ),
-    getDocsFromServer(
-      query(
-        collection(db, 'public_product_galleries'),
-        where('tenantId', '==', tenantId),
-        where('businessSlug', '==', slug),
-        where('published', '==', true),
-        limit(500),
-      ),
-    ),
-  ]);
+  const { productId, pageSize, after } = options;
+  const productConstraints: QueryConstraint[] = [
+    where('tenantId', '==', tenantId),
+    where('businessSlug', '==', slug),
+    where('active', '==', true),
+    where('published', '==', true),
+  ];
+
+  if (productId) productConstraints.push(where(documentId(), '==', productId));
+
+  if (pageSize) {
+    productConstraints.push(orderBy('name'), orderBy(documentId()));
+    if (after) productConstraints.push(startAfter(after.name, after.id));
+    productConstraints.push(limit(pageSize));
+  }
+
+  const products = await getDocsFromServer(
+    query(collection(db, 'public_products'), ...productConstraints),
+  );
+
+  const productIds = products.docs.map((snapshot) => snapshot.id);
+  const galleryConstraints: QueryConstraint[] = [
+    where('tenantId', '==', tenantId),
+    where('businessSlug', '==', slug),
+    where('published', '==', true),
+  ];
+
+  // Firestore 'in' accepts at most 30 values.
+  if (productIds.length <= 30) galleryConstraints.push(where('productId', 'in', productIds));
+  else galleryConstraints.push(limit(500));
+
+  const galleries = productIds.length
+    ? await getDocsFromServer(
+        query(collection(db, 'public_product_galleries'), ...galleryConstraints),
+      )
+    : { docs: [] };
 
   const business: CompanySummary = {
     id: businessDoc.id,
@@ -101,5 +136,9 @@ export async function getCompanyCatalog(slug: string): Promise<CompanyCatalog | 
         Number.isInteger(product.priceCents) && Number.isInteger(product.durationMinutes),
     );
 
-  return { business, products: visibleProducts };
+  return {
+    business,
+    products: visibleProducts,
+    ...(pageSize ? { hasMore: products.docs.length === pageSize } : {}),
+  };
 }

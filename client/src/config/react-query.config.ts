@@ -1,6 +1,7 @@
 export class ReactQueryConfig {
   public static readonly companyCatalogKey: string = 'company-catalog';
   public static readonly availabilityKey: string = 'availability';
+  public static readonly productKey: string = 'product';
   public static readonly availabilitySearchKey: string = 'availability-search';
   public static readonly queryStaleTime: number = 1000 * 60 * 5;
   public static readonly codeErrors: string[] = [
@@ -14,8 +15,10 @@ export class ReactQueryConfig {
     'functions/not-found',
   ];
 
-  public static companyCatalogQueryKey(slug: string): string[] {
-    return [this.companyCatalogKey, slug];
+  public static companyCatalogQueryKey(slug: string, productId?: string): string[] {
+    return productId
+      ? [this.companyCatalogKey, slug, this.productKey, productId]
+      : [this.companyCatalogKey, slug];
   }
 
   public static availabilityQueryKey(
