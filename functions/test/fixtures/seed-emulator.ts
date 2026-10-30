@@ -60,7 +60,7 @@ async function clearEmulatorData(): Promise<void> {
   const bucketName =
     process.env.VITE_FIREBASE_STORAGE_BUCKET ??
     process.env.FIREBASE_STORAGE_BUCKET ??
-    `${projectId}.appspot.com`;
+    `${projectId}.firebasestorage.com`;
   await getStorage(app).bucket(bucketName).deleteFiles({ force: true });
 
   for (const collection of await db.listCollections()) {

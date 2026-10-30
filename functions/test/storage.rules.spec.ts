@@ -12,7 +12,7 @@ const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 const bucketName =
   process.env.VITE_FIREBASE_STORAGE_BUCKET ??
   process.env.FIREBASE_STORAGE_BUCKET ??
-  `${projectId}.appspot.com`;
+  `${projectId}.firebasestorage.com`;
 
 const testUsers = [
   {
