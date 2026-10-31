@@ -5,7 +5,7 @@ import { Writable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDevMiddleware, renderPage } from 'vike/server';
 import { renderPublicContent } from './entry-server';
-import type { CompanyCatalog } from './interfaces/company.interface';
+import type { CompanySummary } from './interfaces/company.interface';
 
 const clientRoot = process.cwd();
 
@@ -22,12 +22,12 @@ afterAll(async () => {
 
 async function renderVikePage(
   urlOriginal: string,
-  initialCatalog?: CompanyCatalog,
+  initialBusiness?: CompanySummary,
 ): Promise<string> {
   const pageContext = await renderPage({
     urlOriginal: `http://localhost${urlOriginal}`,
     headersOriginal: { 'user-agent': 'Mozilla/5.0' },
-    ...(initialCatalog ? { initialCatalog } : {}),
+    ...(initialBusiness ? { initialBusiness, initialCatalogStatus: 'ready' as const } : {}),
   });
 
   if (!pageContext.httpResponse) throw new Error(`No HTTP response for ${urlOriginal}`);
@@ -46,11 +46,8 @@ async function renderVikePage(
   return Buffer.concat(chunks).toString('utf8');
 }
 
-function createCatalog(name: string, slug: string): CompanyCatalog {
-  return {
-    business: { id: slug, name, slug, segment: 'beauty' },
-    products: [],
-  };
+function createBusiness(name: string, slug: string): CompanySummary {
+  return { id: slug, name, slug, segment: 'beauty' };
 }
 
 describe('renderPublicContent', () => {
@@ -94,12 +91,12 @@ describe('Vike SSR integration', () => {
     expect(markup).not.toContain('Empresa não encontrada.');
   });
 
-  it('keeps concurrent tenant renders isolated and serializes hydrated catalog queries', async () => {
+  it('keeps concurrent tenant renders isolated and renders each business name', async () => {
     const [studio, barbershop] = await Promise.all([
-      renderVikePage('/empresa/studio-aurora', createCatalog('Studio Aurora', 'studio-aurora')),
+      renderVikePage('/empresa/studio-aurora', createBusiness('Studio Aurora', 'studio-aurora')),
       renderVikePage(
         '/empresa/barbearia-lunar',
-        createCatalog('Barbearia Lunar', 'barbearia-lunar'),
+        createBusiness('Barbearia Lunar', 'barbearia-lunar'),
       ),
     ]);
 
@@ -107,9 +104,5 @@ describe('Vike SSR integration', () => {
     expect(studio).not.toContain('Barbearia Lunar');
     expect(barbershop).toContain('Barbearia Lunar');
     expect(barbershop).not.toContain('Studio Aurora');
-    expect(studio).toContain('company-catalog');
-    expect(barbershop).toContain('company-catalog');
-    expect(studio).toContain('application/json');
-    expect(barbershop).toContain('application/json');
   });
 });

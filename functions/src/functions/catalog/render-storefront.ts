@@ -2,7 +2,6 @@ import { logUnexpectedFailure } from '../../services/diagnostic-logging.service'
 import { onRequest, type Request } from 'firebase-functions/v2/https';
 import type { Response } from 'firebase-functions/v1';
 import type {
-  CompanyCatalog,
   CompanySummary,
   PublicProductSummary,
 } from '../../../../client/src/interfaces/company.interface';
@@ -10,20 +9,19 @@ import type { PublicCatalogStatus } from '../../interfaces/catalog.interface';
 import { DomainError } from '../../../../shared/domain/errors';
 import {
   findPublicBusiness,
-  listPublicProductRecords,
+  findPublicProductRecord,
+  type PublicBusinessRecord,
 } from '../../services/public-catalog.service';
 import { renderPage } from 'vike/server';
+import type { PublicProductRecord } from '../../interfaces/product.interface';
 
-async function loadPublicCatalog(slug: string, productId?: string): Promise<CompanyCatalog> {
-  const defaultLimitPageSize: number = 10;
+type PublicStorefrontData = {
+  business: CompanySummary;
+  product?: PublicProductSummary | null;
+};
 
-  const business = await findPublicBusiness(slug);
-  const productRecords = await listPublicProductRecords(
-    business,
-    productId ? { productId } : { limit: defaultLimitPageSize },
-  );
-
-  const publicBusiness: CompanySummary = {
+function toPublicBusiness(business: PublicBusinessRecord): CompanySummary {
+  return {
     id: business.id,
     name: business.name,
     slug: business.slug,
@@ -31,40 +29,50 @@ async function loadPublicCatalog(slug: string, productId?: string): Promise<Comp
     description: business.description,
     logoUrl: business.logoUrl,
   };
+}
 
-  const products = productRecords.map(
-    ({
-      id,
-      name,
-      description,
-      imageUrl,
-      customizationAttributes,
-      variantPrices,
-      defaultImages,
-      imageGalleries,
-      priceCents,
-      durationMinutes,
-    }): PublicProductSummary => ({
-      id,
-      name,
-      description,
-      imageUrl,
-      ...(customizationAttributes ? { customizationAttributes } : {}),
-      ...(variantPrices ? { variantPrices } : {}),
-      ...(defaultImages ? { defaultImages } : {}),
-      ...(imageGalleries ? { imageGalleries } : {}),
-      priceCents,
-      durationMinutes,
-    }),
-  );
-
+function toPublicProduct({
+  id,
+  name,
+  description,
+  imageUrl,
+  customizationAttributes,
+  variantPrices,
+  defaultImages,
+  imageGalleries,
+  priceCents,
+  durationMinutes,
+}: PublicProductRecord): PublicProductSummary {
   return {
-    business: publicBusiness,
-    products,
-    ...(!productId && productRecords.length === defaultLimitPageSize ? { hasMore: true } : {}),
+    id,
+    name,
+    description,
+    imageUrl,
+    ...(customizationAttributes ? { customizationAttributes } : {}),
+    ...(variantPrices ? { variantPrices } : {}),
+    ...(defaultImages ? { defaultImages } : {}),
+    ...(imageGalleries ? { imageGalleries } : {}),
+    priceCents,
+    durationMinutes,
   };
 }
 
+async function loadPublicStorefront(
+  slug: string,
+  productId?: string,
+): Promise<PublicStorefrontData> {
+  if (!productId) return { business: toPublicBusiness(await findPublicBusiness(slug)) };
+
+  const [business, product] = await Promise.all([
+    findPublicBusiness(slug),
+    findPublicProductRecord(slug, productId),
+  ]);
+
+  return {
+    business: toPublicBusiness(business),
+    product: product && product.tenantId === business.tenantId ? toPublicProduct(product) : null,
+  };
+}
 function isUnavailableError(error: unknown): boolean {
   if (!error || typeof error !== 'object' || !('code' in error)) return false;
   return (
@@ -86,7 +94,8 @@ function decodePathSegment(segment: string): string | null {
 export const renderStorefront = onRequest(
   async (request: Request, response: Response): Promise<void> => {
     const segments = request.path.split('/').filter(Boolean);
-    let initialCatalog: CompanyCatalog | null = null;
+    let initialBusiness: CompanySummary | null = null;
+    let initialProduct: PublicProductSummary | null = null;
     let initialCatalogStatus: PublicCatalogStatus | undefined;
     let statusCode: number | undefined;
 
@@ -100,10 +109,12 @@ export const renderStorefront = onRequest(
         statusCode = 404;
       } else {
         try {
-          initialCatalog = await loadPublicCatalog(
+          const storefront = await loadPublicStorefront(
             slug,
             segments[2] === 'agendar' && requestedProductId ? requestedProductId : undefined,
           );
+          initialBusiness = storefront.business;
+          initialProduct = storefront.product ?? null;
           initialCatalogStatus = 'ready';
         } catch (error: unknown) {
           if (error instanceof DomainError && error.code === 'NOT_FOUND') {
@@ -125,12 +136,12 @@ export const renderStorefront = onRequest(
       }
 
       if (
-        initialCatalog &&
-        segments.length === 4 &&
+        initialBusiness &&
         segments[2] === 'agendar' &&
-        (!requestedProductId ||
-          !initialCatalog.products.some((product) => product.id === requestedProductId))
+        segments.length === 4 &&
+        !initialProduct
       ) {
+        initialCatalogStatus = 'not-found';
         statusCode = 404;
       }
     }
@@ -142,7 +153,7 @@ export const renderStorefront = onRequest(
         urlOriginal: request.originalUrl || request.url || request.path,
         headersOriginal: { 'user-agent': request.get('user-agent') ?? '' },
         origin,
-        ...(initialCatalogStatus ? { initialCatalogStatus, initialCatalog } : {}),
+        ...(initialCatalogStatus ? { initialCatalogStatus, initialBusiness, initialProduct } : {}),
       });
 
       if (!pageContext.httpResponse) {

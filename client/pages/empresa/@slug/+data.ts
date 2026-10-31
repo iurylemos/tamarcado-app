@@ -4,17 +4,17 @@ import type { PublicScheduleData } from '../../../src/interfaces/catalog.interfa
 export function data(pageContext: Readonly<PageContextServer>): PublicScheduleData {
   const {
     routeParams: { slug },
-    initialCatalog,
+    initialBusiness,
     initialCatalogStatus,
   } = pageContext;
 
-  if (!initialCatalog && !initialCatalogStatus) {
+  if (!initialBusiness && !initialCatalogStatus) {
     return { slug };
   }
 
-  const catalog = initialCatalog?.business.slug === slug ? initialCatalog : null;
+  const business = initialBusiness?.slug === slug ? initialBusiness : null;
 
-  const status = catalog !== null ? 'ready' : (initialCatalogStatus ?? 'not-found');
+  const status = business !== null ? 'ready' : (initialCatalogStatus ?? 'not-found');
 
-  return { slug, catalog, status };
+  return { slug, business, status };
 }

@@ -5,15 +5,12 @@ import type { Request } from 'firebase-functions/v2/https';
 import type { Response } from 'firebase-functions/v1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '../../../../shared/domain/errors';
-import {
-  findPublicBusiness,
-  listPublicProductRecords,
-} from '../../services/public-catalog.service';
+import { findPublicBusiness, findPublicProductRecord } from '../../services/public-catalog.service';
 import { renderStorefront } from './render-storefront';
 
 vi.mock('../../services/public-catalog.service', () => ({
   findPublicBusiness: vi.fn(),
-  listPublicProductRecords: vi.fn(),
+  findPublicProductRecord: vi.fn(),
 }));
 
 class TestResponse extends Writable {
@@ -131,8 +128,10 @@ beforeEach(() => {
     if (!business) throw new DomainError('NOT_FOUND', 'Empresa não encontrada.');
     return business;
   });
-  vi.mocked(listPublicProductRecords).mockImplementation(async (business) => {
-    return products[business.slug as keyof typeof products] ?? [];
+  vi.mocked(findPublicProductRecord).mockImplementation(async (slug, productId) => {
+    return (
+      products[slug as keyof typeof products]?.find((product) => product.id === productId) ?? null
+    );
   });
 });
 
@@ -162,7 +161,7 @@ describe('renderStorefront', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Studio Aurora');
-    expect(response.body).toContain('Corte e finalização');
+    expect(response.body).not.toContain('Corte e finalização');
     expect(response.body).toContain('<title>Studio Aurora | Tá Marcado</title>');
     expect(response.body).toContain('class="_rqd_"');
     expect(response.body).toContain('application/json');
@@ -170,9 +169,7 @@ describe('renderStorefront', () => {
   });
 
   it('server-renders a published booking route with its matching public service', async () => {
-    const response = await requestStorefront(
-      '/empresa/studio-aurora/agendar/service-corte',
-    );
+    const response = await requestStorefront('/empresa/studio-aurora/agendar/service-corte');
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Studio Aurora');
@@ -190,9 +187,7 @@ describe('renderStorefront', () => {
   });
 
   it('returns a not-found state when a booking service does not belong to the requested business', async () => {
-    const response = await requestStorefront(
-      '/empresa/studio-aurora/agendar/service-barba',
-    );
+    const response = await requestStorefront('/empresa/studio-aurora/agendar/service-barba');
 
     expect(response.statusCode).toBe(404);
     expect(response.body).toContain('Serviço não encontrado.');

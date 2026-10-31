@@ -8,9 +8,7 @@ export default function HomeTemplate(): JSX.Element {
         <section className="neutral-home-card" aria-labelledby="home-heading">
           <p className="eyebrow">TÁ MARCADO</p>
           <h1 id="home-heading">Acesse o catálogo do seu negócio</h1>
-          <p>
-            Peça o link diretamente ao negócio para conhecer os serviços e agendar.
-          </p>
+          <p>Peça o link diretamente ao negócio para conhecer os serviços e agendar.</p>
           <p className="neutral-home-note">
             Cada negócio compartilha seu próprio catálogo digital.
           </p>

@@ -4,9 +4,7 @@ import SkeletonCard from './SkeletonCard';
 
 describe('SkeletonCard', () => {
   it('keeps the service image area static while showing skeletons for its information', () => {
-    const { container } = render(
-      <SkeletonCard variant="service" imagePlaceholder />,
-    );
+    const { container } = render(<SkeletonCard variant="service" imagePlaceholder />);
 
     expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('img')).not.toBeInTheDocument();

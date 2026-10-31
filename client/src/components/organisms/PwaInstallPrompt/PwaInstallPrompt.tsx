@@ -26,10 +26,7 @@ export default function PwaInstallPrompt({
 
   return (
     <>
-      <aside
-        className="pwa-install-prompt"
-        aria-label={`Instalar catálogo de ${businessName}`}
-      >
+      <aside className="pwa-install-prompt" aria-label={`Instalar catálogo de ${businessName}`}>
         <p>Tenha o catálogo de {businessName} na tela inicial do seu iPhone.</p>
         <button type="button" onClick={() => setInstructionsOpen(true)}>
           Adicionar app
@@ -44,10 +41,7 @@ export default function PwaInstallPrompt({
         </button>
       </aside>
       {instructionsOpen && (
-        <div
-          className="pwa-install-backdrop"
-          onClick={() => setInstructionsOpen(false)}
-        >
+        <div className="pwa-install-backdrop" onClick={() => setInstructionsOpen(false)}>
           <section
             className="pwa-install-dialog"
             role="dialog"
