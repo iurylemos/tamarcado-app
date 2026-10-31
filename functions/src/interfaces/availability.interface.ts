@@ -33,3 +33,16 @@ export interface BoundedAvailabilityContext {
   professionals: BoundedProfessionalSchedule[];
   now: number;
 }
+
+export type SearchAvailabilityBase = {
+  tenantId: string;
+  timezone: string;
+  bookingInterval: number;
+  durationMinutes: number;
+  assignedIds: string[];
+};
+
+export type SearchAvailabilityWindow = {
+  schedules: Map<string, Omit<BoundedProfessionalSchedule, 'professional' | 'blocks'>>;
+  blocks: BlockedPeriodDocument[];
+};
