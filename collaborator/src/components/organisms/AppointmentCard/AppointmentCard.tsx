@@ -1,5 +1,4 @@
-import type { JSX } from 'react';
-import { useMemo } from 'react';
+import { useMemo, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import type { AppointmentStatus } from '@shared/appointment-status';
 import { buildAppointmentConfirmationUrl } from '@shared/whatsapp';
@@ -32,7 +31,7 @@ export default function AppointmentCard({
     timeStyle: 'short',
   }).format(appointment.startsAt);
 
-  const confirmationUrl = useMemo(() => {
+  const confirmationUrl = useMemo<string | null>(() => {
     if (appointment.status !== 'confirmed' || !appointment.whatsappOptIn) return null;
 
     const dateOptions = { timeZone: timezone } as const;

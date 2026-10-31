@@ -28,7 +28,7 @@ export default function AIAnalysisPage({ timezone }: Readonly<AIAnalysisPageProp
   const pendingKey = useRef<AnalysisKey | null>(null);
   const memoGoal = useMemo<AnalysisGoal>(() => ({ min: 10, max: 500 }), []);
 
-  const markdown = useMemo(
+  const markdown = useMemo<string>(
     () => (analysis ? MarkdownUtil.buildAnalysisMarkdown(analysis) : ''),
     [analysis],
   );

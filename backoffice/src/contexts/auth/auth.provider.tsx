@@ -1,6 +1,6 @@
 import { onAuthStateChanged } from 'firebase/auth';
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
-import type { AuthSession } from '../../interfaces/auth.interface';
+import type { AuthSession, AuthContextValue } from '../../interfaces/auth.interface';
 import { signInWithEmail, signOutCurrentUser } from '../../services/auth.service';
 import { auth } from '../../config/firebase.config';
 import { AuthContext } from './auth.context';
@@ -78,9 +78,13 @@ export default function AuthProvider({ children }: Readonly<AuthProviderProps>):
     (email: string, password: string) => signInWithEmail(email, password),
     [],
   );
+
   const logout = useCallback(() => signOutCurrentUser(), []);
 
-  const value = useMemo(() => ({ ...session, login, logout }), [session, login, logout]);
+  const authValue = useMemo<AuthContextValue>(
+    () => ({ ...session, login, logout }),
+    [session, login, logout],
+  );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>;
 }

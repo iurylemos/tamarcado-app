@@ -453,7 +453,7 @@ export default function BookingPage({
     }
   };
 
-  const appointmentShareText = useMemo(
+  const appointmentShareText = useMemo<string>(
     () =>
       receipt && catalog && product
         ? [
