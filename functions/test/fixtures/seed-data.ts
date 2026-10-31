@@ -177,6 +177,312 @@ const beautyProducts: BeautyProductSeed[] = [
   },
 ];
 
+const additionalBeautyProducts: Omit<
+  BeautyProductSeed,
+  'customizationAttributes' | 'variantPrices'
+>[] = [
+  {
+    id: 'service-vitoria-brow-design-personalizado',
+    name: 'Design personalizado de sobrancelhas',
+    priceCents: 3500,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-brow-design-henna-premium',
+    name: 'Design de sobrancelhas com henna premium',
+    priceCents: 5500,
+    durationMinutes: 60,
+  },
+  {
+    id: 'service-vitoria-brow-tintura',
+    name: 'Tintura de sobrancelhas',
+    priceCents: 3000,
+    durationMinutes: 30,
+  },
+  {
+    id: 'service-vitoria-brow-laminacao',
+    name: 'Laminação de sobrancelhas',
+    priceCents: 9000,
+    durationMinutes: 75,
+  },
+  {
+    id: 'service-vitoria-brow-reconstrucao',
+    name: 'Reconstrução de sobrancelhas',
+    priceCents: 6500,
+    durationMinutes: 60,
+  },
+  {
+    id: 'service-vitoria-brow-neutralizacao',
+    name: 'Neutralização de sobrancelhas',
+    priceCents: 4500,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-brow-mapeamento',
+    name: 'Mapeamento facial de sobrancelhas',
+    priceCents: 4000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-brow-camuflagem',
+    name: 'Camuflagem de falhas nas sobrancelhas',
+    priceCents: 5000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-brow-esfoliacao',
+    name: 'Esfoliação da região das sobrancelhas',
+    priceCents: 2500,
+    durationMinutes: 20,
+  },
+  {
+    id: 'service-vitoria-brow-spa',
+    name: 'Spa de sobrancelhas',
+    priceCents: 7000,
+    durationMinutes: 60,
+  },
+  {
+    id: 'service-vitoria-lash-classic',
+    name: 'Alongamento de cílios clássico',
+    priceCents: 15000,
+    durationMinutes: 120,
+  },
+  {
+    id: 'service-vitoria-lash-hibrido',
+    name: 'Alongamento de cílios híbrido',
+    priceCents: 17000,
+    durationMinutes: 135,
+  },
+  {
+    id: 'service-vitoria-lash-volume-russo',
+    name: 'Alongamento de cílios volume russo',
+    priceCents: 19000,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-lash-volume-egipcio',
+    name: 'Alongamento de cílios volume egípcio',
+    priceCents: 18000,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-lash-volume-m5d',
+    name: 'Alongamento de cílios volume 5D',
+    priceCents: 20000,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-lash-mega-volume',
+    name: 'Alongamento de cílios mega volume',
+    priceCents: 22000,
+    durationMinutes: 180,
+  },
+  {
+    id: 'service-vitoria-lash-efeito-molhado',
+    name: 'Alongamento de cílios efeito molhado',
+    priceCents: 18000,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-lash-efeito-gatinho',
+    name: 'Alongamento de cílios efeito gatinho',
+    priceCents: 17500,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-lash-efeito-delineado',
+    name: 'Alongamento de cílios efeito delineado',
+    priceCents: 18500,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-lash-colorido',
+    name: 'Alongamento de cílios com fios coloridos',
+    priceCents: 19000,
+    durationMinutes: 160,
+  },
+  {
+    id: 'service-vitoria-lash-remocao',
+    name: 'Remoção de extensão de cílios',
+    priceCents: 4000,
+    durationMinutes: 30,
+  },
+  {
+    id: 'service-vitoria-lash-tintura',
+    name: 'Tintura de cílios',
+    priceCents: 3500,
+    durationMinutes: 30,
+  },
+  {
+    id: 'service-vitoria-lash-hidratacao',
+    name: 'Hidratação de cílios naturais',
+    priceCents: 4500,
+    durationMinutes: 40,
+  },
+  {
+    id: 'service-vitoria-lash-reposicao',
+    name: 'Reposição de fios de cílios',
+    priceCents: 6000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-lash-mapeamento',
+    name: 'Mapeamento personalizado de cílios',
+    priceCents: 5000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-facial-limpeza',
+    name: 'Limpeza de pele facial',
+    priceCents: 12000,
+    durationMinutes: 90,
+  },
+  {
+    id: 'service-vitoria-facial-hidratacao',
+    name: 'Hidratação facial profunda',
+    priceCents: 9000,
+    durationMinutes: 60,
+  },
+  {
+    id: 'service-vitoria-facial-peeling',
+    name: 'Peeling facial suave',
+    priceCents: 14000,
+    durationMinutes: 75,
+  },
+  {
+    id: 'service-vitoria-facial-drenagem',
+    name: 'Drenagem facial',
+    priceCents: 8000,
+    durationMinutes: 50,
+  },
+  {
+    id: 'service-vitoria-facial-massagem',
+    name: 'Massagem facial relaxante',
+    priceCents: 7000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-facial-mascara',
+    name: 'Máscara facial revitalizante',
+    priceCents: 6500,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-facial-dermaplaning',
+    name: 'Dermaplaning facial',
+    priceCents: 16000,
+    durationMinutes: 75,
+  },
+  {
+    id: 'service-vitoria-facial-microagulhamento',
+    name: 'Microagulhamento facial',
+    priceCents: 25000,
+    durationMinutes: 90,
+  },
+  {
+    id: 'service-vitoria-facial-led',
+    name: 'Fototerapia facial com LED',
+    priceCents: 10000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-facial-peeling-enzyme',
+    name: 'Peeling enzimático facial',
+    priceCents: 13000,
+    durationMinutes: 60,
+  },
+  {
+    id: 'service-vitoria-makeup-social',
+    name: 'Maquiagem social',
+    priceCents: 18000,
+    durationMinutes: 90,
+  },
+  {
+    id: 'service-vitoria-makeup-noite',
+    name: 'Maquiagem para noite',
+    priceCents: 22000,
+    durationMinutes: 105,
+  },
+  {
+    id: 'service-vitoria-makeup-noiva',
+    name: 'Maquiagem para noiva',
+    priceCents: 45000,
+    durationMinutes: 150,
+  },
+  {
+    id: 'service-vitoria-makeup-pele-madura',
+    name: 'Maquiagem para pele madura',
+    priceCents: 23000,
+    durationMinutes: 105,
+  },
+  {
+    id: 'service-vitoria-makeup-express',
+    name: 'Maquiagem express',
+    priceCents: 12000,
+    durationMinutes: 45,
+  },
+  {
+    id: 'service-vitoria-makeup-aula',
+    name: 'Aula de automaquiagem',
+    priceCents: 25000,
+    durationMinutes: 120,
+  },
+  {
+    id: 'service-vitoria-makeup-festa',
+    name: 'Maquiagem para festa',
+    priceCents: 20000,
+    durationMinutes: 90,
+  },
+  {
+    id: 'service-vitoria-makeup-editorial',
+    name: 'Maquiagem editorial',
+    priceCents: 30000,
+    durationMinutes: 120,
+  },
+  {
+    id: 'service-vitoria-makeup-ensaio',
+    name: 'Maquiagem para ensaio fotográfico',
+    priceCents: 24000,
+    durationMinutes: 105,
+  },
+  {
+    id: 'service-vitoria-makeup-pele-negra',
+    name: 'Maquiagem para pele negra',
+    priceCents: 22000,
+    durationMinutes: 100,
+  },
+  {
+    id: 'service-vitoria-depilacao-buco',
+    name: 'Depilação de buço',
+    priceCents: 2000,
+    durationMinutes: 15,
+  },
+  {
+    id: 'service-vitoria-depilacao-queixo',
+    name: 'Depilação de queixo',
+    priceCents: 2000,
+    durationMinutes: 15,
+  },
+  {
+    id: 'service-vitoria-depilacao-rosto',
+    name: 'Depilação facial completa',
+    priceCents: 5500,
+    durationMinutes: 35,
+  },
+  {
+    id: 'service-vitoria-depilacao-axilas',
+    name: 'Depilação de axilas',
+    priceCents: 4000,
+    durationMinutes: 25,
+  },
+  {
+    id: 'service-vitoria-depilacao-pernas',
+    name: 'Depilação de pernas completas',
+    priceCents: 12000,
+    durationMinutes: 60,
+  },
+];
+
 const fixedDate = (daysFromNow: number, hour = 10) => {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + daysFromNow);
@@ -301,7 +607,14 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
     },
   ];
-  const seededBeautyProducts = beautyProducts.map((service) => ({
+  const seededBeautyProducts = [
+    ...beautyProducts,
+    ...additionalBeautyProducts.map((service) => ({
+      ...service,
+      customizationAttributes: [],
+      variantPrices: [],
+    })),
+  ].map((service) => ({
     ...service,
     tenantId: 'tenant-vitoria-moura-beauty',
     imageUrl: beautyProductImageUrl,

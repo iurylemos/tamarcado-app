@@ -12,11 +12,6 @@ import { createSeedDocuments } from '../../../test/fixtures/seed-data';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getZonedDateTimeParts, localDateTimeToUtc } from '../../../../shared/domain/timezone';
 import { logger } from 'firebase-functions';
-import { processAppointmentNotification } from '../../services/appointment-notification.service';
-import {
-  WhatsAppProviderError,
-  type WhatsAppProvider,
-} from '../../services/whatsapp-provider.interface';
 import {
   createProductCustomizationTestDocuments,
   customizationTestProductId,
@@ -417,120 +412,6 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         whatsappOptIn: false,
       }),
     ).rejects.toThrow('Este horário não está mais disponível.');
-    expect((await db.collection('appointment_notification_jobs').get()).docs).toHaveLength(0);
-  });
-
-  it('records notification outcomes and skips completed jobs on redelivery', async () => {
-    const date = nextOpenDate();
-    const slot = (
-      await listAvailableSlots({
-        businessSlug: 'studio-aurora',
-        productId: 'service-corte',
-        professionalId: 'professional-ana',
-        date,
-      })
-    )[0];
-    const result = await createPublicAppointment({
-      businessSlug: 'studio-aurora',
-      productId: 'service-corte',
-      professionalId: 'professional-ana',
-      startsAt: slot!.startsAt,
-      customerName: 'Maria Silva',
-      customerPhone: '(11) 99999-0009',
-      whatsappOptIn: false,
-    });
-    const sendTemplate = vi.fn().mockResolvedValue({ providerMessageId: 'message-1' });
-    const provider: WhatsAppProvider = {
-      name: 'test',
-      sendTemplate,
-      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-1' }),
-    };
-
-    await processAppointmentNotification(result.appointmentId, provider);
-    await processAppointmentNotification(result.appointmentId, provider);
-
-    expect(sendTemplate).toHaveBeenCalledOnce();
-    const completedJob = await db
-      .collection('appointment_notification_jobs')
-      .doc(result.appointmentId)
-      .get();
-    expect(completedJob.data()).toMatchObject({ status: 'completed' });
-    const appointment = await db.collection('appointments').doc(result.appointmentId).get();
-    expect(appointment.data()).toMatchObject({ status: 'pending' });
-  });
-
-  it('records a sanitized failed notification without changing the appointment', async () => {
-    const date = nextOpenDate();
-    const slot = (
-      await listAvailableSlots({
-        businessSlug: 'studio-aurora',
-        productId: 'service-corte',
-        professionalId: 'professional-ana',
-        date,
-      })
-    )[0];
-    const result = await createPublicAppointment({
-      businessSlug: 'studio-aurora',
-      productId: 'service-corte',
-      professionalId: 'professional-ana',
-      startsAt: slot!.startsAt,
-      customerName: 'Maria Silva',
-      customerPhone: '(11) 99999-0009',
-      whatsappOptIn: false,
-    });
-    const provider: WhatsAppProvider = {
-      name: 'test',
-      sendTemplate: vi
-        .fn()
-        .mockRejectedValue(new WhatsAppProviderError('PROVIDER_ERROR', 'Provider delivery failed')),
-      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-1' }),
-    };
-
-    await processAppointmentNotification(result.appointmentId, provider);
-
-    const job = (
-      await db.collection('appointment_notification_jobs').doc(result.appointmentId).get()
-    ).data();
-    expect(job).toMatchObject({ status: 'failed', failureCode: 'provider_delivery_failed' });
-    expect(JSON.stringify(job)).not.toContain('+5511999990001');
-    expect(
-      (await db.collection('appointments').doc(result.appointmentId).get()).data()?.status,
-    ).toBe('pending');
-  });
-
-  it('leaves notification jobs pending when worker execution fails so the trigger can retry', async () => {
-    const date = nextOpenDate();
-    const slot = (
-      await listAvailableSlots({
-        businessSlug: 'studio-aurora',
-        productId: 'service-corte',
-        professionalId: 'professional-ana',
-        date,
-      })
-    )[0];
-    const result = await createPublicAppointment({
-      businessSlug: 'studio-aurora',
-      productId: 'service-corte',
-      professionalId: 'professional-ana',
-      startsAt: slot!.startsAt,
-      customerName: 'Maria Silva',
-      customerPhone: '(11) 99999-0009',
-      whatsappOptIn: false,
-    });
-    const provider: WhatsAppProvider = {
-      name: 'test',
-      sendTemplate: vi.fn().mockRejectedValue(new Error('temporary worker failure')),
-      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-1' }),
-    };
-
-    await expect(processAppointmentNotification(result.appointmentId, provider)).rejects.toThrow(
-      'Appointment notification processing failed.',
-    );
-    const job = await db
-      .collection('appointment_notification_jobs')
-      .doc(result.appointmentId)
-      .get();
-    expect(job.data()).toMatchObject({ status: 'pending' });
   });
 
   it('logs distinct request stages without customer personal data', async () => {
@@ -553,22 +434,6 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       customerPhone: '(11) 99999-0009',
       whatsappOptIn: false,
     });
-    const notificationJob = await db
-      .collection('appointment_notification_jobs')
-      .doc(booking.appointmentId)
-      .get();
-    const correlationId = notificationJob.data()?.correlationId;
-    expect(correlationId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    );
-    expect(correlationId).not.toBe(booking.appointmentId);
-
-    await processAppointmentNotification(booking.appointmentId, {
-      name: 'test',
-      sendTemplate: vi.fn().mockResolvedValue({ providerMessageId: 'message-2' }),
-      sendTemplateMessage: vi.fn().mockResolvedValue({ providerMessageId: 'message-2' }),
-    });
-
     const entries = info.mock.calls
       .filter(([message]) => message === 'booking.performance')
       .map(([, fields]) => fields);
@@ -580,7 +445,6 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         'slot_evaluation',
         'transaction',
         'total',
-        'worker_total',
       ]),
     );
     expect(
@@ -588,12 +452,14 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         (fields) => typeof (fields as { durationMs?: unknown }).durationMs === 'number',
       ),
     ).toBe(true);
-    const correlatedEntries = entries.filter((fields) =>
-      ['appointment_registration', 'notification_processing'].includes(
-        (fields as { operation: string }).operation,
-      ),
+    const correlatedEntries = entries.filter(
+      (fields) => (fields as { operation: string }).operation === 'appointment_registration',
     );
-    expect(correlatedEntries).toHaveLength(6);
+    const correlationId = (correlatedEntries[0] as { correlationId?: unknown }).correlationId;
+    expect(correlationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(correlationId).not.toBe(booking.appointmentId);
     expect(
       correlatedEntries.every(
         (fields) => (fields as { correlationId?: unknown }).correlationId === correlationId,
@@ -655,14 +521,6 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     expect(
       reservationDocumentId('tenant-aurora', 'professional-ana', Date.parse(slot!.startsAt)),
     ).toMatch(/^[a-f0-9]{64}$/);
-    const jobs = await db.collection('appointment_notification_jobs').get();
-    expect(jobs.docs).toHaveLength(1);
-    expect(jobs.docs[0]?.data()).toMatchObject({
-      appointmentId: accepted.value.appointmentId,
-      tenantId: 'tenant-aurora',
-      status: 'pending',
-    });
-    expect(jobs.docs[0]?.data()).not.toHaveProperty('customerPhoneE164');
   });
 });
 

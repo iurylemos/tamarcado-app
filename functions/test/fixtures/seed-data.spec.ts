@@ -129,7 +129,7 @@ describe('shared seed data', () => {
     });
   });
 
-  it('seeds four Vitória Moura Beauty products with complete variant prices', () => {
+  it('seeds Vitória Moura Beauty products with complete variant prices', () => {
     const tenantId = 'tenant-vitoria-moura-beauty';
     const professionalId = 'professional-vitoria-moura';
     const products = documents
@@ -186,6 +186,7 @@ describe('shared seed data', () => {
       active: true,
     });
 
+    expect(products).toHaveLength(54);
     expect(
       products.map(({ id, name, priceCents, durationMinutes }) => [
         id,
@@ -193,12 +194,14 @@ describe('shared seed data', () => {
         priceCents,
         durationMinutes,
       ]),
-    ).toEqual([
-      ['service-vitoria-brows', 'Sobrancelhas', 2500, 60],
-      ['service-vitoria-lashes', 'Cílios', 10000, 120],
-      ['service-vitoria-maintenance', 'Manutenção', 8500, 60],
-      ['service-vitoria-combo', 'Cílios + Sobrancelhas', 11500, 180],
-    ]);
+    ).toEqual(
+      expect.arrayContaining([
+        ['service-vitoria-brows', 'Sobrancelhas', 2500, 60],
+        ['service-vitoria-lashes', 'Cílios', 10000, 120],
+        ['service-vitoria-maintenance', 'Manutenção', 8500, 60],
+        ['service-vitoria-combo', 'Cílios + Sobrancelhas', 11500, 180],
+      ]),
+    );
     expect(variantPricesFor('service-vitoria-brows')?.map(({ priceCents }) => priceCents)).toEqual([
       2500, 4000, 5000, 8000,
     ]);
@@ -257,7 +260,7 @@ describe('shared seed data', () => {
       ]),
     );
 
-    expect(publicProducts).toHaveLength(4);
+    expect(publicProducts).toHaveLength(54);
     for (const product of products) {
       expect(findDocument('public_products', product.id)?.data).toMatchObject({
         tenantId,

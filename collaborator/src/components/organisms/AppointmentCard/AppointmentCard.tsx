@@ -1,6 +1,7 @@
-import type { JSX } from 'react';
+import { useMemo, type JSX } from 'react';
 import { Link } from 'react-router-dom';
 import type { AppointmentStatus } from '@shared/appointment-status';
+import { buildAppointmentConfirmationUrl } from '@shared/whatsapp';
 import type { CollaboratorAppointment } from '../../../interfaces/appointment.interface';
 import { CurrencyUtil } from '../../../utils/currency.util';
 
@@ -29,6 +30,23 @@ export default function AppointmentCard({
     dateStyle: 'long',
     timeStyle: 'short',
   }).format(appointment.startsAt);
+
+  const confirmationUrl = useMemo<string | null>(() => {
+    if (appointment.status !== 'confirmed' || !appointment.whatsappOptIn) return null;
+
+    const dateOptions = { timeZone: timezone } as const;
+
+    return buildAppointmentConfirmationUrl(appointment.customerPhoneE164, {
+      customerName: appointment.customerName,
+      serviceName: appointment.productNameSnapshot,
+      date: new Intl.DateTimeFormat('pt-BR', { ...dateOptions, dateStyle: 'long' }).format(
+        appointment.startsAt,
+      ),
+      time: new Intl.DateTimeFormat('pt-BR', { ...dateOptions, timeStyle: 'short' }).format(
+        appointment.startsAt,
+      ),
+    });
+  }, [appointment, timezone]);
 
   return (
     <article className="appointment-card">
@@ -91,6 +109,16 @@ export default function AppointmentCard({
             >
               Marcar como concluído
             </button>
+          )}
+          {confirmationUrl && (
+            <a
+              className="button button--secondary"
+              href={confirmationUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Enviar confirmação pelo WhatsApp
+            </a>
           )}
           {(appointment.status === 'pending' || appointment.status === 'confirmed') && (
             <Link className="button button--secondary" to={`/appointments/${appointment.id}`}>
