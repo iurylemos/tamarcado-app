@@ -16,9 +16,7 @@ export const collections = {
   publicProducts: 'public_products',
   productImageGalleries: 'product_image_galleries',
   publicProductGalleries: 'public_product_galleries',
-  providerWebhookEvents: 'provider_webhook_events',
   providerOutbox: 'provider_outbox',
-  appointmentNotificationJobs: 'appointment_notification_jobs',
   aiAnalysisExecutions: 'ai_analysis_executions',
   aiAnalysisProposals: 'ai_analysis_proposals',
 } as const;

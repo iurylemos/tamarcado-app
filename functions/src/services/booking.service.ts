@@ -387,9 +387,6 @@ export async function createPublicAppointment(
     );
 
     const appointmentRef = firestore.collection(collections.appointments).doc(appointmentId);
-    const notificationJobRef = firestore
-      .collection(collections.appointmentNotificationJobs)
-      .doc(appointmentId);
 
     const transactionStartedAt = performance.now();
 
@@ -448,15 +445,6 @@ export async function createPublicAppointment(
           });
         }
       }
-
-      transaction.create(notificationJobRef, {
-        appointmentId,
-        tenantId: business.tenantId,
-        correlationId,
-        status: 'pending',
-        createdAt,
-        updatedAt: createdAt,
-      });
     });
 
     logger.info('booking.performance', {

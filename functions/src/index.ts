@@ -4,7 +4,6 @@ export { getPublicCatalog } from './functions/catalog/get-public-catalog';
 export { listAvailability } from './functions/appointments/list-availability';
 export { searchAvailabilityCallable as searchAvailability } from './functions/appointments/search-availability';
 export { createPublicAppointmentCallable as createPublicAppointment } from './functions/appointments/create-public-appointment';
-export { processAppointmentNotificationCreated as processAppointmentNotification } from './functions/appointments/process-appointment-notification';
 export { listAppointmentsCallable as listAppointments } from './functions/appointments/list-appointments';
 export { updateAppointmentStatusCallable as updateAppointmentStatus } from './functions/appointments/update-appointment-status';
 export {
@@ -36,8 +35,6 @@ export {
   createContactCallable as createContact,
   setContactConsentCallable as setContactConsent,
 } from './functions/messages/manage-contact';
-export { sendAppointmentMessageCallable as sendAppointmentMessage } from './functions/messages/send-appointment-message';
-export { providerWebhook } from './functions/messages/process-provider-webhook';
 export { renderStorefront } from './functions/catalog/render-storefront';
 export { startAnalysisCallable as startAnalysis } from './functions/ai-analysis/start-analysis';
 export { getAnalysisReportCallable as getAnalysisReport } from './functions/ai-analysis/get-analysis-report';

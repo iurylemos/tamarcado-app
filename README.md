@@ -34,7 +34,7 @@ Consider a service business that offers multiple services and employs several pr
 2. The customer checks availability, selects a professional when required, and requests an appointment.
 3. The business manages its catalog and team through an administrative interface.
 4. Collaborators confirm or cancel requests and follow up with customers.
-5. Appointment notifications can be delivered through WhatsApp using a provider integration.
+5. Business users can open WhatsApp (`wa.me`) with a pre-filled confirmation message and send it manually.
 6. The owner can ask the platform's AI assistant for a growth analysis of the business (in development).
 
 Each business has its own link (`/empresa/{business-slug}`). There is no central directory or marketplace: customers always arrive through the business's own page.
@@ -45,7 +45,7 @@ Each business has its own link (`/empresa/{business-slug}`). There is no central
 - **Backoffice** for products, professionals, collaborator accounts, working hours, blocked periods, product images, and sales reports.
 - **Collaborator workspace** for appointments, customer history, messages, and reports.
 - **Booking integrity:** availability is checked again on the server, and reservations help prevent double booking.
-- **WhatsApp notifications** through Twilio (or an emulator-only test double for local work).
+- **WhatsApp confirmations** through a `wa.me` link that opens a pre-filled message the business sends manually.
 - **Reports** with CSV export.
 - **AI-assisted analysis** and **server-side rendering** (described below).
 
@@ -101,7 +101,7 @@ Tá Marcado is organized as an npm monorepo with three independent web applicati
 | Mastra                   | Functions               | AI agent for business analysis                    |
 | Tavily                   | Functions               | Optional public market research                   |
 | OpenRouter               | Functions               | Language model provider for reports               |
-| Twilio                   | Configurable provider   | WhatsApp messaging integration                    |
+| WhatsApp (wa.me)         | Click to Chat link      | Manual, pre-filled confirmation message           |
 | Sentry                   | Frontends               | Error monitoring in the browser                   |
 | Vitest                   | 5.x                     | Automated tests                                   |
 
@@ -169,7 +169,6 @@ Names only; never commit real values. See each workspace's `.env.example`. For l
 | ------------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
 | `VITE_FIREBASE_*`, `VITE_USE_EMULATORS`                 | Frontends       | Firebase web configuration and emulator switch (`VITE_FIREBASE_STORAGE_BUCKET` is used by the backoffice) |
 | `VITE_SENTRY_*`, `SENTRY_*`                             | Frontend builds | Optional error monitoring (`SENTRY_AUTH_TOKEN` is a build secret)                                         |
-| `WHATSAPP_PROVIDER`, `TWILIO_*`, `COLLABORATOR_APP_URL` | Functions       | WhatsApp provider settings                                                                                |
 | `OPENROUTER_API_KEY`, `TAVILY_API_KEY`                  | Functions       | AI analysis secrets (Firebase Secrets)                                                                    |
 
 ### Quality Checks
@@ -240,7 +239,7 @@ Imagine uma empresa de serviços que oferece diferentes serviços e trabalha com
 2. Consulta a disponibilidade, escolhe um profissional quando necessário e solicita um agendamento.
 3. A empresa administra seu catálogo e sua equipe pela interface administrativa.
 4. Os colaboradores confirmam ou cancelam as solicitações e acompanham os clientes.
-5. As notificações de agendamento podem ser enviadas pelo WhatsApp por meio de uma integração com um provedor.
+5. Usuários do negócio podem abrir o WhatsApp (`wa.me`) com uma mensagem de confirmação pré-preenchida e enviá-la manualmente.
 6. O dono do negócio pode pedir ao assistente de IA da plataforma uma análise de crescimento.
 
 Cada negócio tem seu próprio link (`/empresa/{slug-do-negocio}`). Não existe diretório central nem marketplace: o cliente sempre chega pela página do próprio negócio.
@@ -251,7 +250,7 @@ Cada negócio tem seu próprio link (`/empresa/{slug-do-negocio}`). Não existe 
 - **Backoffice** para produtos, profissionais, contas de colaboradores, horários de trabalho, bloqueios de agenda, imagens de produtos e relatórios de vendas.
 - **Área do colaborador** para agendamentos, histórico de clientes, mensagens e relatórios.
 - **Agendamento confiável:** a disponibilidade é verificada novamente no servidor e as reservas ajudam a evitar horários duplicados.
-- **Notificações por WhatsApp** via Twilio (ou um provedor de teste apenas para o emulador).
+- **Confirmações por WhatsApp** via link `wa.me`, que abre uma mensagem pré-preenchida para envio manual pelo negócio.
 - **Relatórios** com exportação em CSV.
 - **Análise com IA** e **renderização no servidor** (descritas abaixo).
 
@@ -307,7 +306,7 @@ O Tá Marcado utiliza um monorepo npm com três aplicações web independentes e
 | Mastra                   | Functions                | Agente de IA para análise do negócio           |
 | Tavily                   | Functions                | Pesquisa pública opcional de mercado           |
 | OpenRouter               | Functions                | Provedor do modelo de linguagem dos relatórios |
-| Twilio                   | Provedor configurável    | Integração de mensagens pelo WhatsApp          |
+| WhatsApp (wa.me)         | Link Click to Chat       | Mensagem de confirmação manual e pré-preenchida |
 | Sentry                   | Frontends                | Monitoramento de erros no navegador            |
 | Vitest                   | 5.x                      | Testes automatizados                           |
 
@@ -375,7 +374,6 @@ Somente os nomes; nunca versione valores reais. Consulte o `.env.example` de cad
 | ------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `VITE_FIREBASE_*`, `VITE_USE_EMULATORS`                 | Frontends            | Configuração web do Firebase e chave dos emuladores (`VITE_FIREBASE_STORAGE_BUCKET` é usada no backoffice) |
 | `VITE_SENTRY_*`, `SENTRY_*`                             | Builds dos frontends | Monitoramento de erros opcional (`SENTRY_AUTH_TOKEN` é um segredo de build)                                |
-| `WHATSAPP_PROVIDER`, `TWILIO_*`, `COLLABORATOR_APP_URL` | Functions            | Configuração do provedor de WhatsApp                                                                       |
 | `OPENROUTER_API_KEY`, `TAVILY_API_KEY`                  | Functions            | Segredos da análise com IA (Firebase Secrets)                                                              |
 
 ### Verificações de Qualidade

@@ -1,5 +1,4 @@
 ﻿import { Timestamp, type DocumentData, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
-import { loadAppointment, notifyCustomer } from './appointment-notification.service';
 import { HttpsError } from 'firebase-functions/v2/https';
 import {
   canTransitionAppointment,
@@ -178,18 +177,6 @@ export async function updateAppointmentStatus(
 
     return { appointmentId, status: nextStatus };
   });
-
-  const customerEvent = {
-    confirmed: 'confirmed',
-    cancelled: 'cancelled',
-    completed: 'completed',
-  } as const;
-
-  if (nextStatus !== 'pending') {
-    const updated = await loadAppointment(appointmentId);
-
-    if (updated) await notifyCustomer(customerEvent[nextStatus], updated);
-  }
 
   return result;
 }
@@ -492,10 +479,6 @@ export async function updateAppointment(
       professionalId: input.professionalId,
     };
   });
-
-  const updated = await loadAppointment(input.appointmentId);
-
-  if (updated) await notifyCustomer('rescheduled', updated);
 
   return result;
 }
