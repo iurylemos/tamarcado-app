@@ -73,6 +73,7 @@ async function loadPublicStorefront(
     product: product && product.tenantId === business.tenantId ? toPublicProduct(product) : null,
   };
 }
+
 function isUnavailableError(error: unknown): boolean {
   if (!error || typeof error !== 'object' || !('code' in error)) return false;
   return (
@@ -149,9 +150,10 @@ export const renderStorefront = onRequest(
     try {
       const host = request.get('host') ?? request.hostname;
       const origin = `${request.protocol}://${host}`;
+
       const pageContext = await renderPage({
         urlOriginal: request.originalUrl || request.url || request.path,
-        headersOriginal: { 'user-agent': request.get('user-agent') ?? '' },
+        headersOriginal: request.headers,
         origin,
         ...(initialCatalogStatus ? { initialCatalogStatus, initialBusiness, initialProduct } : {}),
       });
