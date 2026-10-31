@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
-import type { PublicProductSummary, CompanyCatalog } from '../interfaces/company.interface';
+import type {
+  PublicProductSummary,
+  CompanyCatalog,
+  CompanySummary,
+} from '../interfaces/company.interface';
 import type { BookingFormValues, BookingReceipt } from '../interfaces/booking.interface';
 import type {
   ProductCustomizationAttribute,
@@ -24,32 +28,41 @@ import BookingTemplate from '../components/templates/BookingTemplate/BookingTemp
 type BookingPageProps = {
   slug: string;
   productId: string;
-  initialCatalog?: CompanyCatalog | null;
-  initialCatalogStatus?: PublicCatalogStatus;
+  initialBusiness?: CompanySummary | null;
+  initialProduct?: PublicProductSummary | null;
+  initialStatus?: PublicCatalogStatus;
 };
 
 export default function BookingPage({
   slug,
   productId,
-  initialCatalog,
-  initialCatalogStatus,
+  initialBusiness,
+  initialProduct,
+  initialStatus,
 }: Readonly<BookingPageProps>): JSX.Element {
   const queryClient = useQueryClient();
-  const [catalog, setCatalog] = useState<CompanyCatalog | null>(initialCatalog ?? null);
+  const seededCatalog = useMemo<CompanyCatalog | null>(
+    () =>
+      initialBusiness && initialProduct
+        ? { business: initialBusiness, products: [initialProduct] }
+        : null,
+    [initialBusiness, initialProduct],
+  );
+  const [catalog, setCatalog] = useState<CompanyCatalog | null>(seededCatalog);
   const [date, setDate] = useState<string>(getNextBookableDate());
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
   const [selectedStartsAt, setSelectedStartsAt] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(initialCatalog === undefined);
+  const [loading, setLoading] = useState<boolean>(initialStatus === undefined);
   const [availabilityLoading, setAvailabilityLoading] = useState<boolean>(true);
   const [searchingNextDate, setSearchingNextDate] = useState<boolean>(false);
   const [nextDateSearchComplete, setNextDateSearchComplete] = useState<boolean>(false);
   const [nextDateSearchError, setNextDateSearchError] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>(
-    initialCatalogStatus === 'unavailable'
+    initialStatus === 'unavailable'
       ? 'Este catálogo está temporariamente indisponível. Tente novamente em instantes.'
-      : initialCatalogStatus === 'error'
+      : initialStatus === 'error'
         ? 'Não foi possível carregar os dados do serviço.'
         : '',
   );
@@ -195,12 +208,14 @@ export default function BookingPage({
   );
 
   useEffect(() => {
-    if (initialCatalog !== undefined) {
-      queryClient.setQueryData(
-        ReactQueryConfig.companyCatalogQueryKey(slug, productId),
-        initialCatalog,
-      );
-      setCatalog(initialCatalog);
+    if (initialStatus !== undefined) {
+      if (seededCatalog) {
+        queryClient.setQueryData(
+          ReactQueryConfig.companyCatalogQueryKey(slug, productId),
+          seededCatalog,
+        );
+      }
+      setCatalog(seededCatalog);
       setLoading(false);
       return;
     }
@@ -226,7 +241,7 @@ export default function BookingPage({
     return () => {
       current = false;
     };
-  }, [initialCatalog, productId, queryClient, slug]);
+  }, [initialStatus, seededCatalog, productId, queryClient, slug]);
 
   useEffect(() => {
     selectedDateRef.current = date;
@@ -456,7 +471,7 @@ export default function BookingPage({
   );
 
   if (!catalog) {
-    if (initialCatalogStatus === 'not-found') {
+    if (initialStatus === 'not-found') {
       return <BookingTemplate status="not-found" slug={slug} />;
     }
 
@@ -474,13 +489,7 @@ export default function BookingPage({
 
     if (error) return <BookingTemplate status="error" slug={slug} error={error} />;
 
-    return (
-      <CompanyCatalogPage
-        slug={slug}
-        initialCatalog={catalog}
-        initialStatus={catalog ? 'ready' : 'not-found'}
-      />
-    );
+    return <CompanyCatalogPage slug={slug} />;
   }
 
   if (!product) return <BookingTemplate status="not-found" slug={slug} />;

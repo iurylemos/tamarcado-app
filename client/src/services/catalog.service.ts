@@ -34,27 +34,8 @@ export async function getCompanyCatalog(
 ): Promise<CompanyCatalog | null> {
   if (!isValidBusinessSlug(slug)) return null;
 
-  const businesses = await getDocsFromServer(
-    query(
-      collection(db, 'public_businesses'),
-      where('slug', '==', slug),
-      where('published', '==', true),
-      limit(1),
-    ),
-  );
-
-  const businessDoc = businesses.docs[0];
-
-  if (!businessDoc) return null;
-
-  const rawBusiness = businessDoc.data();
-  const tenantId = rawBusiness.tenantId as string;
-
-  if (!tenantId) return null;
-
   const { productId, pageSize, after } = options;
   const productConstraints: QueryConstraint[] = [
-    where('tenantId', '==', tenantId),
     where('businessSlug', '==', slug),
     where('active', '==', true),
     where('published', '==', true),
@@ -68,27 +49,39 @@ export async function getCompanyCatalog(
     productConstraints.push(limit(pageSize));
   }
 
-  const products = await getDocsFromServer(
-    query(collection(db, 'public_products'), ...productConstraints),
-  );
+  // Business, products and (only for a single product) galleries do not depend on each other.
+  const [businesses, products, galleries] = await Promise.all([
+    getDocsFromServer(
+      query(
+        collection(db, 'public_businesses'),
+        where('slug', '==', slug),
+        where('published', '==', true),
+        limit(1),
+      ),
+    ),
+    getDocsFromServer(query(collection(db, 'public_products'), ...productConstraints)),
+    productId
+      ? getDocsFromServer(
+          query(
+            collection(db, 'public_product_galleries'),
+            where('businessSlug', '==', slug),
+            where('productId', '==', productId),
+            where('published', '==', true),
+          ),
+        )
+      : Promise.resolve({ docs: [] }),
+  ]);
 
-  const productIds = products.docs.map((snapshot) => snapshot.id);
-  const galleryConstraints: QueryConstraint[] = [
-    where('tenantId', '==', tenantId),
-    where('businessSlug', '==', slug),
-    where('published', '==', true),
-  ];
+  const businessDoc = businesses.docs[0];
 
-  // Firestore 'in' accepts at most 30 values.
-  if (productIds.length <= 30) galleryConstraints.push(where('productId', 'in', productIds));
-  else galleryConstraints.push(limit(500));
+  if (!businessDoc) return null;
 
-  const galleries = productIds.length
-    ? await getDocsFromServer(
-        query(collection(db, 'public_product_galleries'), ...galleryConstraints),
-      )
-    : { docs: [] };
+  const rawBusiness = businessDoc.data();
+  const tenantId = rawBusiness.tenantId as string;
 
+  if (!tenantId) return null;
+
+  const tenantProducts = products.docs.filter((snapshot) => snapshot.data().tenantId === tenantId);
   const business: CompanySummary = {
     id: businessDoc.id,
     name: rawBusiness.name as string,
@@ -109,7 +102,7 @@ export async function getCompanyCatalog(
     };
   });
 
-  const visibleProducts: PublicProductSummary[] = products.docs
+  const visibleProducts: PublicProductSummary[] = tenantProducts
     .map((snapshot) => {
       const data = snapshot.data();
       return {
@@ -124,9 +117,13 @@ export async function getCompanyCatalog(
           ? { variantPrices: data.variantPrices as ProductVariantPrice[] }
           : {}),
         ...(Array.isArray(data.defaultImages) ? { defaultImages: data.defaultImages } : {}),
-        imageGalleries: publicGalleries
-          .filter((gallery) => gallery.productId === snapshot.id)
-          .map((gallery) => gallery),
+        ...(productId
+          ? {
+              imageGalleries: publicGalleries.filter(
+                (gallery) => gallery.productId === snapshot.id,
+              ),
+            }
+          : {}),
         priceCents: data.priceCents as number,
         durationMinutes: data.durationMinutes as number,
       };

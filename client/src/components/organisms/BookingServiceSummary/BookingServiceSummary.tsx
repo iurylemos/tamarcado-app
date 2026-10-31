@@ -96,9 +96,7 @@ export default function BookingServiceSummary({
       )}
       <div className="booking-summary-details">
         <span>
-          {selectedPriceCents === undefined
-            ? 'Preço indisponível'
-            : formatBrl(selectedPriceCents)}
+          {selectedPriceCents === undefined ? 'Preço indisponível' : formatBrl(selectedPriceCents)}
         </span>
         <span>{product.durationMinutes} minutos</span>
       </div>

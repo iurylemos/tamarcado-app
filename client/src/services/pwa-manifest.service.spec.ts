@@ -24,8 +24,8 @@ describe('createCompanyPwaManifest', () => {
   });
 
   it.each(['', ' ', 'studio/aurora', 'Studio-Aurora'])('rejects invalid slug %j', (slug) => {
-    expect(() => createCompanyPwaManifest({ ...business, slug }, 'https://tamarcado.example')).toThrow(
-      'A valid company slug is required',
-    );
+    expect(() =>
+      createCompanyPwaManifest({ ...business, slug }, 'https://tamarcado.example'),
+    ).toThrow('A valid company slug is required');
   });
 });

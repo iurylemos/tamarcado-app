@@ -118,6 +118,8 @@ describe('booking service timing', () => {
     ).rejects.toBe(failure);
 
     expect(sentryMocks.metrics.distribution).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(sentryMocks.metrics.distribution.mock.calls)).not.toContain('11999990000');
+    expect(JSON.stringify(sentryMocks.metrics.distribution.mock.calls)).not.toContain(
+      '11999990000',
+    );
   });
 });

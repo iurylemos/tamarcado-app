@@ -940,10 +940,7 @@ describe('BookingPage professional selection', () => {
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
           <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
-          <Route
-            path="/empresa/:slug"
-            element={<CompanyCatalogPage slug="studio-aurora" />}
-          />
+          <Route path="/empresa/:slug" element={<CompanyCatalogPage slug="studio-aurora" />} />
         </Routes>
       </MemoryRouter>,
     );

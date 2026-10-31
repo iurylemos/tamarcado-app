@@ -18,42 +18,44 @@ vi.mock('../config/firebase.config', () => ({ db: {} }));
 describe('getCompanyCatalog', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('loads product and gallery metadata after resolving the business', async () => {
+  it('lists products without fetching galleries', async () => {
     vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({
-        docs: [
-          {
-            id: 'tenant-aurora',
-            data: () => ({ tenantId: 'tenant-aurora' }),
-          },
-        ],
-      } as never)
-      .mockResolvedValueOnce({
-        docs: [{ id: 'service-aurora', data: () => ({}) }],
+        docs: [{ id: 'tenant-aurora', data: () => ({ tenantId: 'tenant-aurora' }) }],
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
-    await getCompanyCatalog('studio-aurora');
+    await getCompanyCatalog('studio-aurora', { pageSize: 10 });
 
-    expect(getDocsFromServer).toHaveBeenCalledTimes(3);
+    expect(getDocsFromServer).toHaveBeenCalledTimes(2);
     expect(getDocsFromServer).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ source: 'public_products' }),
     );
+  });
+
+  it('loads a single product and its galleries in parallel with the business', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [{ id: 'tenant-aurora', data: () => ({ tenantId: 'tenant-aurora' }) }],
+      } as never)
+      .mockResolvedValue({ docs: [] } as never);
+
+    await getCompanyCatalog('studio-aurora', { productId: 'service-aurora' });
+
+    expect(getDocsFromServer).toHaveBeenCalledTimes(3);
     expect(getDocsFromServer).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({
         source: 'public_product_galleries',
         constraints: expect.arrayContaining([
-          { field: 'tenantId', value: 'tenant-aurora' },
           { field: 'businessSlug', value: 'studio-aurora' },
+          { field: 'productId', value: 'service-aurora' },
           { field: 'published', value: true },
-          { field: 'productId', value: ['service-aurora'] },
         ]),
       }),
     );
   });
-
   it('returns only active public products owned by the business matched by the slug', async () => {
     vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({

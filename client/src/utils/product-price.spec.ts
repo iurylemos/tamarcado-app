@@ -18,14 +18,10 @@ describe('resolveProductPriceCents', () => {
 
   it('resolves a price for the exact selection combination regardless of selection order', () => {
     expect(
-      resolveProductPriceCents(
-        10000,
-        variantPrices,
-        [
-          { attributeId: 'lash-service', optionId: 'volume-brasileiro' },
-          { attributeId: 'brow-service', optionId: 'design' },
-        ],
-      ),
+      resolveProductPriceCents(10000, variantPrices, [
+        { attributeId: 'lash-service', optionId: 'volume-brasileiro' },
+        { attributeId: 'brow-service', optionId: 'design' },
+      ]),
     ).toBe(14500);
   });
 

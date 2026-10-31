@@ -40,9 +40,9 @@ describe('CompanyCatalogPage', () => {
     expect(container.querySelectorAll('.skeleton-card')).toHaveLength(4);
     expect(container.querySelectorAll('.catalog-grid > div')).toHaveLength(4);
     expect(container.querySelectorAll('.catalog-grid .skeleton-card__image')).toHaveLength(0);
-    expect(container.querySelectorAll('.catalog-grid .skeleton-card__image-placeholder')).toHaveLength(
-      4,
-    );
+    expect(
+      container.querySelectorAll('.catalog-grid .skeleton-card__image-placeholder'),
+    ).toHaveLength(4);
     expect(container.querySelector('.app-loading-overlay')).not.toBeInTheDocument();
   });
 
@@ -72,9 +72,7 @@ describe('CompanyCatalogPage', () => {
   it('shows an explicit not-found state when no published catalog matches the slug', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue(null);
 
-    renderWithQueryClient(
-      <CompanyCatalogPage slug="slug-inexistente" initialStatus="not-found" initialCatalog={null} />,
-    );
+    renderWithQueryClient(<CompanyCatalogPage slug="slug-inexistente" />);
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
   });
@@ -85,7 +83,10 @@ describe('CompanyCatalogPage', () => {
     renderWithQueryClient(<CompanyCatalogPage slug="Slug/malformado" />);
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado', { pageSize: 10, after: undefined });
+    expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado', {
+      pageSize: 10,
+      after: undefined,
+    });
   });
 
   it('shows a distinct empty catalog state after a successful empty response', async () => {
@@ -199,7 +200,9 @@ describe('CompanyCatalogPage', () => {
     const originalTitle = document.title;
     const { unmount } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
 
-    expect(await screen.findByText('Esta empresa ainda não publicou serviços.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Esta empresa ainda não publicou serviços.'),
+    ).toBeInTheDocument();
     expect(document.querySelector('link[rel="manifest"]')).toHaveAttribute(
       'href',
       'blob:company-manifest',

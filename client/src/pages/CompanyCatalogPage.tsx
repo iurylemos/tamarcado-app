@@ -9,14 +9,10 @@ import { CatalogUtil } from '../utils/catalog.util';
 
 type CompanyCatalogPageProps = {
   slug: string;
-  initialCatalog?: CompanyCatalog | null;
-  initialStatus?: PublicCatalogStatus;
 };
 
 export default function CompanyCatalogPage({
   slug,
-  initialCatalog,
-  initialStatus,
 }: Readonly<CompanyCatalogPageProps>): JSX.Element {
   const { data, error, isPending, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useInfiniteQuery({
@@ -32,14 +28,6 @@ export default function CompanyCatalogPage({
         return lastPage.hasMore && last ? { id: last.id, name: last.name } : null;
       },
       enabled: Boolean(slug),
-      ...(initialCatalog
-        ? {
-            initialData: {
-              pages: [initialCatalog],
-              pageParams: [undefined as CatalogCursor | undefined],
-            },
-          }
-        : {}),
       staleTime: ReactQueryConfig.queryStaleTime,
     });
 
@@ -62,8 +50,7 @@ export default function CompanyCatalogPage({
 
   const status = useMemo<PublicCatalogStatus | 'loading'>(
     () =>
-      initialStatus ??
-      (isPending
+      isPending
         ? 'loading'
         : isError
           ? isUnavailable
@@ -71,8 +58,8 @@ export default function CompanyCatalogPage({
             : 'error'
           : catalog
             ? 'ready'
-            : 'not-found'),
-    [initialStatus, isPending, isError, isUnavailable, catalog],
+            : 'not-found',
+    [isPending, isError, isUnavailable, catalog],
   );
 
   return (

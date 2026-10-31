@@ -1,4 +1,3 @@
-import { FieldPath } from 'firebase-admin/firestore';
 import { collections } from '../config/collections';
 import type { PublicBusinessDocument } from '../model/tenant.model';
 import type { ProductDocument, PublicProductDocument } from '../model/product.model';
@@ -7,15 +6,13 @@ import type { ProductImageGallery } from '../../../shared/domain/interfaces/prod
 import { firestore } from './firestore.service';
 import { DomainError } from '../../../shared/domain/errors';
 
-type PublicBusinessRecord = PublicBusinessDocument & {
+export type PublicBusinessRecord = PublicBusinessDocument & {
   id: string;
 };
 
 type PublicProductRecord = PublicProductDocument & { id: string };
 
 type BookedProductRecord = PublicProductDocument & ProductDocument & { id: string };
-
-type PublicProductOptions = { limit?: number; productId?: string };
 
 export async function findPublicBusiness(slug: string): Promise<PublicBusinessRecord> {
   const snapshot = await firestore
@@ -62,24 +59,15 @@ async function getGalleryCatalog(business: PublicBusinessRecord, productIds: str
 
 export async function listPublicProductRecords(
   business: PublicBusinessRecord,
-  options: PublicProductOptions = {},
 ): Promise<Array<PublicProductRecord>> {
-  const { limit, productId } = options;
-
-  let productsQuery = firestore
+  const snapshot = await firestore
     .collection(collections.publicProducts)
     .where('businessSlug', '==', business.slug)
     .where('tenantId', '==', business.tenantId)
     .where('active', '==', true)
-    .where('published', '==', true);
-
-  if (productId) productsQuery = productsQuery.where(FieldPath.documentId(), '==', productId);
-
-  const orderedQuery = productsQuery.orderBy('name');
-
-  const orderQueryLimit = limit ? orderedQuery.limit(limit) : orderedQuery;
-
-  const snapshot = await orderQueryLimit.get();
+    .where('published', '==', true)
+    .orderBy('name')
+    .get();
 
   const productIds = snapshot.docs.map((document) => document.id);
 
@@ -133,6 +121,49 @@ export async function listPublicProductRecords(
           }
         : {}),
     }));
+}
+
+/**
+ * Resolves one published product with its galleries using a direct document read,
+ * so it can run in parallel with the business lookup. The caller must compare
+ * `tenantId` with the business before trusting the result.
+ */
+export async function findPublicProductRecord(
+  slug: string,
+  productId: string,
+): Promise<PublicProductRecord | null> {
+  const [snapshot, gallerySnapshot] = await Promise.all([
+    firestore.collection(collections.publicProducts).doc(productId).get(),
+    firestore
+      .collection(collections.publicProductGalleries)
+      .where('businessSlug', '==', slug)
+      .where('productId', '==', productId)
+      .where('published', '==', true)
+      .get(),
+  ]);
+
+  const product = snapshot.data() as PublicProductDocument | undefined;
+
+  if (!product || product.businessSlug !== slug || !product.active || !product.published) {
+    return null;
+  }
+
+  const imageGalleries: ProductImageGallery[] = gallerySnapshot.docs
+    .map((document) => ({ document, gallery: document.data() as PublicProductGalleryDocument }))
+    .filter(({ gallery }) => gallery.tenantId === product.tenantId && gallery.published === true)
+    .map(({ document, gallery }) => ({
+      id: gallery.id || document.id,
+      productId: gallery.productId,
+      combinationKey: gallery.combinationKey,
+      selections: gallery.selections,
+      images: gallery.images,
+    }));
+
+  return {
+    id: snapshot.id,
+    ...product,
+    ...(imageGalleries.length ? { imageGalleries } : {}),
+  };
 }
 
 export async function findBookableProduct(

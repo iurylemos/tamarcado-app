@@ -3,14 +3,19 @@ import type { PublicCatalogData } from '../../../../../src/interfaces/catalog.in
 
 export function data(pageContext: Readonly<PageContextServer>): PublicCatalogData {
   const { slug, productId } = pageContext.routeParams;
+  const { initialBusiness, initialProduct, initialCatalogStatus } = pageContext;
 
-  if (pageContext.initialCatalog === undefined && pageContext.initialCatalogStatus === undefined) {
+  if (initialBusiness === undefined && initialCatalogStatus === undefined) {
     return { slug, productId };
   }
 
-  const catalog =
-    pageContext.initialCatalog?.business.slug === slug ? pageContext.initialCatalog : null;
-  const status = catalog !== null ? 'ready' : (pageContext.initialCatalogStatus ?? 'not-found');
+  const business = initialBusiness?.slug === slug ? initialBusiness : null;
+  const product = business && initialProduct?.id === productId ? initialProduct : null;
+  const status = product
+    ? 'ready'
+    : initialCatalogStatus && initialCatalogStatus !== 'ready'
+      ? initialCatalogStatus
+      : 'not-found';
 
-  return { slug, productId, catalog, status };
+  return { slug, productId, business, product, status };
 }
