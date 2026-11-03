@@ -8,7 +8,6 @@ import type {
 } from '../interfaces/company.interface';
 import type { BookingFormValues, BookingReceipt } from '../interfaces/booking.interface';
 import type {
-  ProductCustomizationAttribute,
   ProductCustomizationSelection,
   ProductImage,
   ProductImageGallery,
@@ -68,9 +67,10 @@ export default function BookingPage({
   );
   const [shareError, setShareError] = useState<string>('');
   const [receipt, setReceipt] = useState<BookingReceipt | null>(null);
-  const [customizationSelections, setCustomizationSelections] = useState<
-    ProductCustomizationSelection[]
-  >([]);
+  const [customizationSelectionState, setCustomizationSelectionState] = useState<{
+    productId: string;
+    selections: ProductCustomizationSelection[];
+  } | null>(null);
   const [selectedImageId, setSelectedImageId] = useState<string>('');
   const skipSearchForDate = useRef<string | null>(null);
   const selectedDateRef = useRef<string>(date);
@@ -82,6 +82,22 @@ export default function BookingPage({
         : undefined,
     [catalog, slug, productId],
   );
+
+  const customizationSelections = useMemo<ProductCustomizationSelection[]>(() => {
+    if (!product) return [];
+
+    const storedSelections =
+      customizationSelectionState?.productId === product.id
+        ? customizationSelectionState.selections
+        : [];
+
+    return (product.customizationAttributes ?? []).map((attribute) => {
+      const selected = storedSelections.find((selection) => selection.attributeId === attribute.id);
+      return selected && attribute.options.some((option) => option.id === selected.optionId)
+        ? selected
+        : { attributeId: attribute.id, optionId: attribute.defaultOptionId };
+    });
+  }, [customizationSelectionState, product]);
 
   const effectiveImageGallery = useMemo<ProductImageGallery | undefined>(
     () =>
@@ -130,29 +146,6 @@ export default function BookingPage({
         : (effectiveImages[0]?.id ?? ''),
     [effectiveImages, selectedImageId],
   );
-
-  useEffect(() => {
-    const attributes = product?.customizationAttributes ?? [];
-
-    setCustomizationSelections((current: ProductCustomizationSelection[]) => {
-      const next = attributes.map((attribute: ProductCustomizationAttribute) => {
-        const selected = current.find((selection) => selection.attributeId === attribute.id);
-        return selected && attribute.options.some((option) => option.id === selected.optionId)
-          ? selected
-          : { attributeId: attribute.id, optionId: attribute.defaultOptionId };
-      });
-
-      const unchanged =
-        next.length === current.length &&
-        next.every((selection: ProductCustomizationSelection, index: number): boolean =>
-          current[index]
-            ? selection.attributeId === current[index].attributeId &&
-              selection.optionId === current[index].optionId
-            : false,
-        );
-      return unchanged ? current : next;
-    });
-  }, [product]);
 
   useEffect(() => {
     if (!effectiveImages.some((image) => image.id === selectedImageId)) {
@@ -501,12 +494,32 @@ export default function BookingPage({
       catalog={catalog}
       product={product}
       customizationSelections={customizationSelections}
-      onCustomizationChange={(attributeId, optionId) =>
-        setCustomizationSelections((current) => [
-          ...current.filter((selection) => selection.attributeId !== attributeId),
-          { attributeId, optionId },
-        ])
-      }
+      onCustomizationChange={(attributeId, optionId) => {
+        const attributes = product.customizationAttributes ?? [];
+        setCustomizationSelectionState((current) => {
+          const currentSelections = current?.productId === product.id ? current.selections : [];
+
+          return {
+            productId: product.id,
+            selections: attributes.map((attribute) => {
+              const currentOptionId = currentSelections.find(
+                (selection) => selection.attributeId === attribute.id,
+              )?.optionId;
+
+              return {
+                attributeId: attribute.id,
+                optionId:
+                  attribute.id === attributeId
+                    ? optionId
+                    : currentOptionId &&
+                        attribute.options.some((option) => option.id === currentOptionId)
+                      ? currentOptionId
+                      : attribute.defaultOptionId,
+              };
+            }),
+          };
+        });
+      }}
       effectiveImages={effectiveImages}
       selectedImageId={effectiveSelectedImageId}
       onImageSelect={setSelectedImageId}

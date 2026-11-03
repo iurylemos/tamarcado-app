@@ -139,8 +139,8 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     ).data();
 
     expect(appointment).toMatchObject({
-      productPriceCentsSnapshot: 12000,
-      commissionAmountCentsSnapshot: 4200,
+      productPriceCentsSnapshot: 10500,
+      commissionAmountCentsSnapshot: 3675,
       customizationSnapshot: [
         {
           attributeId: 'lash-service',
@@ -149,6 +149,123 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         },
       ],
     });
+  });
+
+  it('resolves the current internal promotional price instead of client-submitted pricing', async () => {
+    await db
+      .collection('products')
+      .doc(customizationTestProductId)
+      .update({
+        promotionActive: true,
+        variantPrices: [
+          {
+            selections: customizationTestSelections,
+            priceCents: 15000,
+            promotionalPriceCents: 12500,
+          },
+        ],
+      });
+
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    expect(slot).toBeDefined();
+
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: customizationTestProductId,
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      customizationSelections: customizationTestSelections,
+      priceCents: 1,
+      promotionalPriceCents: 0,
+      promotionActive: false,
+    });
+    const appointment = (
+      await db.collection('appointments').doc(result.appointmentId).get()
+    ).data();
+
+    expect(appointment).toMatchObject({
+      productPriceCentsSnapshot: 12500,
+      commissionAmountCentsSnapshot: 4375,
+    });
+  });
+
+  it('rejects a selected combination that is no longer configured', async () => {
+    await db
+      .collection('products')
+      .doc(customizationTestProductId)
+      .update({
+        variantPrices: [
+          {
+            selections: [
+              { attributeId: 'color', optionId: 'color-standard' },
+              { attributeId: 'size', optionId: 'size-couple' },
+            ],
+            priceCents: 10000,
+          },
+        ],
+      });
+
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    expect(slot).toBeDefined();
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        customizationSelections: customizationTestSelections,
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(
+      await db
+        .collection('appointments')
+        .where('productId', '==', customizationTestProductId)
+        .get(),
+    ).toMatchObject({ empty: true });
+  });
+
+  it('rejects a product that is no longer published', async () => {
+    await db.collection('public_products').doc('service-corte').update({ published: false });
+
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    expect(slot).toBeDefined();
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
   });
 
   it.each([

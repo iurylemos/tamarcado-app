@@ -759,6 +759,94 @@ select {
   border-radius: 0.35rem;
   object-fit: cover;
 }
+.booking-summary-options {
+  min-width: 0;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  border: 0;
+}
+.booking-summary-options legend {
+  margin-bottom: 0.45rem;
+  font-weight: 700;
+}
+.booking-summary-option-list {
+  display: grid;
+  gap: 0.4rem;
+}
+.booking-summary-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: fit-content;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+.booking-summary-option:has(input:checked) {
+  border-color: #b91c1c;
+  background: #fff7f7;
+}
+.booking-summary-option input {
+  appearance: none;
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  margin: 0;
+  place-content: center;
+  border: 1.5px solid var(--color-muted);
+  border-radius: 0.25rem;
+  background: white;
+  cursor: pointer;
+}
+.booking-summary-option input::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 0.1rem;
+  background: white;
+  content: '';
+  transform: scale(0);
+  transition: transform 120ms ease-in-out;
+}
+.booking-summary-option input:checked {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+.booking-summary-option input:checked::before {
+  transform: scale(1);
+}
+.booking-summary-option input:focus-visible {
+  outline: 2px solid #b91c1c;
+  outline-offset: 2px;
+}
+.booking-summary-variant-prices {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+.booking-summary-variant-price,
+.booking-summary-variant-price > span:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.6rem;
+}
+.booking-summary-variant-price > span:first-child {
+  color: var(--color-muted);
+}
+.booking-summary-variant-price del,
+.booking-summary-details del {
+  color: var(--color-muted);
+  font-size: 0.85em;
+  font-weight: 400;
+}
+.booking-summary-variant-price strong {
+  color: #b91c1c;
+}
 .booking-summary-customizations {
   display: grid;
   gap: 0.3rem;
@@ -1126,7 +1214,8 @@ select {
   .booking-summary > .product-image-gallery,
   .booking-summary-loading-content,
   .booking-summary-details,
-  .booking-summary > .field,
+  .booking-summary-options,
+  .booking-summary-variant-prices,
   .booking-summary-customizations {
     grid-column: 1 / -1;
   }
@@ -1136,10 +1225,8 @@ select {
   .booking-summary > p:not(.eyebrow, .muted) {
     margin-bottom: 0.5rem;
   }
-  .booking-summary > .field select {
+  .booking-summary-option {
     width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
   }
   .booking-summary-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));

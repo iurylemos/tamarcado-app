@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { JSX } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -76,6 +77,7 @@ describe('BookingPage professional selection', () => {
 
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
     expect(screen.getByText('RESUMO DO SERVIÇO')).toBeInTheDocument();
+    expect(container.querySelector('.booking-summary-options')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Quando você quer vir?' })).toBeInTheDocument();
     expect(screen.getByText('Buscando horários disponíveis...')).toBeInTheDocument();
     expect(screen.getByText('Buscando horários disponíveis...')).toHaveClass('skeleton-status');
@@ -96,6 +98,7 @@ describe('BookingPage professional selection', () => {
           name: 'Cílios',
           imageUrl: '/cilios.jpg',
           priceCents: 10000,
+          promotionActive: true,
           durationMinutes: 120,
           customizationAttributes: [
             {
@@ -112,10 +115,12 @@ describe('BookingPage professional selection', () => {
             {
               selections: [{ attributeId: 'lash-service', optionId: 'lash-lifting' }],
               priceCents: 10000,
+              promotionalPriceCents: 8000,
             },
             {
               selections: [{ attributeId: 'lash-service', optionId: 'volume-brasileiro' }],
               priceCents: 12000,
+              promotionalPriceCents: 9500,
             },
           ],
         },
@@ -131,15 +136,82 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const procedure = await screen.findByLabelText('Procedimento');
+    const procedure = await screen.findByRole('radio', { name: 'Lash Lifting' });
     const summaryDetails = container.querySelector('.booking-summary-details');
-    expect(procedure).toHaveValue('lash-lifting');
-    expect(summaryDetails?.textContent).toContain('100,00');
+    const variantPrices = container.querySelector('.booking-summary-variant-prices');
+    expect(procedure).toBeChecked();
+    expect(screen.getByRole('group', { name: 'Procedimento' })).toBeInTheDocument();
+    expect(variantPrices).toHaveTextContent('Lash Lifting');
+    expect(variantPrices).toHaveTextContent('80,00');
+    expect(variantPrices).toHaveTextContent('Volume Brasileiro');
+    expect(variantPrices).toHaveTextContent('95,00');
+    expect(summaryDetails?.textContent).toContain('80,00');
 
-    fireEvent.change(procedure, { target: { value: 'volume-brasileiro' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Volume Brasileiro' }));
 
-    expect(summaryDetails?.textContent).toContain('120,00');
-    expect(summaryDetails?.textContent).not.toContain('100,00');
+    expect(summaryDetails?.textContent).toContain('95,00');
+    expect(summaryDetails?.textContent).not.toContain('80,00');
+  });
+
+  it('resets selections to the active product defaults when the product changes', async () => {
+    const business = {
+      id: 'tenant-aurora',
+      name: 'Studio Aurora',
+      slug: 'studio-aurora',
+      segment: 'beauty' as const,
+    };
+    const customizationAttributes = [
+      {
+        id: 'finish',
+        label: 'Acabamento',
+        options: [
+          { id: 'basic', label: 'Básico' },
+          { id: 'premium', label: 'Premium' },
+        ],
+        defaultOptionId: 'basic',
+      },
+    ];
+    const productA = {
+      id: 'service-a',
+      name: 'Serviço A',
+      imageUrl: '/service-a.jpg',
+      priceCents: 10000,
+      durationMinutes: 60,
+      customizationAttributes,
+    };
+    const productB = {
+      ...productA,
+      id: 'service-b',
+      name: 'Serviço B',
+    };
+    vi.mocked(getCompanyCatalog).mockImplementation(async (_slug, options) => ({
+      business,
+      products: [options?.productId === productB.id ? productB : productA],
+    }));
+    vi.mocked(listAvailability).mockResolvedValue([]);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <BookingPage slug="studio-aurora" productId={productA.id} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Serviço A' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('radio', { name: 'Premium' }));
+    expect(screen.getByRole('radio', { name: 'Premium' })).toBeChecked();
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <BookingPage slug="studio-aurora" productId={productB.id} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Serviço B' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Básico' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Premium' })).not.toBeChecked();
   });
 
   it('keeps static booking content visible while catalog-backed summary data loads', () => {
@@ -505,16 +577,16 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const colorSelect = await screen.findByLabelText('Cor');
-    const fabricSelect = screen.getByLabelText('Tecido');
-    expect(colorSelect).toHaveValue('natural');
-    expect(fabricSelect).toHaveValue('cotton');
+    const naturalOption = await screen.findByRole('radio', { name: 'Natural' });
+    const cottonOption = screen.getByRole('radio', { name: 'Algodão' });
+    expect(naturalOption).toBeChecked();
+    expect(cottonOption).toBeChecked();
     expect(screen.getByText('Imagens não disponíveis para esta combinação.')).toBeInTheDocument();
     expect(document.querySelector('.product-image-gallery__main')).not.toBeInTheDocument();
 
-    fireEvent.change(colorSelect, { target: { value: 'black' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Preto' }));
     expect(screen.getByText('Imagens não disponíveis para esta combinação.')).toBeInTheDocument();
-    fireEvent.change(fabricSelect, { target: { value: 'silk' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Seda' }));
     expect(
       screen.queryByText('Imagens não disponíveis para esta combinação.'),
     ).not.toBeInTheDocument();
@@ -608,8 +680,8 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByLabelText('Cor')).toHaveValue('natural');
-    expect(screen.getByLabelText('Tecido')).toHaveValue('cotton');
+    expect(await screen.findByRole('radio', { name: 'Natural' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Algodão' })).toBeChecked();
     await waitFor(() =>
       expect(container.querySelector('.booking-summary-customizations')).toHaveTextContent(
         'Cor: NaturalTecido: Algodão',

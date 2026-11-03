@@ -27,7 +27,7 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 ## Fase 2: Fundacional
 
-**Propósito**: disponibilizar contratos e regras compartilhados necessários às histórias; concluir antes das fases de usuário.
+**Propósito**: disponibilizar contratos e regras compartilhados. Cada tarefa fundacional deve ser concluída antes das tarefas ou histórias que efetivamente dependam dela, sem funcionar como bloqueio indiscriminado para todas as histórias.
 
 - [x] T001 [P] Criar ou estender testes unitários de `shared/domain/product-price.spec.ts` para resolução exata da combinação, preço original, preço promocional vigente e promoção ausente/inativa.
 - [x] T002 [P] Estender `shared/domain/interfaces/product.interface.ts` com campos opcionais de promoção e estimativa no produto e em `ProductVariantPrice`, preservando `priceCents` como preço original e tratando flags ausentes como falsos.
@@ -68,13 +68,13 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 ### Testes da US2
 
-- [ ] T015 [P] [US2] Estender `client/src/pages/BookingPage.spec.tsx` e `functions/src/functions/appointments/create-public-appointment.spec.ts` para seleção por atributo, preço da combinação válida, ausência de controles desnecessários e rejeição no servidor de combinação/preço que deixou de ser válido.
+- [x] T015 [P] [US2] Estender `client/src/pages/BookingPage.spec.tsx` e `functions/src/functions/appointments/create-public-appointment.spec.ts` para seleção por atributo, preço da combinação válida, ausência de controles desnecessários e rejeição no servidor de combinação/preço que deixou de ser válido.
 
 ### Implementação da US2
 
-- [ ] T016 [US2] Atualizar `client/src/components/organisms/BookingServiceSummary/BookingServiceSummary.tsx` para apresentar as opções e preços correspondentes antes da seleção e usar controles acessíveis no estilo checkbox, com somente uma opção selecionada por atributo e preço resolvido pela combinação exata.
-- [ ] T017 [US2] Atualizar `client/src/pages/BookingPage.tsx` para manter cada seleção ligada ao produto ativo, formar combinações válidas entre atributos e preservar a apresentação comprável de produtos sem opções ou sem variação de preço.
-- [ ] T018 [US2] Atualizar `functions/src/services/booking.service.ts` para revalidar produto publicado/ativo, seleção, combinação e preço interno vigente antes de prosseguir; nunca aceitar preço, desconto ou elegibilidade promocional enviados pelo cliente.
+- [x] T016 [US2] Atualizar `client/src/components/organisms/BookingServiceSummary/BookingServiceSummary.tsx` para apresentar as opções e preços correspondentes antes da seleção e usar controles acessíveis no estilo checkbox, com somente uma opção selecionada por atributo e preço resolvido pela combinação exata.
+- [x] T017 [US2] Atualizar `client/src/pages/BookingPage.tsx` para manter cada seleção ligada ao produto ativo, formar combinações válidas entre atributos e preservar a apresentação comprável de produtos sem opções ou sem variação de preço.
+- [x] T018 [US2] Atualizar `functions/src/services/booking.service.ts` para revalidar produto publicado/ativo, seleção, combinação e preço interno vigente antes de prosseguir; nunca aceitar preço, desconto ou elegibilidade promocional enviados pelo cliente.
 
 **Checkpoint**: combinações selecionadas e preço apresentado correspondem aos dados atuais; produtos sem variações e produtos legados continuam compráveis.
 
@@ -137,16 +137,16 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 ### Dependências entre fases
 
 - **Setup (Fase 1)**: nenhuma inicialização necessária; a estrutura e as dependências já existem.
-- **Fundacional (Fase 2)**: concluir antes de qualquer história; fornece tipos e preço compartilhado.
+- **Fundacional (Fase 2)**: concluir cada tarefa antes das histórias que dela dependem. Para a US2, T002 e T005 fornecem o tipo de produto e a resolução de preço compartilhado; T003 estende o contrato de agendamento/snapshots usado pela US3, e T004 adiciona o fuso público usado pela estimativa da US4/US3.
 - **US1 (Fase 3)**: depende da Fase 2; estabelece configuração e projeção de promoção.
-- **US2 (Fase 4)**: depende da Fase 2 e usa o preço resolvido da US1 para refletir promoções por combinação.
+- **US2 (Fase 4)**: depende de T002/T005 e usa o preço resolvido da US1 para refletir promoções por combinação; não depende de T003/T004.
 - **US4 (Fase 5)**: depende da Fase 2; executar depois da US1 para evitar conflito nas alterações do editor e do salvamento de produto.
 - **US3 (Fase 6)**: depende de US2 (seleção/combinação), US4 (configuração/projeção de estimativa) e US1 (preço/snapshots promocionais).
 - **Polimento (Fase 7)**: leitura colaborador depende dos snapshots da US3; validação integrada depende das quatro histórias.
 
 ### Dependências entre histórias
 
-- A Fase 2 libera US1 e US2; elas podem iniciar em paralelo se os arquivos de integração forem coordenados.
+- T001/T002/T005 fornecem a base de produto/preço usada por US1 e US2. Para a US2, T002 e T005 são as dependências fundacionais específicas; ambas estão concluídas. T003 e T004 não bloqueiam a US2.
 - US4 depende da conclusão de US1 por compartilhar `ProductEditor.tsx` e `backoffice.service.ts`.
 - US3 depende da conclusão de US1, US2 e US4.
 - Polimento depende de US3 e da conclusão das quatro histórias.
@@ -155,7 +155,7 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 - Fase Fundacional: T001–T004 podem ocorrer em paralelo; T005 depende de T001/T002.
 - US1: T006–T008 em paralelo; após esses testes, as alterações independentes do backoffice, projeção, serviço cliente e índice podem ser divididas sem editar o mesmo arquivo simultaneamente.
-- US2: T015 antes da implementação; T016 e T018 podem ser trabalhadas em paralelo após os contratos fundacionais, com integração posterior em T017.
+- US2: T015 antes da implementação; T016 e T018 podem ser trabalhadas em paralelo após T015, com integração posterior em T017. T003/T004 não são pré-requisitos desta história.
 - US4: T019 antes da implementação; T020 e T021 podem ocorrer em paralelo; T022 depende dos campos/projeção definidos na Fase 2.
 - US3: T023–T025 em paralelo; T026–T027 podem ser trabalhadas em paralelo; UI, callable e persistência devem integrar-se após contratos e testes.
 - Polimento: T035 e T037 podem ocorrer em paralelo; T036 depende de T033; T038 e T039 dependem das implementações integradas.

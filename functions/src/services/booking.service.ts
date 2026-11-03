@@ -7,7 +7,7 @@ import type { CreatePublicAppointmentInput } from '../../../shared/domain/interf
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { fiveMinuteBucketStarts } from '../../../shared/domain/interval';
 import { calculateCommissionCents } from '../../../shared/domain/money';
-import { resolveProductPriceCents } from '../../../shared/domain/product-price';
+import { resolveProductPricing } from '../../../shared/domain/product-price';
 import { getZonedDateTimeParts, isValidDateString } from '../../../shared/domain/timezone';
 import { DomainError } from '../../../shared/domain/errors';
 import type {
@@ -245,18 +245,26 @@ export async function createPublicAppointment(
 
     const business = await findPublicBusiness(input.businessSlug);
 
-    const [tenantSnapshot, product, professionalSnapshot] = await Promise.all([
-      firestore.collection(collections.tenants).doc(business.tenantId).get(),
-      findBookableProduct(business, input.productId),
-      firestore.collection(collections.professionals).doc(input.professionalId).get(),
-    ]);
+    const [tenantSnapshot, product, professionalSnapshot, publicProductSnapshot] =
+      await Promise.all([
+        firestore.collection(collections.tenants).doc(business.tenantId).get(),
+        findBookableProduct(business, input.productId),
+        firestore.collection(collections.professionals).doc(input.professionalId).get(),
+        firestore.collection(collections.publicProducts).doc(input.productId).get(),
+      ]);
 
     const tenant = tenantSnapshot.data();
     const professional = professionalSnapshot.data();
+    const publicProduct = publicProductSnapshot.data();
 
     if (
       !tenantSnapshot.exists ||
       tenant?.active !== true ||
+      !publicProductSnapshot.exists ||
+      publicProduct?.tenantId !== business.tenantId ||
+      publicProduct.businessSlug !== business.slug ||
+      publicProduct.active !== true ||
+      publicProduct.published !== true ||
       !professionalSnapshot.exists ||
       professional?.tenantId !== business.tenantId ||
       professional.active !== true
@@ -291,18 +299,21 @@ export async function createPublicAppointment(
       input.customizationSelections,
     );
 
-    const priceCents = resolveProductPriceCents(
-      product.priceCents,
-      product.variantPrices,
-      customization.selections,
-    );
+    const pricing = resolveProductPricing(product, customization.selections);
 
-    if (priceCents === undefined) {
+    if (
+      !pricing ||
+      !Number.isSafeInteger(pricing.originalPriceCents) ||
+      pricing.originalPriceCents < 0 ||
+      !Number.isSafeInteger(pricing.effectivePriceCents) ||
+      pricing.effectivePriceCents < 0
+    ) {
       throw new HttpsError(
         'failed-precondition',
-        'O preço desta combinação de opções não está disponível.',
+        'O preço desta combinação de opções não está mais disponível.',
       );
     }
+    const priceCents = pricing.effectivePriceCents;
 
     const effectiveImages = await resolveEffectiveGallery(
       business,
