@@ -162,6 +162,76 @@ describe('CompanyCatalogPage', () => {
     openGraphTitle.remove();
   });
 
+  it('shows active promotions ahead of the regular catalog with prices per variant', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'regular-service',
+          name: 'Serviço regular',
+          imageUrl: '/regular.jpg',
+          priceCents: 5000,
+          durationMinutes: 30,
+        },
+      ],
+      promotions: [
+        {
+          id: 'offer-product',
+          name: 'Produto em oferta',
+          imageUrl: '/offer.jpg',
+          priceCents: 10000,
+          promotionActive: true,
+          customizationAttributes: [
+            {
+              id: 'color',
+              label: 'Cor',
+              options: [
+                { id: 'blue', label: 'Azul' },
+                { id: 'red', label: 'Vermelho' },
+              ],
+              defaultOptionId: 'blue',
+            },
+          ],
+          variantPrices: [
+            {
+              selections: [{ attributeId: 'color', optionId: 'blue' }],
+              priceCents: 15000,
+              promotionalPriceCents: 12000,
+            },
+            {
+              selections: [{ attributeId: 'color', optionId: 'red' }],
+              priceCents: 11000,
+              promotionalPriceCents: 9000,
+            },
+          ],
+          durationMinutes: 60,
+        },
+      ],
+    });
+
+    renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+
+    const offers = await screen.findByRole('region', { name: 'Ofertas' });
+    const regularCatalog = screen.getByRole('region', { name: 'Serviços' });
+    expect(offers.compareDocumentPosition(regularCatalog) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(offers).toHaveTextContent('Em promoção');
+    expect(offers).toHaveTextContent('Cor: Azul');
+    expect(offers).toHaveTextContent('Cor: Vermelho');
+    expect(offers.querySelectorAll('.promotion-original-price')).toHaveLength(2);
+    expect(offers).toHaveTextContent(/R\$\s*150,00/);
+    expect(offers).toHaveTextContent(/R\$\s*120,00/);
+    expect(offers).toHaveTextContent(/R\$\s*110,00/);
+    expect(offers).toHaveTextContent(/R\$\s*90,00/);
+    expect(screen.getByRole('heading', { name: 'Serviço regular' })).toBeInTheDocument();
+  });
+
   it('offers a business-named PWA install prompt only after a valid catalog loads', async () => {
     vi.stubGlobal('navigator', {
       userAgent: 'iPhone',

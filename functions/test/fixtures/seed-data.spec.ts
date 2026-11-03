@@ -15,6 +15,26 @@ describe('shared seed data', () => {
     typeof document.data.priceCents === 'number' &&
     typeof document.data.durationMinutes === 'number';
 
+  it('seeds valid active, inactive and per-variant promotions', () => {
+    expect(findDocument('public_products', 'service-coloracao')?.data).toMatchObject({
+      promotionActive: true,
+      promotionalPriceCents: 19900,
+    });
+    const inactive = findDocument('public_products', 'service-corte')?.data;
+    expect(inactive).toMatchObject({ promotionActive: false });
+    expect(inactive).not.toHaveProperty('promotionalPriceCents');
+
+    const variants = findDocument('public_products', 'service-vitoria-lashes')?.data
+      .variantPrices as Array<{ priceCents: number; promotionalPriceCents: number }>;
+    expect(variants.length).toBeGreaterThan(0);
+    for (const variant of variants) {
+      expect(variant.promotionalPriceCents).toBeLessThan(variant.priceCents);
+    }
+    expect(findDocument('products', 'service-vitoria-lashes')?.data.variantPrices).toEqual(
+      variants,
+    );
+  });
+
   it('publishes the furniture seller and its sofa and upholstered headboard', () => {
     expect(findDocument('tenants', 'tenant-casa-nativa')?.data).toMatchObject({
       name: 'Casa Nativa Móveis',

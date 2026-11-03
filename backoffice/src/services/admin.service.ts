@@ -14,7 +14,7 @@ import type {
   ProductCustomizationSelection,
   ProductImage,
 } from '@shared/interfaces/product.interface';
-import type { ProductRecord } from '../interfaces/product.interface';
+import type { ProductInputData } from '../interfaces/product.interface';
 
 async function callable<TInput, TOutput>(name: string, data?: TInput): Promise<TOutput> {
   const currentUser = auth.currentUser;
@@ -34,9 +34,7 @@ export async function getWorkspace(): Promise<BackofficeWorkspace> {
   return await callable<void, BackofficeWorkspace>('getBackofficeWorkspace');
 }
 
-export async function saveProduct(
-  product: Omit<ProductRecord, 'tenantId'>,
-): Promise<Pick<GenericAdmin, 'id'>> {
+export async function saveProduct(product: ProductInputData): Promise<Pick<GenericAdmin, 'id'>> {
   return await callable('saveProduct', product);
 }
 

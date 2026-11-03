@@ -75,6 +75,18 @@ export default function ProductEditor({
       ]),
     ),
   );
+  const [variantPromotionalPriceDrafts, setVariantPromotionalPriceDrafts] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(
+      (product?.variantPrices ?? [])
+        .filter((variantPrice) => variantPrice.promotionalPriceCents !== undefined)
+        .map((variantPrice) => [
+          productCustomizationCombinationKey(variantPrice.selections),
+          (variantPrice.promotionalPriceCents! / 100).toFixed(2),
+        ]),
+    ),
+  );
   const [galleryDrafts, setGalleryDrafts] = useState<GalleryDraft[]>(
     product?.imageGalleries?.map((gallery) => ({
       id: gallery.id,
@@ -96,6 +108,14 @@ export default function ProductEditor({
       : '35',
   );
   const [active, setActive] = useState<boolean>(product?.active ?? true);
+  const [promotionActive, setPromotionActive] = useState<boolean>(
+    product?.promotionActive ?? false,
+  );
+  const [promotionalPrice, setPromotionalPrice] = useState<string>(
+    product?.promotionalPriceCents === undefined
+      ? ''
+      : (product.promotionalPriceCents / 100).toFixed(2),
+  );
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const customizationCombinations = productCustomizationCombinations(customizationAttributes);
@@ -151,35 +171,80 @@ export default function ProductEditor({
       return;
     }
 
+    let promotionalPriceCents: number | undefined;
+    if (promotionalPrice.trim()) {
+      const amount = Number(promotionalPrice.replace(',', '.'));
+      const cents = Math.round(amount * 100);
+      if (!Number.isFinite(amount) || amount < 0 || !Number.isSafeInteger(cents)) {
+        setError('Informe um preço promocional válido em reais.');
+        setBusy(false);
+        return;
+      }
+      promotionalPriceCents = cents;
+    }
+
+    if (
+      promotionActive &&
+      customizationAttributes.length === 0 &&
+      (promotionalPriceCents === undefined ||
+        promotionalPriceCents >= Math.round(parsedPrice * 100))
+    ) {
+      setError('O preço promocional deve ser menor que o preço original.');
+      setBusy(false);
+      return;
+    }
+
     let variantPrices: ProductVariantPrice[] | null = null;
-    if (variantPricingEnabled) {
+    const materializePromotionVariants = promotionActive && customizationAttributes.length > 0;
+    if (variantPricingEnabled || materializePromotionVariants) {
       if (customizationAttributes.length === 0) {
         setError('Adicione pelo menos um atributo para cadastrar preços por combinação.');
         setBusy(false);
         return;
       }
       const parsedVariantPrices = customizationCombinations.map((selections) => {
-        const value = variantPriceDrafts[productCustomizationCombinationKey(selections)] ?? price;
+        const key = productCustomizationCombinationKey(selections);
+        const value = variantPricingEnabled ? (variantPriceDrafts[key] ?? price) : price;
         const amount = Number(value.replace(',', '.'));
+        const promotionalValue = variantPromotionalPriceDrafts[key] ?? '';
+        const promotionalAmount = Number(promotionalValue.replace(',', '.'));
+        const variantPromotionalPriceCents = promotionalValue.trim()
+          ? Math.round(promotionalAmount * 100)
+          : undefined;
         return {
           selections,
           priceCents: Math.round(amount * 100),
+          promotionalPriceCents: variantPromotionalPriceCents,
           valid:
             value.trim() !== '' &&
             Number.isFinite(amount) &&
             amount >= 0 &&
-            Number.isSafeInteger(Math.round(amount * 100)),
+            Number.isSafeInteger(Math.round(amount * 100)) &&
+            (variantPromotionalPriceCents === undefined ||
+              (Number.isFinite(promotionalAmount) &&
+                promotionalAmount >= 0 &&
+                Number.isSafeInteger(variantPromotionalPriceCents))) &&
+            (!promotionActive ||
+              (variantPromotionalPriceCents !== undefined &&
+                variantPromotionalPriceCents < Math.round(amount * 100))),
         };
       });
       if (parsedVariantPrices.some((variantPrice) => !variantPrice.valid)) {
-        setError('Informe um preço válido para cada combinação de opções.');
+        setError(
+          promotionActive
+            ? 'Informe um preço promocional válido e menor que o preço original para cada combinação.'
+            : 'Informe um preço válido para cada combinação de opções.',
+        );
         setBusy(false);
         return;
       }
-      variantPrices = parsedVariantPrices.map(({ selections, priceCents }) => ({
-        selections,
-        priceCents,
-      }));
+      variantPrices = parsedVariantPrices.map(
+        ({ selections, priceCents, promotionalPriceCents }) => ({
+          selections,
+          priceCents,
+          ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+        }),
+      );
     }
 
     const canUseLegacyImage = !product?.defaultImages && imageUrl.trim().length > 0;
@@ -282,6 +347,8 @@ export default function ProductEditor({
         description,
         imageUrl: finalImages[0]!.downloadUrl,
         priceCents: Math.round(parsedPrice * 100),
+        promotionActive,
+        ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
         variantPrices,
         durationMinutes: Number(duration),
         commissionType,
@@ -546,6 +613,71 @@ export default function ProductEditor({
             <button type="button" className="button secondary" onClick={addAttribute}>
               Adicionar atributo
             </button>
+          </fieldset>
+          <fieldset className="form-stack">
+            <legend>Promoção</legend>
+            <label className="toggle-row">
+              <span>
+                <strong>Ativar promoção</strong>
+                <small>
+                  O preço promocional precisa ser menor que o preço original de cada combinação.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                aria-label="Ativar promoção"
+                checked={promotionActive}
+                onChange={(event) => setPromotionActive(event.target.checked)}
+              />
+            </label>
+            {customizationAttributes.length === 0 ? (
+              <label>
+                Preço promocional (R$)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={promotionalPrice}
+                  onChange={(event) => setPromotionalPrice(event.target.value)}
+                  required={promotionActive}
+                />
+              </label>
+            ) : (
+              <div className="form-stack">
+                {customizationCombinations.map((selections) => {
+                  const key = productCustomizationCombinationKey(selections);
+                  const combinationLabel = selections
+                    .map((selection) => {
+                      const attribute = customizationAttributes.find(
+                        (item) => item.id === selection.attributeId,
+                      );
+                      const option = attribute?.options.find(
+                        (item) => item.id === selection.optionId,
+                      );
+                      return `${attribute?.label || 'Atributo'}: ${option?.label || 'Opção'}`;
+                    })
+                    .join(' / ');
+                  return (
+                    <label className="form-grid" key={key}>
+                      Preço promocional da combinação {combinationLabel} (R$)
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={variantPromotionalPriceDrafts[key] ?? ''}
+                        onChange={(event) =>
+                          setVariantPromotionalPriceDrafts((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        required={promotionActive}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </fieldset>
           <fieldset className="form-stack">
             <legend>Preços por combinação</legend>

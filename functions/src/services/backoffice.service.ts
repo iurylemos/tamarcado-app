@@ -117,6 +117,8 @@ export interface ProductInput {
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;
@@ -281,6 +283,16 @@ function validateVariantPrices(
         0,
         Number.MAX_SAFE_INTEGER,
       ),
+      ...(price.promotionalPriceCents !== undefined
+        ? {
+            promotionalPriceCents: requiredInteger(
+              price.promotionalPriceCents,
+              'Preço promocional da combinação em centavos',
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
+          }
+        : {}),
     };
   });
 }
@@ -291,6 +303,19 @@ export function validateProductInput(rawInput: unknown): ProductInput {
   const name = requiredText(input.name, 'Nome do serviço', 80);
   const description = optionalText(input.description, 'Descrição', 600);
   const customizationAttributes = validateCustomizationAttributes(input.customizationAttributes);
+  const promotionActive =
+    input.promotionActive === undefined
+      ? false
+      : requiredBoolean(input.promotionActive, 'Status da promoção');
+  const promotionalPriceCents =
+    input.promotionalPriceCents === undefined
+      ? undefined
+      : requiredInteger(
+          input.promotionalPriceCents,
+          'Preço promocional em centavos',
+          0,
+          Number.MAX_SAFE_INTEGER,
+        );
   const variantPrices = validateVariantPrices(input.variantPrices, customizationAttributes);
   const defaultImages = validateProductImages(input.defaultImages);
   const imageUrl = defaultImages
@@ -302,6 +327,28 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     0,
     Number.MAX_SAFE_INTEGER,
   );
+  if (promotionActive) {
+    if (customizationAttributes?.length) {
+      if (
+        !variantPrices?.length ||
+        variantPrices.some(
+          (variantPrice) =>
+            variantPrice.promotionalPriceCents === undefined ||
+            variantPrice.promotionalPriceCents >= variantPrice.priceCents,
+        )
+      ) {
+        throw new HttpsError(
+          'invalid-argument',
+          'Informe um preço promocional menor que o preço original para cada combinação.',
+        );
+      }
+    } else if (promotionalPriceCents === undefined || promotionalPriceCents >= priceCents) {
+      throw new HttpsError(
+        'invalid-argument',
+        'O preço promocional deve ser menor que o preço original.',
+      );
+    }
+  }
   const durationMinutes = requiredInteger(
     input.durationMinutes,
     'Duração',
@@ -328,6 +375,8 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     ...(variantPrices !== undefined ? { variantPrices } : {}),
     ...(defaultImages !== undefined ? { defaultImages } : {}),
     priceCents,
+    ...(input.promotionActive !== undefined ? { promotionActive } : {}),
+    ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
     durationMinutes,
     commissionType,
     commissionValue,
@@ -467,11 +516,13 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     variantPrices,
     defaultImages,
     priceCents,
+    promotionalPriceCents,
     durationMinutes,
     commissionType,
     commissionValue,
     active,
   } = validateProductInput(raw);
+  const promotionActive = raw.promotionActive === undefined ? false : raw.promotionActive === true;
   const reference = id
     ? firestore.collection(collections.products).doc(id)
     : firestore.collection(collections.products).doc();
@@ -491,6 +542,17 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     if (defaultImages) validateImageOwnership(defaultImages, tenantId, reference.id);
     const primaryImageUrl =
       defaultImages?.[0]?.downloadUrl ?? current?.defaultImages?.[0]?.downloadUrl ?? imageUrl;
+    const storedVariantPrices =
+      variantPrices !== undefined ? variantPrices : current?.variantPrices;
+    const publicVariantPrices =
+      storedVariantPrices === null
+        ? null
+        : storedVariantPrices?.map((variantPrice) => {
+            const { promotionalPriceCents: variantPromotionPrice, ...originalPrice } = variantPrice;
+            return promotionActive && variantPromotionPrice !== undefined
+              ? variantPrice
+              : originalPrice;
+          });
 
     const product: ProductDocument = {
       tenantId,
@@ -509,6 +571,8 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
           ? { defaultImages: current.defaultImages }
           : {}),
       priceCents,
+      promotionActive,
+      ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
       durationMinutes,
       commissionType,
       commissionValue,
@@ -536,17 +600,19 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
           : current?.customizationAttributes
             ? { customizationAttributes: current.customizationAttributes }
             : {}),
-        ...(variantPrices !== undefined
-          ? { variantPrices }
-          : current?.variantPrices !== undefined
-            ? { variantPrices: current.variantPrices }
-            : {}),
         ...(defaultImages !== undefined
           ? { defaultImages }
           : current?.defaultImages
             ? { defaultImages: current.defaultImages }
             : {}),
         priceCents,
+        promotionActive,
+        ...(promotionActive &&
+        !customizationAttributes?.length &&
+        promotionalPriceCents !== undefined
+          ? { promotionalPriceCents }
+          : { promotionalPriceCents: FieldValue.delete() }),
+        ...(publicVariantPrices !== undefined ? { variantPrices: publicVariantPrices } : {}),
         durationMinutes,
         active,
         published: true,

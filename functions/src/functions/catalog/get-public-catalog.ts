@@ -36,6 +36,8 @@ export const getPublicCatalog = onCall(callableOptionsPublic, async (request) =>
         defaultImages,
         imageGalleries,
         priceCents,
+        promotionActive,
+        promotionalPriceCents,
         durationMinutes,
       }) => ({
         id,
@@ -47,6 +49,10 @@ export const getPublicCatalog = onCall(callableOptionsPublic, async (request) =>
         ...(defaultImages ? { defaultImages } : {}),
         ...(imageGalleries ? { imageGalleries } : {}),
         priceCents,
+        promotionActive,
+        ...(promotionActive && promotionalPriceCents !== undefined
+          ? { promotionalPriceCents }
+          : {}),
         durationMinutes,
       }),
     ),

@@ -3,6 +3,7 @@ import type { PublicBusinessDocument } from '../model/tenant.model';
 import type { ProductDocument, PublicProductDocument } from '../model/product.model';
 import type { PublicProductGalleryDocument } from '../model/product-gallery.model';
 import type { ProductImageGallery } from '../../../shared/domain/interfaces/product.interface';
+import { hasValidActivePromotion } from '../../../shared/domain/product-price';
 import { firestore } from './firestore.service';
 import { DomainError } from '../../../shared/domain/errors';
 
@@ -13,6 +14,29 @@ export type PublicBusinessRecord = PublicBusinessDocument & {
 type PublicProductRecord = PublicProductDocument & { id: string };
 
 type BookedProductRecord = PublicProductDocument & ProductDocument & { id: string };
+
+function publicPromotionProjection(product: PublicProductDocument): PublicProductDocument {
+  const promotionActive = hasValidActivePromotion(product);
+  const { promotionalPriceCents, ...productWithoutPromotionPrice } = product;
+  const variantPrices =
+    product.variantPrices === null
+      ? null
+      : product.variantPrices?.map((variantPrice) => {
+          if (promotionActive) return variantPrice;
+          const originalPrice = { ...variantPrice };
+          delete originalPrice.promotionalPriceCents;
+          return originalPrice;
+        });
+
+  return {
+    ...productWithoutPromotionPrice,
+    promotionActive,
+    ...(promotionActive && !product.variantPrices?.length && promotionalPriceCents !== undefined
+      ? { promotionalPriceCents }
+      : {}),
+    ...(variantPrices !== undefined ? { variantPrices } : {}),
+  };
+}
 
 export async function findPublicBusiness(slug: string): Promise<PublicBusinessRecord> {
   const snapshot = await firestore
@@ -101,7 +125,10 @@ export async function listPublicProductRecords(
   }
 
   return snapshot.docs
-    .map((document) => ({ id: document.id, ...(document.data() as PublicProductDocument) }))
+    .map((document) => ({
+      id: document.id,
+      ...publicPromotionProjection(document.data() as PublicProductDocument),
+    }))
     .filter(
       (product) => product.tenantId === business.tenantId && product.active && product.published,
     )
@@ -161,7 +188,7 @@ export async function findPublicProductRecord(
 
   return {
     id: snapshot.id,
-    ...product,
+    ...publicPromotionProjection(product),
     ...(imageGalleries.length ? { imageGalleries } : {}),
   };
 }

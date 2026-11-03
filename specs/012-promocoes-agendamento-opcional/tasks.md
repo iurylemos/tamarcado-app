@@ -29,11 +29,11 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 **Propósito**: disponibilizar contratos e regras compartilhados necessários às histórias; concluir antes das fases de usuário.
 
-- [ ] T001 [P] Criar ou estender testes unitários de `shared/domain/product-price.spec.ts` para resolução exata da combinação, preço original, preço promocional vigente e promoção ausente/inativa.
-- [ ] T002 [P] Estender `shared/domain/interfaces/product.interface.ts` com campos opcionais de promoção e estimativa no produto e em `ProductVariantPrice`, preservando `priceCents` como preço original e tratando flags ausentes como falsos.
+- [x] T001 [P] Criar ou estender testes unitários de `shared/domain/product-price.spec.ts` para resolução exata da combinação, preço original, preço promocional vigente e promoção ausente/inativa.
+- [x] T002 [P] Estender `shared/domain/interfaces/product.interface.ts` com campos opcionais de promoção e estimativa no produto e em `ProductVariantPrice`, preservando `priceCents` como preço original e tratando flags ausentes como falsos.
 - [ ] T003 [P] Estender `shared/domain/interfaces/appointment.interface.ts` com os campos condicionais da entrada/saída de criação e os campos opcionais de snapshots históricos, sem tornar campos novos obrigatórios na leitura de registros legados.
 - [ ] T004 [P] Adicionar `timezone?: string` ao tipo público da empresa em `shared/domain/interfaces/tenant.interface.ts` e `client/src/interfaces/company.interface.ts`, sem expor outros campos privados do tenant.
-- [ ] T005 Implementar em `shared/domain/product-price.ts` a resolução compartilhada de preço original e efetivo por combinação válida; a promoção só é vigente quando ativa e válida, e a comissão continua baseada no preço efetivo.
+- [x] T005 Implementar em `shared/domain/product-price.ts` a resolução compartilhada de preço original e efetivo por combinação válida; a promoção só é vigente quando ativa e válida, e a comissão continua baseada no preço efetivo.
 
 **Checkpoint**: contratos compartilhados compiláveis, preço por combinação resolvido em centavos e campos opcionais compatíveis com documentos antigos.
 
@@ -45,18 +45,18 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 ### Testes da US1
 
-- [ ] T006 [P] [US1] Estender `backoffice/src/pages/ProductsPage.spec.tsx` para criação/edição de promoção ativa e inativa, preço ausente/inválido e preço promocional igual ou superior ao original em produto simples e por combinação.
-- [ ] T007 [P] [US1] Estender `functions/src/functions/products/manage-product.spec.ts` para validação autoritativa da promoção, atualização de `products` e `public_products` e rejeição de alteração fora do tenant.
-- [ ] T008 [P] [US1] Estender `client/src/pages/CompanyCatalogPage.spec.tsx` e `client/src/services/catalog.service.spec.ts` para ofertas ativas publicadas/ativas, exclusão de ofertas inativas, preço por combinação e preservação de catálogo legado e paginação.
+- [x] T006 [P] [US1] Estender `backoffice/src/pages/ProductsPage.spec.tsx` para criação/edição de promoção ativa e inativa, preço ausente/inválido e preço promocional igual ou superior ao original em produto simples e por combinação.
+- [x] T007 [P] [US1] Estender `functions/src/functions/products/manage-product.spec.ts` para validação autoritativa da promoção, atualização de `products` e `public_products` e rejeição de alteração fora do tenant.
+- [x] T008 [P] [US1] Estender `client/src/pages/CompanyCatalogPage.spec.tsx` e `client/src/services/catalog.service.spec.ts` para ofertas ativas publicadas/ativas, exclusão de ofertas inativas, preço por combinação e preservação de catálogo legado e paginação.
 
 ### Implementação da US1
 
-- [ ] T009 [US1] Atualizar `backoffice/src/interfaces/product.interface.ts`, `backoffice/src/components/organisms/ProductEditor/ProductEditor.tsx` e `backoffice/src/services/admin.service.ts` para editar ativação e preços promocionais no produto ou em todas as combinações; ao ativar recurso em produto com atributos sem preços por combinação, materializar combinações válidas sem alterar seus preços-base.
-- [ ] T010 [US1] Atualizar `functions/src/model/product.model.ts` e `functions/src/services/backoffice.service.ts` para validar a configuração no servidor e salvar produto/projeção na transação existente, mantendo autorização e propriedade do tenant; promoção ativa exige preço promocional inteiro não negativo e estritamente menor que `priceCents` do produto ou da própria combinação.
-- [ ] T011 [P] [US1] Projetar os campos promocionais em `functions/src/services/public-catalog.service.ts` e `functions/src/functions/catalog/get-public-catalog.ts`; omitir ou neutralizar preço promocional quando `promotionActive` for falso.
-- [ ] T012 [P] [US1] Estender `client/src/services/catalog.service.ts` e `client/src/pages/CompanyCatalogPage.tsx` com consulta pública de promoções filtrada por slug, `active == true`, `published == true` e `promotionActive == true`, sem substituir a paginação do catálogo normal.
-- [ ] T013 [US1] Atualizar `client/src/components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate.tsx` para apresentar ofertas antes da listagem convencional, com preço original riscado em vermelho, preço promocional destacado e identificação visual da promoção, preservando a apresentação regular de produtos sem promoção vigente.
-- [ ] T014 [US1] Adicionar em `firestore.indexes.json` o índice composto da consulta promocional usando os filtros e ordenação definidos em `client/src/services/catalog.service.ts`; não alterar `firestore.rules`.
+- [x] T009 [US1] Atualizar `backoffice/src/interfaces/product.interface.ts`, `backoffice/src/components/organisms/ProductEditor/ProductEditor.tsx` e `backoffice/src/services/admin.service.ts` para editar ativação e preços promocionais no produto ou em todas as combinações; ao ativar recurso em produto com atributos sem preços por combinação, materializar combinações válidas sem alterar seus preços-base.
+- [x] T010 [US1] Atualizar `functions/src/model/product.model.ts` e `functions/src/services/backoffice.service.ts` para validar a configuração no servidor e salvar produto/projeção na transação existente, mantendo autorização e propriedade do tenant; promoção ativa exige preço promocional inteiro não negativo e estritamente menor que `priceCents` do produto ou da própria combinação.
+- [x] T011 [P] [US1] Projetar os campos promocionais em `functions/src/services/public-catalog.service.ts` e `functions/src/functions/catalog/get-public-catalog.ts`; omitir ou neutralizar preço promocional quando `promotionActive` for falso.
+- [x] T012 [P] [US1] Estender `client/src/services/catalog.service.ts` e `client/src/pages/CompanyCatalogPage.tsx` com consulta pública de promoções filtrada por slug, `active == true`, `published == true` e `promotionActive == true`, sem substituir a paginação do catálogo normal.
+- [x] T013 [US1] Atualizar `client/src/components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate.tsx` para apresentar ofertas antes da listagem convencional, com preço original riscado em vermelho, preço promocional destacado e identificação visual da promoção, preservando a apresentação regular de produtos sem promoção vigente.
+- [x] T014 [US1] Adicionar em `firestore.indexes.json` o índice composto da consulta promocional usando os filtros e ordenação definidos em `client/src/services/catalog.service.ts`; não alterar `firestore.rules`.
 
 **Checkpoint**: salvamento autorizado e validação confiável no backend, projeção pública sem preço promocional inativo, seção de ofertas indexada e fluxo convencional preservado.
 

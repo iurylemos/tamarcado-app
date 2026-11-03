@@ -18,6 +18,7 @@ export interface CompanySummary {
 export interface CompanyCatalog {
   business: CompanySummary;
   products: PublicProductSummary[];
+  promotions?: PublicProductSummary[];
   hasMore?: boolean;
 }
 
@@ -31,5 +32,7 @@ export interface PublicProductSummary {
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
   durationMinutes: number;
 }

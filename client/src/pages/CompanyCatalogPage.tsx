@@ -65,6 +65,7 @@ export default function CompanyCatalogPage({
   return (
     <CompanyCatalogTemplate
       catalog={catalog}
+      promotions={catalog?.promotions ?? []}
       status={status}
       hasMore={Boolean(hasNextPage)}
       loadingMore={isFetchingNextPage}

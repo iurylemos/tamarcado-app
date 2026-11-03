@@ -11,6 +11,7 @@ import {
 } from '../../services/backoffice.service';
 import { findPublicBusiness } from '../../services/public-catalog.service';
 import { productGalleryDocumentId } from '../../model/product-gallery.model';
+import { getPublicCatalog } from '../catalog/get-public-catalog';
 
 const validProduct = {
   name: 'Corte e finalização',
@@ -219,6 +220,100 @@ describe('product administration validation', () => {
       }).variantPrices,
     ).toBeNull();
   });
+
+  it('accepts and normalizes a valid active product promotion', () => {
+    expect(
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        promotionalPriceCents: 9000,
+      }),
+    ).toMatchObject({
+      promotionActive: true,
+      promotionalPriceCents: 9000,
+    });
+  });
+
+  it.each([
+    ['missing', undefined, /preço promocional/i],
+    ['negative', -1, /número inteiro/i],
+    ['fractional', 9000.5, /número inteiro/i],
+    ['equal to the original', 12000, /preço promocional.*menor que o preço original/i],
+    ['greater than the original', 12001, /preço promocional.*menor que o preço original/i],
+  ])(
+    'rejects an active product promotion with a %s price',
+    (_label, promotionalPriceCents, message) => {
+      expect(() =>
+        validateProductInput({
+          ...validProduct,
+          promotionActive: true,
+          ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+        }),
+      ).toThrow(message);
+    },
+  );
+
+  it('validates active promotions against each variant original price', () => {
+    const customizationAttributes = [
+      {
+        id: 'color',
+        label: 'Cor',
+        options: [
+          { id: 'blue', label: 'Azul' },
+          { id: 'red', label: 'Vermelho' },
+        ],
+        defaultOptionId: 'blue',
+      },
+    ];
+    const variantPrices = [
+      {
+        selections: [{ attributeId: 'color', optionId: 'blue' }],
+        priceCents: 15000,
+        promotionalPriceCents: 12000,
+      },
+      {
+        selections: [{ attributeId: 'color', optionId: 'red' }],
+        priceCents: 11000,
+        promotionalPriceCents: 8000,
+      },
+    ];
+
+    expect(
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        customizationAttributes,
+        variantPrices,
+      }).variantPrices,
+    ).toEqual(variantPrices);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map((variant, index) =>
+          index === 1 ? { ...variant, promotionalPriceCents: 11000 } : variant,
+        ),
+      }),
+    ).toThrow(/preço promocional menor que o preço original para cada combinação/i);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map((variant, index) =>
+          index === 1
+            ? { selections: variant.selections, priceCents: variant.priceCents }
+            : variant,
+        ),
+      }),
+    ).toThrow(/preço promocional menor que o preço original para cada combinação/i);
+  });
+
+  it('keeps legacy products valid when promotion fields are absent', () => {
+    expect(validateProductInput(validProduct)).not.toHaveProperty('promotionActive');
+    expect(validateProductInput(validProduct)).not.toHaveProperty('promotionalPriceCents');
+  });
 });
 
 const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
@@ -379,6 +474,75 @@ emulatorOnly('product gallery administration on Firestore emulator', () => {
       });
       expect(projection).not.toHaveProperty('commissionValue');
       expect(projection).toHaveProperty('variantPrices', validProductInput.variantPrices);
+    },
+  );
+
+  itVitest(
+    'saves active promotions for the owning tenant and clears inactive public prices',
+    async () => {
+      const variantPrices = validProductInput.variantPrices.map((variant) => ({
+        ...variant,
+        promotionalPriceCents: variant.priceCents - 1000,
+      }));
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        promotionActive: true,
+        variantPrices,
+      });
+
+      const internalProduct = (
+        await firestore.collection(collections.products).doc(testProductId).get()
+      ).data();
+      const publicProduct = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      expect(internalProduct).toMatchObject({ promotionActive: true, variantPrices });
+      expect(publicProduct).toMatchObject({ promotionActive: true, variantPrices });
+
+      const activeCatalog = await getPublicCatalog.run({
+        data: { businessSlug: 'product-gallery-test' },
+        rawRequest: {},
+        acceptsStreaming: false,
+      } as never);
+      const activeCatalogProduct = activeCatalog.products.find(
+        (product) => product.id === testProductId,
+      );
+      expect(activeCatalogProduct).toMatchObject({ promotionActive: true });
+      expect(activeCatalogProduct?.variantPrices?.[0]).toMatchObject({
+        promotionalPriceCents: 9000,
+      });
+
+      await expect(
+        saveProduct('another-tenant', {
+          ...validProductInput,
+          promotionActive: true,
+          variantPrices,
+        }),
+      ).rejects.toMatchObject({ code: 'not-found' });
+      expect(
+        (await firestore.collection(collections.products).doc(testProductId).get()).data(),
+      ).toMatchObject({ tenantId: testTenantId, promotionActive: true });
+
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        promotionActive: false,
+        variantPrices,
+      });
+      const inactiveProjection = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      expect(inactiveProjection).toHaveProperty('promotionActive', false);
+      expect(inactiveProjection?.variantPrices?.[0]).not.toHaveProperty('promotionalPriceCents');
+
+      const publicCatalog = await getPublicCatalog.run({
+        data: { businessSlug: 'product-gallery-test' },
+        rawRequest: {},
+        acceptsStreaming: false,
+      } as never);
+      const catalogProduct = publicCatalog.products.find((product) => product.id === testProductId);
+      expect(catalogProduct).toMatchObject({ promotionActive: false });
+      expect(catalogProduct).not.toHaveProperty('promotionalPriceCents');
+      expect(catalogProduct?.variantPrices?.[0]).not.toHaveProperty('promotionalPriceCents');
     },
   );
 

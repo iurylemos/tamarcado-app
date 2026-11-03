@@ -65,6 +65,17 @@
       ]
     },
     {
+      "collectionGroup": "public_products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "businessSlug", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" },
+        { "fieldPath": "published", "order": "ASCENDING" },
+        { "fieldPath": "promotionActive", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "working_hours",
       "queryScope": "COLLECTION",
       "fields": [

@@ -8,6 +8,7 @@ import type {
   ProductImage,
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
+import { hasValidActivePromotion } from '@shared/product-price';
 import { isValidBusinessSlug } from '../utils/business-slug.util';
 import {
   collection,
@@ -16,8 +17,11 @@ import {
   limit,
   orderBy,
   query,
+  QueryDocumentSnapshot,
+  QuerySnapshot,
   startAfter,
   where,
+  type DocumentData,
   type QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '../config/firebase.config';
@@ -27,6 +31,60 @@ export type CompanyCatalogOptions = {
   pageSize?: number;
   after?: Pick<PublicProductSummary, 'id' | 'name'>;
 };
+
+type GallerySnapshot = QuerySnapshot<DocumentData, DocumentData> | { docs: never[] };
+
+function summarizeProduct(
+  snapshot: QueryDocumentSnapshot<DocumentData, DocumentData>,
+  galleries: GallerySnapshot,
+  includeGalleries?: boolean,
+): PublicProductSummary {
+  const data = snapshot.data();
+  const promotionActive = data.promotionActive === true;
+
+  const publicGalleries = galleries.docs.map((snapshot) => {
+    const data = snapshot.data();
+    return {
+      id: snapshot.id,
+      productId: data.productId as string,
+      combinationKey: data.combinationKey as string,
+      selections: data.selections as ProductCustomizationSelection[],
+      images: data.images as ProductImage[],
+    };
+  });
+
+  const variantPrices = Array.isArray(data.variantPrices)
+    ? (data.variantPrices as ProductVariantPrice[]).map((variantPrice) => {
+        if (promotionActive) return variantPrice;
+        const originalPrice = { ...variantPrice };
+        delete originalPrice.promotionalPriceCents;
+        return originalPrice;
+      })
+    : undefined;
+
+  return {
+    id: snapshot.id,
+    name: data.name as string,
+    description: data.description as string | undefined,
+    imageUrl: data.imageUrl as string,
+    ...(Array.isArray(data.customizationAttributes)
+      ? { customizationAttributes: data.customizationAttributes }
+      : {}),
+    ...(variantPrices ? { variantPrices } : {}),
+    ...(Array.isArray(data.defaultImages) ? { defaultImages: data.defaultImages } : {}),
+    ...(includeGalleries
+      ? {
+          imageGalleries: publicGalleries.filter((gallery) => gallery.productId === snapshot.id),
+        }
+      : {}),
+    priceCents: data.priceCents as number,
+    ...(typeof data.promotionActive === 'boolean' ? { promotionActive } : {}),
+    ...(promotionActive && typeof data.promotionalPriceCents === 'number'
+      ? { promotionalPriceCents: data.promotionalPriceCents }
+      : {}),
+    durationMinutes: data.durationMinutes as number,
+  };
+}
 
 export async function getCompanyCatalog(
   slug: string,
@@ -49,8 +107,17 @@ export async function getCompanyCatalog(
     productConstraints.push(limit(pageSize));
   }
 
+  const promotionConstraints: QueryConstraint[] = [
+    where('businessSlug', '==', slug),
+    where('active', '==', true),
+    where('published', '==', true),
+    where('promotionActive', '==', true),
+    orderBy('name'),
+    orderBy(documentId()),
+  ];
+
   // Business, products and (only for a single product) galleries do not depend on each other.
-  const [businesses, products, galleries] = await Promise.all([
+  const [businesses, products, galleries, promotionalProducts] = await Promise.all([
     getDocsFromServer(
       query(
         collection(db, 'public_businesses'),
@@ -70,6 +137,9 @@ export async function getCompanyCatalog(
           ),
         )
       : Promise.resolve({ docs: [] }),
+    pageSize && !after
+      ? getDocsFromServer(query(collection(db, 'public_products'), ...promotionConstraints))
+      : Promise.resolve({ docs: [] }),
   ]);
 
   const businessDoc = businesses.docs[0];
@@ -82,6 +152,10 @@ export async function getCompanyCatalog(
   if (!tenantId) return null;
 
   const tenantProducts = products.docs.filter((snapshot) => snapshot.data().tenantId === tenantId);
+  const tenantPromotions = promotionalProducts.docs.filter(
+    (snapshot) => snapshot.data().tenantId === tenantId,
+  );
+
   const business: CompanySummary = {
     id: businessDoc.id,
     name: rawBusiness.name as string,
@@ -91,51 +165,27 @@ export async function getCompanyCatalog(
     logoUrl: rawBusiness.logoUrl as string | undefined,
   };
 
-  const publicGalleries = galleries.docs.map((snapshot) => {
-    const data = snapshot.data();
-    return {
-      id: snapshot.id,
-      productId: data.productId as string,
-      combinationKey: data.combinationKey as string,
-      selections: data.selections as ProductCustomizationSelection[],
-      images: data.images as ProductImage[],
-    };
-  });
-
   const visibleProducts: PublicProductSummary[] = tenantProducts
-    .map((snapshot) => {
-      const data = snapshot.data();
-      return {
-        id: snapshot.id,
-        name: data.name as string,
-        description: data.description as string | undefined,
-        imageUrl: data.imageUrl as string,
-        ...(Array.isArray(data.customizationAttributes)
-          ? { customizationAttributes: data.customizationAttributes }
-          : {}),
-        ...(Array.isArray(data.variantPrices)
-          ? { variantPrices: data.variantPrices as ProductVariantPrice[] }
-          : {}),
-        ...(Array.isArray(data.defaultImages) ? { defaultImages: data.defaultImages } : {}),
-        ...(productId
-          ? {
-              imageGalleries: publicGalleries.filter(
-                (gallery) => gallery.productId === snapshot.id,
-              ),
-            }
-          : {}),
-        priceCents: data.priceCents as number,
-        durationMinutes: data.durationMinutes as number,
-      };
-    })
+    .map((snapshot) => summarizeProduct(snapshot, galleries, Boolean(productId)))
     .filter(
       (product) =>
         Number.isInteger(product.priceCents) && Number.isInteger(product.durationMinutes),
+    );
+  const promotions = tenantPromotions
+    .filter((snapshot) => snapshot.data().active === true && snapshot.data().published === true)
+    .map((snapshot) => summarizeProduct(snapshot, galleries))
+    .filter(
+      (product) =>
+        product.promotionActive === true &&
+        Number.isInteger(product.priceCents) &&
+        Number.isInteger(product.durationMinutes) &&
+        hasValidActivePromotion(product),
     );
 
   return {
     business,
     products: visibleProducts,
+    promotions,
     ...(pageSize ? { hasMore: products.docs.length === pageSize } : {}),
   };
 }

@@ -11,6 +11,8 @@ export type ProductInputData = {
   description: string;
   imageUrl: string;
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
   variantPrices: ProductVariantPrice[] | null;
   durationMinutes: number;
   commissionType: 'percentage' | 'fixed';
@@ -32,6 +34,8 @@ export interface ProductRecord {
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;

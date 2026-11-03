@@ -303,6 +303,15 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
   ];
   const seededBeautyProducts = beautyProducts.map((service) => ({
     ...service,
+    ...(service.id === 'service-vitoria-lashes'
+      ? {
+          promotionActive: true,
+          variantPrices: service.variantPrices.map((variantPrice) => ({
+            ...variantPrice,
+            promotionalPriceCents: variantPrice.priceCents - 1500,
+          })),
+        }
+      : {}),
     tenantId: 'tenant-vitoria-moura-beauty',
     imageUrl: beautyProductImageUrl,
     commissionType: 'percentage' as const,
@@ -318,6 +327,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       imageUrl:
         'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=900&q=85',
       priceCents: 12000,
+      promotionActive: false,
+      promotionalPriceCents: 9900,
       durationMinutes: 60,
       commissionType: 'percentage',
       commissionValue: 3500,
@@ -343,6 +354,8 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
       imageUrl:
         'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=900&q=85',
       priceCents: 25000,
+      promotionActive: true,
+      promotionalPriceCents: 19900,
       durationMinutes: 120,
       commissionType: 'percentage',
       commissionValue: 4000,
@@ -435,6 +448,10 @@ export function createSeedDocuments(now = new Date()): SeedDocument[] {
           : {}),
         imageUrl: product.imageUrl,
         priceCents: product.priceCents,
+        ...('promotionActive' in product ? { promotionActive: product.promotionActive } : {}),
+        ...('promotionalPriceCents' in product && product.promotionActive
+          ? { promotionalPriceCents: product.promotionalPriceCents }
+          : {}),
         durationMinutes: product.durationMinutes,
         active: product.active,
         ...('customizationAttributes' in product
