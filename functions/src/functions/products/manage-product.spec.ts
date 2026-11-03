@@ -334,15 +334,18 @@ describe('product administration validation', () => {
     ['negative', -1, /número inteiro entre 1/i],
     ['fractional', 1.5, /número inteiro entre 1/i],
     ['unsafe integer', Number.MAX_SAFE_INTEGER + 1, /número inteiro entre 1/i],
-  ])('rejects a %s simple-product estimate when enabled', (_label, estimatedDeliveryDays, message) => {
-    expect(() =>
-      validateProductInput({
-        ...validProduct,
-        estimatedDeliveryEnabled: true,
-        ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
-      }),
-    ).toThrow(message);
-  });
+  ])(
+    'rejects a %s simple-product estimate when enabled',
+    (_label, estimatedDeliveryDays, message) => {
+      expect(() =>
+        validateProductInput({
+          ...validProduct,
+          estimatedDeliveryEnabled: true,
+          ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
+        }),
+      ).toThrow(message);
+    },
+  );
 
   it('requires a valid estimate for every customization combination', () => {
     const customizationAttributes = [
@@ -600,6 +603,16 @@ emulatorOnly('product gallery administration on Firestore emulator', () => {
       expect(activeCatalogProduct?.variantPrices?.[0]).toMatchObject({
         promotionalPriceCents: 9000,
       });
+
+      const offerQuery = await firestore
+        .collection(collections.publicProducts)
+        .where('businessSlug', '==', 'product-gallery-test')
+        .where('active', '==', true)
+        .where('published', '==', true)
+        .where('promotionActive', '==', true)
+        .orderBy('name')
+        .get();
+      expect(offerQuery.docs.map((document) => document.id)).toContain(testProductId);
 
       await expect(
         saveProduct('another-tenant', {

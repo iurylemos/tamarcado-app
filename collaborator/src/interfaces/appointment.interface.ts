@@ -1,4 +1,8 @@
 import type { AppointmentStatus } from '@shared/appointment-status';
+import type {
+  AppointmentPromotionSnapshot,
+  PaymentMethod,
+} from '@shared/interfaces/appointment.interface';
 import type { ProductCustomizationSnapshot } from '@shared/interfaces/product.interface';
 
 export interface CollaboratorAppointment {
@@ -17,6 +21,13 @@ export interface CollaboratorAppointment {
   productImageUrlSnapshot?: string;
   customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
+  productOriginalPriceCentsSnapshot?: number;
+  promotionSnapshot?: AppointmentPromotionSnapshot;
+  estimatedDeliveryDaysSnapshot?: number;
+  estimatedDeliveryDateSnapshot?: string;
+  estimatedDeliveryTimezoneSnapshot?: string;
+  paymentMethodSnapshot?: PaymentMethod;
+  installmentsSnapshot?: number;
   whatsappOptIn: boolean;
 }
 

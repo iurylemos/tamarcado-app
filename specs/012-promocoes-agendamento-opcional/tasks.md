@@ -31,7 +31,7 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 - [x] T001 [P] Criar ou estender testes unitários de `shared/domain/product-price.spec.ts` para resolução exata da combinação, preço original, preço promocional vigente e promoção ausente/inativa.
 - [x] T002 [P] Estender `shared/domain/interfaces/product.interface.ts` com campos opcionais de promoção e estimativa no produto e em `ProductVariantPrice`, preservando `priceCents` como preço original e tratando flags ausentes como falsos.
-- [ ] T003 [P] Estender `shared/domain/interfaces/appointment.interface.ts` com os campos condicionais da entrada/saída de criação e os campos opcionais de snapshots históricos, sem tornar campos novos obrigatórios na leitura de registros legados.
+- [x] T003 [P] Estender `shared/domain/interfaces/appointment.interface.ts` com os campos condicionais da entrada/saída de criação e os campos opcionais de snapshots históricos, sem tornar campos novos obrigatórios na leitura de registros legados.
 - [x] T004 [P] Adicionar `timezone?: string` ao tipo público da empresa em `shared/domain/interfaces/tenant.interface.ts` e `client/src/interfaces/company.interface.ts`, sem expor outros campos privados do tenant.
 - [x] T005 Implementar em `shared/domain/product-price.ts` a resolução compartilhada de preço original e efetivo por combinação válida; a promoção só é vigente quando ativa e válida, e a comissão continua baseada no preço efetivo.
 
@@ -86,13 +86,13 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 ### Testes da US4
 
-- [ ] T019 [P] [US4] Estender `backoffice/src/pages/ProductsPage.spec.tsx` e `functions/src/functions/products/manage-product.spec.ts` para estimativa inteira positiva em produto simples e em todas as combinações, configuração parcial inválida e isolamento multi-tenant.
+- [x] T019 [P] [US4] Estender `backoffice/src/pages/ProductsPage.spec.tsx` e `functions/src/functions/products/manage-product.spec.ts` para estimativa inteira positiva em produto simples e em todas as combinações, configuração parcial inválida e isolamento multi-tenant.
 
 ### Implementação da US4
 
 - [x] T020 [US4] Atualizar `backoffice/src/components/organisms/ProductEditor/ProductEditor.tsx`, `backoffice/src/interfaces/product.interface.ts` e `backoffice/src/services/admin.service.ts` para configurar estimativa por produto ou combinação; mostrar validação clara e preservar o fluxo legado quando a estimativa estiver ausente/desabilitada.
-- [ ] T021 [US4] Atualizar `functions/src/model/product.model.ts`, `functions/src/model/tenant.model.ts` e `functions/src/services/backoffice.service.ts` para validar prazo inteiro positivo no produto ou em todas as combinações e, ao habilitar estimativa, projetar `tenant.timezone` em `public_businesses` na mesma transação que salva o produto; não fazer backfill geral.
-- [ ] T022 [P] [US4] Estender `functions/src/services/public-catalog.service.ts`, `functions/src/functions/catalog/get-public-catalog.ts` e `client/src/services/catalog.service.ts` para projetar e ler estimativas e `timezone` IANA da empresa; se o fuso público estiver ausente, não calcular data usando o fuso do dispositivo.
+- [x] T021 [US4] Atualizar `functions/src/model/product.model.ts`, `functions/src/model/tenant.model.ts` e `functions/src/services/backoffice.service.ts` para validar prazo inteiro positivo no produto ou em todas as combinações e, ao habilitar estimativa, projetar `tenant.timezone` em `public_businesses` na mesma transação que salva o produto; não fazer backfill geral.
+- [x] T022 [P] [US4] Estender `functions/src/services/public-catalog.service.ts`, `functions/src/functions/catalog/get-public-catalog.ts` e `client/src/services/catalog.service.ts` para projetar e ler estimativas e `timezone` IANA da empresa; se o fuso público estiver ausente, não calcular data usando o fuso do dispositivo.
 
 **Checkpoint**: configuração de prazo validada e isolada por tenant/combinação; registros antigos permanecem sem estimativa e sem migração.
 
@@ -105,19 +105,19 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 ### Testes da US3
 
 - [x] T023 [P] [US3] Estender `client/src/pages/BookingPage.spec.tsx` para prazo e data provisórios no fuso empresarial, profissional automático quando único, escolha obrigatória quando múltiplos, ausência de seleção de dia/horário, métodos de pagamento e parcelas válidas.
-- [ ] T024 [P] [US3] Estender `functions/src/functions/appointments/create-public-appointment.spec.ts` para omissão de `startsAt` somente com estimativa válida, escolha/validação de profissional, atribuição do horário mais próximo, data oficial pelo fuso e `createdAt` do servidor, snapshots e falhas explícitas sem receipt de sucesso.
+- [x] T024 [P] [US3] Estender `functions/src/functions/appointments/create-public-appointment.spec.ts` para omissão de `startsAt` somente com estimativa válida, escolha/validação de profissional, atribuição do horário mais próximo, data oficial pelo fuso e `createdAt` do servidor, snapshots e falhas explícitas sem receipt de sucesso.
 - [x] T025 [P] [US3] Estender testes de `shared/domain/timezone.ts` para adição de dias corridos como data civil no fuso IANA, cobrindo virada de dia/mês/ano e transição de offset sem soma fixa de milissegundos.
 
 ### Implementação da US3
 
 - [x] T026 [US3] Implementar em `shared/domain/timezone.ts` cálculo de previsão por data civil, diferenciando a previsão provisória baseada na data local atual da previsão oficial baseada em `createdAt` no servidor.
-- [ ] T027 [US3] Estender `functions/src/services/availability.service.ts`, `client/src/services/availability.service.ts`, `client/src/services/professional.service.ts` e `client/src/interfaces/professional.interface.ts` para disponibilizar profissionais ativos associados ao produto com horário no horizonte vigente de 31 dias; não tratar horário descoberto como reserva.
+- [x] T027 [US3] Estender `functions/src/services/availability.service.ts`, `client/src/services/availability.service.ts`, `client/src/services/professional.service.ts` e `client/src/interfaces/professional.interface.ts` para disponibilizar profissionais ativos associados ao produto com horário no horizonte vigente de 31 dias; não tratar horário descoberto como reserva.
 - [x] T028 [US3] Atualizar `client/src/pages/BookingPage.tsx`, `client/src/components/organisms/BookingReady/index.tsx` e `client/src/components/organisms/BookingAvailability/BookingAvailability.tsx` para, com estimativa válida, dispensar escolha manual de data/horário, apresentar previsão explicitamente provisória e exigir escolha de profissional somente quando houver mais de um elegível; manter o fluxo atual sem estimativa.
 - [x] T029 [US3] Atualizar `client/src/components/organisms/BookingCustomerDetails/BookingCustomerDetails.tsx` para registrar débito, crédito, dinheiro ou Pix e oferecer de 1 a 5 parcelas somente para crédito, comunicando que a informação não representa pagamento processado ou recebido.
 - [x] T030 [US3] Atualizar `client/src/services/appointment.service.ts` para enviar método de pagamento obrigatório, parcelas somente para crédito e `professionalId` aplicável; no caminho estimado, omitir `startsAt` e não enviar preço, prazo, estimativa ou horário como autoridade.
-- [ ] T031 [US3] Atualizar `functions/src/functions/appointments/create-public-appointment.ts` e `functions/src/interfaces/booking.interface.ts` para validar entrada condicional: produto normal exige `professionalId` e `startsAt`; produto com estimativa exige omissão de `startsAt`; crédito exige inteiro de 1 a 5 parcelas e os demais métodos rejeitam parcelas.
-- [ ] T032 [US3] Atualizar `functions/src/services/booking.service.ts` para reler tenant/produto/profissional vigentes, confirmar associação e configuração da combinação e atribuir o horário mais próximo no horizonte atual; revalidar e usar a transação/reservas/notificação existentes, reavaliando conflito ou falhando explicitamente sem criar sucesso.
-- [ ] T033 [US3] Atualizar `functions/src/model/appointment.model.ts` e `functions/src/services/booking.service.ts` para persistir o preço efetivo em `productPriceCentsSnapshot`, preço original e promoção aplicada, comissão sobre preço efetivo, prazo/data/fuso oficiais e snapshots informativos de pagamento/parcelas; preservar `createdAt` e horários reais definidos pelo servidor.
+- [x] T031 [US3] Atualizar `functions/src/functions/appointments/create-public-appointment.ts` e `functions/src/interfaces/booking.interface.ts` para validar entrada condicional: produto normal exige `professionalId` e `startsAt`; produto com estimativa exige omissão de `startsAt`; crédito exige inteiro de 1 a 5 parcelas e os demais métodos rejeitam parcelas.
+- [x] T032 [US3] Atualizar `functions/src/services/booking.service.ts` para reler tenant/produto/profissional vigentes, confirmar associação e configuração da combinação e atribuir o horário mais próximo no horizonte atual; revalidar e usar a transação/reservas/notificação existentes, reavaliando conflito ou falhando explicitamente sem criar sucesso.
+- [x] T033 [US3] Atualizar `functions/src/model/appointment.model.ts` e `functions/src/services/booking.service.ts` para persistir o preço efetivo em `productPriceCentsSnapshot`, preço original e promoção aplicada, comissão sobre preço efetivo, prazo/data/fuso oficiais e snapshots informativos de pagamento/parcelas; preservar `createdAt` e horários reais definidos pelo servidor.
 - [x] T034 [US3] Atualizar `client/src/components/organisms/BookingReceiptDialog/` e `client/src/pages/BookingPage.tsx` para exibir horário/profissional efetivamente atribuídos e previsão oficial retornada pela Function, sem confundir a data estimada com o horário reservado ou indicar pagamento recebido.
 
 **Checkpoint**: criação continua sendo agendamento `pending` com reserva real; fluxo normal permanece intacto e estimativa sem horário disponível ou com falha de reserva não produz sucesso.
@@ -126,11 +126,11 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 **Propósito**: concluir leitura operacional, compatibilidade e verificação integrada dos workspaces.
 
-- [ ] T035 [P] Estender `collaborator/src/pages/AppointmentsPage.spec.tsx` para leitura de appointments antigos sem os campos opcionais e exibição dos snapshots novos de promoção, estimativa e pagamento.
-- [ ] T036 Atualizar `collaborator/src/interfaces/appointment.interface.ts` e `collaborator/src/components/organisms/AppointmentCard/AppointmentCard.tsx` para apresentar os dados históricos novos sem inventar valores ausentes nem alterar status ou reagendamento.
-- [ ] T037 Validar a consulta de ofertas e o índice em `firestore.indexes.json` no Emulator Suite e executar `npm run test:emulator`; garantir que disputa por horário não cria appointment sem reserva ou receipt falso.
-- [ ] T038 Executar os testes focados do roteiro em `specs/012-promocoes-agendamento-opcional/quickstart.md`: ProductsPage/manage-product, CompanyCatalogPage/catalog.service, BookingPage/create-public-appointment e AppointmentsPage, incluindo compatibilidade legado e isolamento multi-tenant.
-- [ ] T039 Executar os builds dos workspaces `functions`, `client`, `backoffice` e `collaborator` conforme `specs/012-promocoes-agendamento-opcional/quickstart.md`; corrigir erros de tipo/build sem introduzir dependências ou alterar superfícies fora do escopo.
+- [x] T035 [P] Estender `collaborator/src/pages/AppointmentsPage.spec.tsx` para leitura de appointments antigos sem os campos opcionais e exibição dos snapshots novos de promoção, estimativa e pagamento.
+- [x] T036 Atualizar `collaborator/src/interfaces/appointment.interface.ts` e `collaborator/src/components/organisms/AppointmentCard/AppointmentCard.tsx` para apresentar os dados históricos novos sem inventar valores ausentes nem alterar status ou reagendamento.
+- [x] T037 Validar a consulta de ofertas e o índice em `firestore.indexes.json` no Emulator Suite e executar `npm run test:emulator`; garantir que disputa por horário não cria appointment sem reserva ou receipt falso.
+- [x] T038 Executar os testes focados do roteiro em `specs/012-promocoes-agendamento-opcional/quickstart.md`: ProductsPage/manage-product, CompanyCatalogPage/catalog.service, BookingPage/create-public-appointment e AppointmentsPage, incluindo compatibilidade legado e isolamento multi-tenant.
+- [x] T039 Executar os builds dos workspaces `functions`, `client`, `backoffice` e `collaborator` conforme `specs/012-promocoes-agendamento-opcional/quickstart.md`; corrigir erros de tipo/build sem introduzir dependências ou alterar superfícies fora do escopo.
 
 ## Dependências e ordem de execução
 

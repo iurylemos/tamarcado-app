@@ -799,6 +799,69 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     expect(jobs.docs[0]?.data()).not.toHaveProperty('customerPhoneE164');
   });
 
+  it('never returns estimated-checkout success without a persisted appointment and reservation', async () => {
+    await db.collection('products').doc('service-corte').update({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 3,
+    });
+    const beforeAppointments = await db.collection('appointments').get();
+    const beforeNotifications = await db.collection('appointment_notification_jobs').get();
+    const existingAppointmentIds = new Set(beforeAppointments.docs.map((document) => document.id));
+    const request = {
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit' as const,
+    };
+    const outcomes = await Promise.allSettled([
+      createPublicAppointment(request),
+      createPublicAppointment(request),
+    ]);
+    const successful = outcomes.flatMap((outcome) =>
+      outcome.status === 'fulfilled' ? [outcome.value] : [],
+    );
+
+    expect(successful.length).toBeGreaterThan(0);
+
+    for (const result of successful) {
+      const appointment = await db.collection('appointments').doc(result.appointmentId).get();
+      const reservations = await db
+        .collection('booking_reservations')
+        .where('appointmentId', '==', result.appointmentId)
+        .get();
+      const notification = await db
+        .collection('appointment_notification_jobs')
+        .doc(result.appointmentId)
+        .get();
+
+      expect(appointment.exists).toBe(true);
+      expect(reservations.empty).toBe(false);
+      expect(notification.exists).toBe(true);
+      expect(result.startsAt).toBe(appointment.data()?.startsAt.toDate().toISOString());
+      expect(
+        reservations.docs.every(
+          (reservation) =>
+            reservation.data().tenantId === 'tenant-aurora' &&
+            reservation.data().professionalId === 'professional-ana',
+        ),
+      ).toBe(true);
+    }
+
+    expect(new Set(successful.map((result) => result.appointmentId)).size).toBe(successful.length);
+    const afterAppointments = await db.collection('appointments').get();
+    const newAppointmentIds = afterAppointments.docs
+      .map((document) => document.id)
+      .filter((id) => !existingAppointmentIds.has(id));
+    const afterNotifications = await db.collection('appointment_notification_jobs').get();
+    expect(newAppointmentIds.sort()).toEqual(
+      successful.map((result) => result.appointmentId).sort(),
+    );
+    expect(afterAppointments.size).toBe(beforeAppointments.size + successful.length);
+    expect(afterNotifications.size).toBe(beforeNotifications.size + successful.length);
+  });
+
   it('continues requiring an explicit professional and time for a product without an estimate', async () => {
     await expect(
       createPublicAppointment({
@@ -900,8 +963,9 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       .where('appointmentId', '==', result.appointmentId)
       .get();
     expect(reservations.empty).toBe(false);
-    expect(await db.collection('appointment_notification_jobs').doc(result.appointmentId).get())
-      .toMatchObject({ exists: true });
+    expect(
+      await db.collection('appointment_notification_jobs').doc(result.appointmentId).get(),
+    ).toMatchObject({ exists: true });
   });
 
   it('requires a professional when multiple professionals are eligible and validates selected availability', async () => {
