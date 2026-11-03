@@ -1,4 +1,4 @@
-import { useState, type JSX, type SubmitEvent } from 'react';
+import { useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import type {
   ProductCustomizationAttribute,
   ProductCustomizationSelection,
@@ -6,6 +6,7 @@ import type {
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
 import type { ProductInputData, ProductRecord } from '../../../interfaces/product.interface';
+import type { GalleryDraft } from '../../../interfaces/gallery.interface';
 import {
   productCustomizationCombinationKey,
   productCustomizationCombinations,
@@ -21,6 +22,7 @@ import {
   uploadProductImage,
   validateProductImage,
 } from '../../../services/product-image.service';
+import { ImageUtil } from '../../../utils/image.util';
 
 type ProductEditorProps = {
   product?: ProductRecord;
@@ -28,19 +30,6 @@ type ProductEditorProps = {
   onClose: () => void;
   onSaved: () => Promise<void>;
 };
-
-type GalleryDraft = {
-  id?: string;
-  selections: ProductCustomizationSelection[];
-  images: ProductImage[];
-  files: File[];
-};
-
-const legacyImage = (imageUrl: string): ProductImage => ({
-  id: 'legacy-image',
-  storagePath: '',
-  downloadUrl: imageUrl,
-});
 
 export default function ProductEditor({
   product,
@@ -52,7 +41,7 @@ export default function ProductEditor({
   const [description, setDescription] = useState<string>(product?.description ?? '');
   const [imageUrl, setImageUrl] = useState<string>(product?.imageUrl ?? '');
   const [defaultImages, setDefaultImages] = useState<ProductImage[]>(
-    product?.defaultImages ?? (product ? [legacyImage(product.imageUrl)] : []),
+    product?.defaultImages ?? (product ? [ImageUtil.legacyImage(product.imageUrl)] : []),
   );
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -75,6 +64,7 @@ export default function ProductEditor({
       ]),
     ),
   );
+
   const [variantPromotionalPriceDrafts, setVariantPromotionalPriceDrafts] = useState<
     Record<string, string>
   >(() =>
@@ -87,6 +77,7 @@ export default function ProductEditor({
         ]),
     ),
   );
+
   const [galleryDrafts, setGalleryDrafts] = useState<GalleryDraft[]>(
     product?.imageGalleries?.map((gallery) => ({
       id: gallery.id,
@@ -100,6 +91,7 @@ export default function ProductEditor({
   const [commissionType, setCommissionType] = useState<'percentage' | 'fixed'>(
     product?.commissionType ?? 'percentage',
   );
+
   const [commission, setCommission] = useState<string>(
     product
       ? product.commissionType === 'percentage'
@@ -107,6 +99,7 @@ export default function ProductEditor({
         : (product.commissionValue / 100).toFixed(2)
       : '35',
   );
+
   const [active, setActive] = useState<boolean>(product?.active ?? true);
   const [promotionActive, setPromotionActive] = useState<boolean>(
     product?.promotionActive ?? false,
@@ -118,10 +111,15 @@ export default function ProductEditor({
   );
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const customizationCombinations = productCustomizationCombinations(customizationAttributes);
+
+  const customizationCombinations = useMemo(
+    () => productCustomizationCombinations(customizationAttributes),
+    [customizationAttributes],
+  );
 
   const addAttribute = (): void => {
     const firstOptionId = crypto.randomUUID();
+
     setCustomizationAttributes((current) => [
       ...current,
       {
@@ -165,6 +163,7 @@ export default function ProductEditor({
     setError('');
     const parsedPrice = Number(price.replace(',', '.'));
     const parsedCommission = Number(commission.replace(',', '.'));
+
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedCommission)) {
       setError('Informe valores numéricos válidos para preço e comissão.');
       setBusy(false);
@@ -196,12 +195,14 @@ export default function ProductEditor({
 
     let variantPrices: ProductVariantPrice[] | null = null;
     const materializePromotionVariants = promotionActive && customizationAttributes.length > 0;
+
     if (variantPricingEnabled || materializePromotionVariants) {
       if (customizationAttributes.length === 0) {
         setError('Adicione pelo menos um atributo para cadastrar preços por combinação.');
         setBusy(false);
         return;
       }
+
       const parsedVariantPrices = customizationCombinations.map((selections) => {
         const key = productCustomizationCombinationKey(selections);
         const value = variantPricingEnabled ? (variantPriceDrafts[key] ?? price) : price;
@@ -229,6 +230,7 @@ export default function ProductEditor({
                 variantPromotionalPriceCents < Math.round(amount * 100))),
         };
       });
+
       if (parsedVariantPrices.some((variantPrice) => !variantPrice.valid)) {
         setError(
           promotionActive
@@ -238,6 +240,7 @@ export default function ProductEditor({
         setBusy(false);
         return;
       }
+
       variantPrices = parsedVariantPrices.map(
         ({ selections, priceCents, promotionalPriceCents }) => ({
           selections,
@@ -248,10 +251,12 @@ export default function ProductEditor({
     }
 
     const canUseLegacyImage = !product?.defaultImages && imageUrl.trim().length > 0;
+
     const defaultImageCount =
       defaultImages.length +
       imageFiles.length +
       (defaultImages.length === 0 && imageFiles.length === 0 && canUseLegacyImage ? 1 : 0);
+
     if (defaultImageCount < 1 || defaultImageCount > 10) {
       setError('A galeria padrão deve ter de uma a dez imagens.');
       setBusy(false);
@@ -259,6 +264,7 @@ export default function ProductEditor({
     }
 
     const combinationKeys = new Set<string>();
+
     for (const gallery of galleryDrafts) {
       const selections = customizationAttributes.map((attribute) =>
         gallery.selections.find((selection) => selection.attributeId === attribute.id),
@@ -306,6 +312,7 @@ export default function ProductEditor({
     const uploadedGalleryImages: ProductImage[][] = [];
     const savedGalleryIndexes = new Set<number>();
     let metadataWriteStarted = false;
+
     try {
       if (
         (imageFiles.length > 0 || galleryDrafts.some((gallery) => gallery.files.length > 0)) &&
@@ -313,16 +320,20 @@ export default function ProductEditor({
       ) {
         throw new Error('Não foi possível identificar a empresa para enviar as imagens.');
       }
+
       const productId = product?.id ?? crypto.randomUUID();
 
       for (const file of imageFiles) {
         uploadedImages.push(await uploadProductImage(tenantId, productId, file, setUploadProgress));
       }
+
       for (const gallery of galleryDrafts) {
         const uploaded: ProductImage[] = [];
+
         for (const file of gallery.files) {
           uploaded.push(await uploadProductImage(tenantId, productId, file, setUploadProgress));
         }
+
         uploadedGalleryImages.push(uploaded);
       }
 
@@ -330,10 +341,11 @@ export default function ProductEditor({
         ...(defaultImages.length > 0
           ? defaultImages
           : imageFiles.length === 0 && canUseLegacyImage
-            ? [legacyImage(imageUrl)]
+            ? [ImageUtil.legacyImage(imageUrl)]
             : []),
         ...uploadedImages,
       ];
+
       if (
         finalImages.length < 1 ||
         finalImages.length > 10 ||
@@ -341,6 +353,7 @@ export default function ProductEditor({
       ) {
         throw new Error('A galeria padrão deve ter de uma a dez imagens válidas.');
       }
+
       const productInput: ProductInputData = {
         ...(product ? { id: product.id } : { id: productId }),
         name,
@@ -365,12 +378,14 @@ export default function ProductEditor({
         const selections = customizationAttributes.map((attribute) =>
           gallery.selections.find((selection) => selection.attributeId === attribute.id)!,
         );
+
         await saveProductGallery({
           productId: saved.id,
           ...(gallery.id ? { galleryId: gallery.id } : {}),
           selections,
           images,
         });
+
         savedGalleryIndexes.add(index);
       }
 
@@ -378,6 +393,7 @@ export default function ProductEditor({
         galleryDrafts.flatMap((gallery) => (gallery.id ? [gallery.id] : [])),
       );
       const cleanupPaths = new Set<string>();
+
       for (const gallery of product?.imageGalleries ?? []) {
         if (!galleryIdsToKeep.has(gallery.id)) {
           const deleted = await deleteProductGallery({
@@ -387,6 +403,7 @@ export default function ProductEditor({
           deleted.storagePaths.forEach((path) => cleanupPaths.add(path));
           continue;
         }
+
         const draftIndex = galleryDrafts.findIndex((draft) => draft.id === gallery.id);
         const draft = galleryDrafts[draftIndex]!;
         const retainedPaths = new Set([
@@ -399,14 +416,19 @@ export default function ProductEditor({
           }
         });
       }
+
       const retainedDefaultPaths = new Set(finalImages.map((image) => image.storagePath));
-      (product?.defaultImages ?? []).forEach((image) => {
-        if (image.storagePath && !retainedDefaultPaths.has(image.storagePath)) {
-          cleanupPaths.add(image.storagePath);
+
+      if (product && product.defaultImages) {
+        for (const currentImage of product.defaultImages) {
+          if (currentImage.storagePath && !retainedDefaultPaths.has(currentImage.storagePath)) {
+            cleanupPaths.add(currentImage.storagePath);
+          }
         }
-      });
+      }
 
       const cleanupErrors: string[] = [];
+
       for (const path of cleanupPaths) {
         try {
           await deleteProductImage(path);
@@ -414,13 +436,16 @@ export default function ProductEditor({
           cleanupErrors.push(`${path}: ${errorMessage(cleanupError)}`);
         }
       }
+
       await onSaved();
+
       if (cleanupErrors.length > 0) {
         setError(`Galeria salva, mas a limpeza falhou: ${cleanupErrors.join('; ')}`);
         return;
       }
+
       onClose();
-    } catch (saveError: unknown) {
+    } catch (error: unknown) {
       const cleanupErrors: string[] = [];
       const unpublishedImages = uploadedGalleryImages.flatMap((images, index) =>
         savedGalleryIndexes.has(index) ? [] : images,
@@ -436,7 +461,7 @@ export default function ProductEditor({
         }
       }
       setError(
-        `${metadataWriteStarted ? 'Os metadados podem ter sido parcialmente salvos. ' : ''}${errorMessage(saveError)}${cleanupErrors.length > 0 ? ` Falhas de limpeza: ${cleanupErrors.join('; ')}` : ''}`,
+        `${metadataWriteStarted ? 'Os metadados podem ter sido parcialmente salvos. ' : ''}${errorMessage(error)}${cleanupErrors.length > 0 ? ` Falhas de limpeza: ${cleanupErrors.join('; ')}` : ''}`,
       );
     } finally {
       setBusy(false);
