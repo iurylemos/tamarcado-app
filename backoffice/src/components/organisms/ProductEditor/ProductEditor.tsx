@@ -77,6 +77,18 @@ export default function ProductEditor({
         ]),
     ),
   );
+  const [variantEstimatedDeliveryDrafts, setVariantEstimatedDeliveryDrafts] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(
+      (product?.variantPrices ?? [])
+        .filter((variantPrice) => variantPrice.estimatedDeliveryDays !== undefined)
+        .map((variantPrice) => [
+          productCustomizationCombinationKey(variantPrice.selections),
+          String(variantPrice.estimatedDeliveryDays),
+        ]),
+    ),
+  );
 
   const [galleryDrafts, setGalleryDrafts] = useState<GalleryDraft[]>(
     product?.imageGalleries?.map((gallery) => ({
@@ -108,6 +120,12 @@ export default function ProductEditor({
     product?.promotionalPriceCents === undefined
       ? ''
       : (product.promotionalPriceCents / 100).toFixed(2),
+  );
+  const [estimatedDeliveryEnabled, setEstimatedDeliveryEnabled] = useState<boolean>(
+    product?.estimatedDeliveryEnabled ?? false,
+  );
+  const [estimatedDeliveryDays, setEstimatedDeliveryDays] = useState<string>(
+    product?.estimatedDeliveryDays === undefined ? '' : String(product.estimatedDeliveryDays),
   );
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -193,10 +211,34 @@ export default function ProductEditor({
       return;
     }
 
+    const parsedEstimatedDeliveryDays = estimatedDeliveryDays.trim()
+      ? Number(estimatedDeliveryDays)
+      : undefined;
+    if (
+      parsedEstimatedDeliveryDays !== undefined &&
+      (!Number.isSafeInteger(parsedEstimatedDeliveryDays) || parsedEstimatedDeliveryDays < 1)
+    ) {
+      setError('Informe um prazo estimado inteiro maior que zero.');
+      setBusy(false);
+      return;
+    }
+
+    if (
+      estimatedDeliveryEnabled &&
+      customizationAttributes.length === 0 &&
+      parsedEstimatedDeliveryDays === undefined
+    ) {
+      setError('Informe um prazo estimado inteiro maior que zero.');
+      setBusy(false);
+      return;
+    }
+
     let variantPrices: ProductVariantPrice[] | null = null;
     const materializePromotionVariants = promotionActive && customizationAttributes.length > 0;
+    const materializeEstimateVariants =
+      estimatedDeliveryEnabled && customizationAttributes.length > 0;
 
-    if (variantPricingEnabled || materializePromotionVariants) {
+    if (variantPricingEnabled || materializePromotionVariants || materializeEstimateVariants) {
       if (customizationAttributes.length === 0) {
         setError('Adicione pelo menos um atributo para cadastrar preços por combinação.');
         setBusy(false);
@@ -212,10 +254,15 @@ export default function ProductEditor({
         const variantPromotionalPriceCents = promotionalValue.trim()
           ? Math.round(promotionalAmount * 100)
           : undefined;
+        const estimatedDeliveryValue = variantEstimatedDeliveryDrafts[key] ?? '';
+        const variantEstimatedDeliveryDays = estimatedDeliveryValue.trim()
+          ? Number(estimatedDeliveryValue)
+          : undefined;
         return {
           selections,
           priceCents: Math.round(amount * 100),
           promotionalPriceCents: variantPromotionalPriceCents,
+          estimatedDeliveryDays: variantEstimatedDeliveryDays,
           valid:
             value.trim() !== '' &&
             Number.isFinite(amount) &&
@@ -227,25 +274,36 @@ export default function ProductEditor({
                 Number.isSafeInteger(variantPromotionalPriceCents))) &&
             (!promotionActive ||
               (variantPromotionalPriceCents !== undefined &&
-                variantPromotionalPriceCents < Math.round(amount * 100))),
+                variantPromotionalPriceCents < Math.round(amount * 100))) &&
+            (variantEstimatedDeliveryDays === undefined ||
+              (Number.isSafeInteger(variantEstimatedDeliveryDays) &&
+                variantEstimatedDeliveryDays > 0)) &&
+            (!estimatedDeliveryEnabled || variantEstimatedDeliveryDays !== undefined),
         };
       });
 
       if (parsedVariantPrices.some((variantPrice) => !variantPrice.valid)) {
+        const hasInvalidEstimatedDays = parsedVariantPrices.some(
+          ({ estimatedDeliveryDays: days }) =>
+            days !== undefined && (!Number.isSafeInteger(days) || days < 1),
+        );
         setError(
           promotionActive
             ? 'Informe um preço promocional válido e menor que o preço original para cada combinação.'
-            : 'Informe um preço válido para cada combinação de opções.',
+            : estimatedDeliveryEnabled || hasInvalidEstimatedDays
+              ? 'Informe um prazo estimado inteiro maior que zero para cada combinação.'
+              : 'Informe um preço válido para cada combinação de opções.',
         );
         setBusy(false);
         return;
       }
 
       variantPrices = parsedVariantPrices.map(
-        ({ selections, priceCents, promotionalPriceCents }) => ({
+        ({ selections, priceCents, promotionalPriceCents, estimatedDeliveryDays }) => ({
           selections,
           priceCents,
           ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+          ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
         }),
       );
     }
@@ -362,6 +420,10 @@ export default function ProductEditor({
         priceCents: Math.round(parsedPrice * 100),
         promotionActive,
         ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+        estimatedDeliveryEnabled,
+        ...(parsedEstimatedDeliveryDays !== undefined && customizationAttributes.length === 0
+          ? { estimatedDeliveryDays: parsedEstimatedDeliveryDays }
+          : {}),
         variantPrices,
         durationMinutes: Number(duration),
         commissionType,
@@ -697,6 +759,71 @@ export default function ProductEditor({
                           }))
                         }
                         required={promotionActive}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </fieldset>
+          <fieldset className="form-stack">
+            <legend>Prazo estimado</legend>
+            <label className="toggle-row">
+              <span>
+                <strong>Ativar prazo estimado</strong>
+                <small>
+                  Informe dias corridos. O prazo começa no dia seguinte à data local da compra.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                aria-label="Ativar prazo estimado"
+                checked={estimatedDeliveryEnabled}
+                onChange={(event) => setEstimatedDeliveryEnabled(event.target.checked)}
+              />
+            </label>
+            {customizationAttributes.length === 0 ? (
+              <label>
+                Prazo estimado (dias corridos)
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={estimatedDeliveryDays}
+                  onChange={(event) => setEstimatedDeliveryDays(event.target.value)}
+                  required={estimatedDeliveryEnabled}
+                />
+              </label>
+            ) : (
+              <div className="form-stack">
+                {customizationCombinations.map((selections) => {
+                  const key = productCustomizationCombinationKey(selections);
+                  const combinationLabel = selections
+                    .map((selection) => {
+                      const attribute = customizationAttributes.find(
+                        (item) => item.id === selection.attributeId,
+                      );
+                      const option = attribute?.options.find(
+                        (item) => item.id === selection.optionId,
+                      );
+                      return `${attribute?.label || 'Atributo'}: ${option?.label || 'Opção'}`;
+                    })
+                    .join(' / ');
+                  return (
+                    <label className="form-grid" key={key}>
+                      Prazo estimado da combinação {combinationLabel} (dias)
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={variantEstimatedDeliveryDrafts[key] ?? ''}
+                        onChange={(event) =>
+                          setVariantEstimatedDeliveryDrafts((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        required={estimatedDeliveryEnabled}
                       />
                     </label>
                   );

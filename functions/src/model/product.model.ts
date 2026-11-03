@@ -18,6 +18,8 @@ export interface ProductDocument {
   priceCents: number;
   promotionActive?: boolean;
   promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;
@@ -37,6 +39,8 @@ export interface PublicProductDocument {
   priceCents: number;
   promotionActive?: boolean;
   promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   active: boolean;
   published: boolean;

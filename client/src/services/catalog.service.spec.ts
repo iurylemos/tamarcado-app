@@ -253,6 +253,68 @@ describe('getCompanyCatalog', () => {
     });
   });
 
+  it('reads the public business timezone and valid estimated-delivery product fields', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'tenant-aurora',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Studio Aurora',
+              slug: 'studio-aurora',
+              segment: 'beauty',
+              timezone: 'America/Sao_Paulo',
+            }),
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'estimated-service',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Serviço com prazo',
+              imageUrl: '/prazo.jpg',
+              priceCents: 12000,
+              durationMinutes: 60,
+              customizationAttributes: [
+                {
+                  id: 'service',
+                  label: 'Serviço',
+                  options: [{ id: 'standard', label: 'Padrão' }],
+                  defaultOptionId: 'standard',
+                },
+              ],
+              estimatedDeliveryEnabled: true,
+              variantPrices: [
+                {
+                  selections: [{ attributeId: 'service', optionId: 'standard' }],
+                  priceCents: 12000,
+                  estimatedDeliveryDays: 15,
+                },
+              ],
+            }),
+          },
+        ],
+      } as never);
+
+    const catalog = await getCompanyCatalog('studio-aurora');
+
+    expect(catalog?.business.timezone).toBe('America/Sao_Paulo');
+    expect(catalog?.products[0]).toMatchObject({
+      estimatedDeliveryEnabled: true,
+      variantPrices: [
+        {
+          selections: [{ attributeId: 'service', optionId: 'standard' }],
+          priceCents: 12000,
+          estimatedDeliveryDays: 15,
+        },
+      ],
+    });
+  });
+
   it('does not return catalog data when no published business matches the slug', async () => {
     vi.mocked(getDocsFromServer).mockResolvedValue({ docs: [] } as never);
 

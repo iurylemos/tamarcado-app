@@ -23,6 +23,6 @@ export interface PublicBusinessDocument {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  timezone?: string;
   published: boolean;
 }
-

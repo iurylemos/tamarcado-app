@@ -15,24 +15,67 @@ type PublicProductRecord = PublicProductDocument & { id: string };
 
 type BookedProductRecord = PublicProductDocument & ProductDocument & { id: string };
 
-function publicPromotionProjection(product: PublicProductDocument): PublicProductDocument {
+function hasValidActiveEstimatedDelivery(product: PublicProductDocument): boolean {
+  if (product.estimatedDeliveryEnabled !== true) return false;
+  if (product.customizationAttributes?.length) {
+    const variantPrices = product.variantPrices;
+    return (
+      Array.isArray(variantPrices) &&
+      variantPrices.length > 0 &&
+      variantPrices.every(
+        (variantPrice) =>
+          typeof variantPrice.estimatedDeliveryDays === 'number' &&
+          Number.isSafeInteger(variantPrice.estimatedDeliveryDays) &&
+          variantPrice.estimatedDeliveryDays > 0,
+      )
+    );
+  }
+  return (
+    typeof product.estimatedDeliveryDays === 'number' &&
+    Number.isSafeInteger(product.estimatedDeliveryDays) &&
+    product.estimatedDeliveryDays > 0
+  );
+}
+
+function publicProductProjection(product: PublicProductDocument): PublicProductDocument {
   const promotionActive = hasValidActivePromotion(product);
-  const { promotionalPriceCents, ...productWithoutPromotionPrice } = product;
+  const estimatedDeliveryEnabled = hasValidActiveEstimatedDelivery(product);
+  const {
+    promotionalPriceCents,
+    estimatedDeliveryDays,
+    ...productWithoutOptionalValues
+  } = product;
   const variantPrices =
     product.variantPrices === null
       ? null
       : product.variantPrices?.map((variantPrice) => {
-          if (promotionActive) return variantPrice;
-          const originalPrice = { ...variantPrice };
-          delete originalPrice.promotionalPriceCents;
-          return originalPrice;
+          const {
+            promotionalPriceCents: variantPromotionPrice,
+            estimatedDeliveryDays: variantEstimatedDeliveryDays,
+            ...originalValues
+          } = variantPrice;
+          return {
+            ...originalValues,
+            ...(promotionActive && variantPromotionPrice !== undefined
+              ? { promotionalPriceCents: variantPromotionPrice }
+              : {}),
+            ...(estimatedDeliveryEnabled && variantEstimatedDeliveryDays !== undefined
+              ? { estimatedDeliveryDays: variantEstimatedDeliveryDays }
+              : {}),
+          };
         });
 
   return {
-    ...productWithoutPromotionPrice,
+    ...productWithoutOptionalValues,
     promotionActive,
     ...(promotionActive && !product.variantPrices?.length && promotionalPriceCents !== undefined
       ? { promotionalPriceCents }
+      : {}),
+    estimatedDeliveryEnabled,
+    ...(estimatedDeliveryEnabled &&
+    !product.customizationAttributes?.length &&
+    estimatedDeliveryDays !== undefined
+      ? { estimatedDeliveryDays }
       : {}),
     ...(variantPrices !== undefined ? { variantPrices } : {}),
   };
@@ -127,7 +170,7 @@ export async function listPublicProductRecords(
   return snapshot.docs
     .map((document) => ({
       id: document.id,
-      ...publicPromotionProjection(document.data() as PublicProductDocument),
+      ...publicProductProjection(document.data() as PublicProductDocument),
     }))
     .filter(
       (product) => product.tenantId === business.tenantId && product.active && product.published,
@@ -188,7 +231,7 @@ export async function findPublicProductRecord(
 
   return {
     id: snapshot.id,
-    ...publicPromotionProjection(product),
+    ...publicProductProjection(product),
     ...(imageGalleries.length ? { imageGalleries } : {}),
   };
 }

@@ -26,7 +26,7 @@ import type {
   ProfessionalDocument,
   ProfessionalProductDocument,
 } from '../model/professional.model';
-import type { TenantDocument } from '../model/tenant.model';
+import type { PublicBusinessDocument, TenantDocument } from '../model/tenant.model';
 import { getCollaboratorEmails } from './collaborator-account.service';
 import { firestore, professionalProductId } from './firestore.service';
 
@@ -119,6 +119,8 @@ export interface ProductInput {
   priceCents: number;
   promotionActive?: boolean;
   promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;
@@ -293,6 +295,16 @@ function validateVariantPrices(
             ),
           }
         : {}),
+      ...(price.estimatedDeliveryDays !== undefined
+        ? {
+            estimatedDeliveryDays: requiredInteger(
+              price.estimatedDeliveryDays,
+              'Prazo estimado da combinação em dias corridos',
+              1,
+              Number.MAX_SAFE_INTEGER,
+            ),
+          }
+        : {}),
     };
   });
 }
@@ -307,6 +319,19 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     input.promotionActive === undefined
       ? false
       : requiredBoolean(input.promotionActive, 'Status da promoção');
+  const estimatedDeliveryEnabled =
+    input.estimatedDeliveryEnabled === undefined
+      ? false
+      : requiredBoolean(input.estimatedDeliveryEnabled, 'Status do prazo estimado');
+  const estimatedDeliveryDays =
+    input.estimatedDeliveryDays === undefined
+      ? undefined
+      : requiredInteger(
+          input.estimatedDeliveryDays,
+          'Prazo estimado em dias corridos',
+          1,
+          Number.MAX_SAFE_INTEGER,
+        );
   const promotionalPriceCents =
     input.promotionalPriceCents === undefined
       ? undefined
@@ -349,6 +374,24 @@ export function validateProductInput(rawInput: unknown): ProductInput {
       );
     }
   }
+  if (estimatedDeliveryEnabled) {
+    if (customizationAttributes?.length) {
+      if (
+        !variantPrices?.length ||
+        variantPrices.some((variantPrice) => variantPrice.estimatedDeliveryDays === undefined)
+      ) {
+        throw new HttpsError(
+          'invalid-argument',
+          'Informe um prazo estimado inteiro maior que zero para cada combinação.',
+        );
+      }
+    } else if (estimatedDeliveryDays === undefined) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Informe um prazo estimado inteiro maior que zero.',
+      );
+    }
+  }
   const durationMinutes = requiredInteger(
     input.durationMinutes,
     'Duração',
@@ -377,6 +420,8 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     priceCents,
     ...(input.promotionActive !== undefined ? { promotionActive } : {}),
     ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+    ...(input.estimatedDeliveryEnabled !== undefined ? { estimatedDeliveryEnabled } : {}),
+    ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
     durationMinutes,
     commissionType,
     commissionValue,
@@ -517,16 +562,20 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     defaultImages,
     priceCents,
     promotionalPriceCents,
+    estimatedDeliveryEnabled,
+    estimatedDeliveryDays,
     durationMinutes,
     commissionType,
     commissionValue,
     active,
   } = validateProductInput(raw);
   const promotionActive = raw.promotionActive === undefined ? false : raw.promotionActive === true;
+  const isEstimatedDeliveryEnabled = estimatedDeliveryEnabled === true;
   const reference = id
     ? firestore.collection(collections.products).doc(id)
     : firestore.collection(collections.products).doc();
   const projection = firestore.collection(collections.publicProducts).doc(reference.id);
+  const publicBusinessRef = firestore.collection(collections.publicBusinesses).doc(tenantId);
 
   await firestore.runTransaction(async (transaction) => {
     const [tenantSnapshot, currentSnapshot] = await Promise.all([
@@ -548,11 +597,46 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
       storedVariantPrices === null
         ? null
         : storedVariantPrices?.map((variantPrice) => {
-            const { promotionalPriceCents: variantPromotionPrice, ...originalPrice } = variantPrice;
-            return promotionActive && variantPromotionPrice !== undefined
-              ? variantPrice
-              : originalPrice;
+            const {
+              promotionalPriceCents: variantPromotionPrice,
+              estimatedDeliveryDays: variantEstimatedDeliveryDays,
+              ...originalPrice
+            } = variantPrice;
+            return {
+              ...originalPrice,
+              ...(promotionActive && variantPromotionPrice !== undefined
+                ? { promotionalPriceCents: variantPromotionPrice }
+                : {}),
+              ...(isEstimatedDeliveryEnabled && variantEstimatedDeliveryDays !== undefined
+                ? { estimatedDeliveryDays: variantEstimatedDeliveryDays }
+                : {}),
+            };
           });
+    if (isEstimatedDeliveryEnabled) {
+      const publicBusinessSnapshot = await transaction.get(publicBusinessRef);
+      const publicBusiness = documentData<PublicBusinessDocument>(publicBusinessSnapshot);
+      if (!publicBusiness || publicBusiness.tenantId !== tenantId) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Não foi possível disponibilizar o fuso horário público desta empresa.',
+        );
+      }
+      if (typeof tenant.timezone !== 'string' || !tenant.timezone.trim()) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Configure um fuso horário IANA válido antes de ativar o prazo estimado.',
+        );
+      }
+      try {
+        new Intl.DateTimeFormat('pt-BR', { timeZone: tenant.timezone });
+      } catch {
+        throw new HttpsError(
+          'failed-precondition',
+          'Configure um fuso horário IANA válido antes de ativar o prazo estimado.',
+        );
+      }
+      transaction.set(publicBusinessRef, { timezone: tenant.timezone }, { merge: true });
+    }
 
     const product: ProductDocument = {
       tenantId,
@@ -573,6 +657,8 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
       priceCents,
       promotionActive,
       ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+      estimatedDeliveryEnabled: isEstimatedDeliveryEnabled,
+      ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
       durationMinutes,
       commissionType,
       commissionValue,
@@ -582,6 +668,9 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
       reference,
       {
         ...product,
+        ...(estimatedDeliveryDays === undefined
+          ? { estimatedDeliveryDays: FieldValue.delete() }
+          : {}),
         ...(!current ? { createdAt: FieldValue.serverTimestamp() } : {}),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -612,6 +701,10 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
         promotionalPriceCents !== undefined
           ? { promotionalPriceCents }
           : { promotionalPriceCents: FieldValue.delete() }),
+        estimatedDeliveryEnabled: isEstimatedDeliveryEnabled,
+        ...(isEstimatedDeliveryEnabled && estimatedDeliveryDays !== undefined
+          ? { estimatedDeliveryDays }
+          : { estimatedDeliveryDays: FieldValue.delete() }),
         ...(publicVariantPrices !== undefined ? { variantPrices: publicVariantPrices } : {}),
         durationMinutes,
         active,

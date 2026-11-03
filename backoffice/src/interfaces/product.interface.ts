@@ -13,6 +13,8 @@ export type ProductInputData = {
   priceCents: number;
   promotionActive?: boolean;
   promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   variantPrices: ProductVariantPrice[] | null;
   durationMinutes: number;
   commissionType: 'percentage' | 'fixed';
@@ -36,6 +38,8 @@ export interface ProductRecord {
   priceCents: number;
   promotionActive?: boolean;
   promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;

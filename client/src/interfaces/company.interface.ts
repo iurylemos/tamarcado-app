@@ -13,6 +13,7 @@ export interface CompanySummary {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  timezone?: string;
 }
 
 export interface CompanyCatalog {
@@ -34,5 +35,7 @@ export interface PublicProductSummary {
   priceCents: number;
   promotionActive?: boolean;
   promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
 }

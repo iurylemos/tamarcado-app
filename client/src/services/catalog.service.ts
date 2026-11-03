@@ -41,6 +41,19 @@ function summarizeProduct(
 ): PublicProductSummary {
   const data = snapshot.data();
   const promotionActive = data.promotionActive === true;
+  const hasCustomizationAttributes =
+    Array.isArray(data.customizationAttributes) && data.customizationAttributes.length > 0;
+  const validEstimatedDeliveryDays = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+  const estimatedDeliveryEnabled =
+    data.estimatedDeliveryEnabled === true &&
+    (hasCustomizationAttributes
+      ? Array.isArray(data.variantPrices) &&
+        data.variantPrices.length > 0 &&
+        data.variantPrices.every((variantPrice: ProductVariantPrice) =>
+          validEstimatedDeliveryDays(variantPrice.estimatedDeliveryDays),
+        )
+      : validEstimatedDeliveryDays(data.estimatedDeliveryDays));
 
   const publicGalleries = galleries.docs.map((snapshot) => {
     const data = snapshot.data();
@@ -55,10 +68,20 @@ function summarizeProduct(
 
   const variantPrices = Array.isArray(data.variantPrices)
     ? (data.variantPrices as ProductVariantPrice[]).map((variantPrice) => {
-        if (promotionActive) return variantPrice;
-        const originalPrice = { ...variantPrice };
-        delete originalPrice.promotionalPriceCents;
-        return originalPrice;
+        const {
+          promotionalPriceCents: variantPromotionPrice,
+          estimatedDeliveryDays: variantEstimatedDeliveryDays,
+          ...originalValues
+        } = variantPrice;
+        return {
+          ...originalValues,
+          ...(promotionActive && variantPromotionPrice !== undefined
+            ? { promotionalPriceCents: variantPromotionPrice }
+            : {}),
+          ...(estimatedDeliveryEnabled && validEstimatedDeliveryDays(variantEstimatedDeliveryDays)
+            ? { estimatedDeliveryDays: variantEstimatedDeliveryDays }
+            : {}),
+        };
       })
     : undefined;
 
@@ -81,6 +104,12 @@ function summarizeProduct(
     ...(typeof data.promotionActive === 'boolean' ? { promotionActive } : {}),
     ...(promotionActive && typeof data.promotionalPriceCents === 'number'
       ? { promotionalPriceCents: data.promotionalPriceCents }
+      : {}),
+    ...(typeof data.estimatedDeliveryEnabled === 'boolean' ? { estimatedDeliveryEnabled } : {}),
+    ...(estimatedDeliveryEnabled &&
+    !hasCustomizationAttributes &&
+    validEstimatedDeliveryDays(data.estimatedDeliveryDays)
+      ? { estimatedDeliveryDays: data.estimatedDeliveryDays }
       : {}),
     durationMinutes: data.durationMinutes as number,
   };
@@ -163,6 +192,7 @@ export async function getCompanyCatalog(
     segment: rawBusiness.segment,
     description: rawBusiness.description as string | undefined,
     logoUrl: rawBusiness.logoUrl as string | undefined,
+    ...(typeof rawBusiness.timezone === 'string' ? { timezone: rawBusiness.timezone } : {}),
   };
 
   const visibleProducts: PublicProductSummary[] = tenantProducts

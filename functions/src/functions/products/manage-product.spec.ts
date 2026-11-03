@@ -314,6 +314,95 @@ describe('product administration validation', () => {
     expect(validateProductInput(validProduct)).not.toHaveProperty('promotionActive');
     expect(validateProductInput(validProduct)).not.toHaveProperty('promotionalPriceCents');
   });
+
+  it('accepts a positive whole-day estimate for a simple product', () => {
+    expect(
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        estimatedDeliveryDays: 1,
+      }),
+    ).toMatchObject({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 1,
+    });
+  });
+
+  it.each([
+    ['missing', undefined, /prazo estimado/i],
+    ['zero', 0, /número inteiro entre 1/i],
+    ['negative', -1, /número inteiro entre 1/i],
+    ['fractional', 1.5, /número inteiro entre 1/i],
+    ['unsafe integer', Number.MAX_SAFE_INTEGER + 1, /número inteiro entre 1/i],
+  ])('rejects a %s simple-product estimate when enabled', (_label, estimatedDeliveryDays, message) => {
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
+      }),
+    ).toThrow(message);
+  });
+
+  it('requires a valid estimate for every customization combination', () => {
+    const customizationAttributes = [
+      {
+        id: 'color',
+        label: 'Cor',
+        options: [
+          { id: 'blue', label: 'Azul' },
+          { id: 'red', label: 'Vermelho' },
+        ],
+        defaultOptionId: 'blue',
+      },
+    ];
+    const variantPrices = [
+      {
+        selections: [{ attributeId: 'color', optionId: 'blue' }],
+        priceCents: 12000,
+        estimatedDeliveryDays: 7,
+      },
+      {
+        selections: [{ attributeId: 'color', optionId: 'red' }],
+        priceCents: 13000,
+        estimatedDeliveryDays: 15,
+      },
+    ];
+
+    expect(
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        customizationAttributes,
+        variantPrices,
+      }).variantPrices,
+    ).toEqual(variantPrices);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map(({ estimatedDeliveryDays, ...variant }, index) =>
+          index === 1 ? variant : { ...variant, estimatedDeliveryDays },
+        ),
+      }),
+    ).toThrow(/prazo estimado.*cada combinação/i);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map((variant, index) =>
+          index === 1 ? { ...variant, estimatedDeliveryDays: 0 } : variant,
+        ),
+      }),
+    ).toThrow(/prazo estimado da combinação.*número inteiro entre 1/i);
+  });
+
+  it('keeps legacy products valid when estimated-delivery fields are absent', () => {
+    expect(validateProductInput(validProduct)).not.toHaveProperty('estimatedDeliveryEnabled');
+    expect(validateProductInput(validProduct)).not.toHaveProperty('estimatedDeliveryDays');
+  });
 });
 
 const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
@@ -543,6 +632,72 @@ emulatorOnly('product gallery administration on Firestore emulator', () => {
       expect(catalogProduct).toMatchObject({ promotionActive: false });
       expect(catalogProduct).not.toHaveProperty('promotionalPriceCents');
       expect(catalogProduct?.variantPrices?.[0]).not.toHaveProperty('promotionalPriceCents');
+    },
+  );
+
+  itVitest(
+    'persists valid estimates, projects the business timezone, and rejects another tenant',
+    async () => {
+      const variantPrices = validProductInput.variantPrices.map((variant, index) => ({
+        ...variant,
+        estimatedDeliveryDays: index + 1,
+      }));
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        estimatedDeliveryEnabled: true,
+        variantPrices,
+      });
+
+      const internalProduct = (
+        await firestore.collection(collections.products).doc(testProductId).get()
+      ).data();
+      const publicProduct = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      const publicBusiness = (
+        await firestore.collection(collections.publicBusinesses).doc(testTenantId).get()
+      ).data();
+      expect(internalProduct).toMatchObject({
+        estimatedDeliveryEnabled: true,
+        variantPrices,
+      });
+      expect(publicProduct).toMatchObject({
+        estimatedDeliveryEnabled: true,
+        variantPrices,
+      });
+      expect(publicBusiness).toMatchObject({ timezone: 'America/Sao_Paulo' });
+
+      const catalog = await getPublicCatalog.run({
+        data: { businessSlug: 'product-gallery-test' },
+        rawRequest: {},
+        acceptsStreaming: false,
+      } as never);
+      expect(catalog.business).toMatchObject({ timezone: 'America/Sao_Paulo' });
+      expect(
+        catalog.products.find((product) => product.id === testProductId)?.variantPrices,
+      ).toEqual(variantPrices);
+
+      await expect(
+        saveProduct('another-tenant', {
+          ...validProductInput,
+          estimatedDeliveryEnabled: true,
+          variantPrices,
+        }),
+      ).rejects.toMatchObject({ code: 'not-found' });
+      expect(
+        (await firestore.collection(collections.products).doc(testProductId).get()).data(),
+      ).toMatchObject({ tenantId: testTenantId, estimatedDeliveryEnabled: true });
+
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        estimatedDeliveryEnabled: false,
+        variantPrices,
+      });
+      const disabledProjection = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      expect(disabledProjection).toHaveProperty('estimatedDeliveryEnabled', false);
+      expect(disabledProjection?.variantPrices?.[0]).not.toHaveProperty('estimatedDeliveryDays');
     },
   );
 

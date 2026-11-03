@@ -32,7 +32,7 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 - [x] T001 [P] Criar ou estender testes unitários de `shared/domain/product-price.spec.ts` para resolução exata da combinação, preço original, preço promocional vigente e promoção ausente/inativa.
 - [x] T002 [P] Estender `shared/domain/interfaces/product.interface.ts` com campos opcionais de promoção e estimativa no produto e em `ProductVariantPrice`, preservando `priceCents` como preço original e tratando flags ausentes como falsos.
 - [ ] T003 [P] Estender `shared/domain/interfaces/appointment.interface.ts` com os campos condicionais da entrada/saída de criação e os campos opcionais de snapshots históricos, sem tornar campos novos obrigatórios na leitura de registros legados.
-- [ ] T004 [P] Adicionar `timezone?: string` ao tipo público da empresa em `shared/domain/interfaces/tenant.interface.ts` e `client/src/interfaces/company.interface.ts`, sem expor outros campos privados do tenant.
+- [x] T004 [P] Adicionar `timezone?: string` ao tipo público da empresa em `shared/domain/interfaces/tenant.interface.ts` e `client/src/interfaces/company.interface.ts`, sem expor outros campos privados do tenant.
 - [x] T005 Implementar em `shared/domain/product-price.ts` a resolução compartilhada de preço original e efetivo por combinação válida; a promoção só é vigente quando ativa e válida, e a comissão continua baseada no preço efetivo.
 
 **Checkpoint**: contratos compartilhados compiláveis, preço por combinação resolvido em centavos e campos opcionais compatíveis com documentos antigos.
@@ -90,7 +90,7 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 ### Implementação da US4
 
-- [ ] T020 [US4] Atualizar `backoffice/src/components/organisms/ProductEditor/ProductEditor.tsx`, `backoffice/src/interfaces/product.interface.ts` e `backoffice/src/services/admin.service.ts` para configurar estimativa por produto ou combinação; mostrar validação clara e preservar o fluxo legado quando a estimativa estiver ausente/desabilitada.
+- [x] T020 [US4] Atualizar `backoffice/src/components/organisms/ProductEditor/ProductEditor.tsx`, `backoffice/src/interfaces/product.interface.ts` e `backoffice/src/services/admin.service.ts` para configurar estimativa por produto ou combinação; mostrar validação clara e preservar o fluxo legado quando a estimativa estiver ausente/desabilitada.
 - [ ] T021 [US4] Atualizar `functions/src/model/product.model.ts`, `functions/src/model/tenant.model.ts` e `functions/src/services/backoffice.service.ts` para validar prazo inteiro positivo no produto ou em todas as combinações e, ao habilitar estimativa, projetar `tenant.timezone` em `public_businesses` na mesma transação que salva o produto; não fazer backfill geral.
 - [ ] T022 [P] [US4] Estender `functions/src/services/public-catalog.service.ts`, `functions/src/functions/catalog/get-public-catalog.ts` e `client/src/services/catalog.service.ts` para projetar e ler estimativas e `timezone` IANA da empresa; se o fuso público estiver ausente, não calcular data usando o fuso do dispositivo.
 
