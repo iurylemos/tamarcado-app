@@ -158,13 +158,17 @@ export default function BookingPage({
       : undefined;
   }, [estimatedCheckout, estimatedDeliveryDays, businessTimezone, hasValidBusinessTimezone]);
 
-  const estimateUnavailableMessage = estimatedCheckout
-    ? estimatedDeliveryDays === undefined
-      ? 'A estimativa não está disponível para a opção selecionada.'
-      : !hasValidBusinessTimezone
-        ? 'A data estimada está indisponível porque o fuso horário da empresa não foi projetado.'
-        : undefined
-    : undefined;
+  const estimateUnavailableMessage = useMemo<string | undefined>(
+    () =>
+      estimatedCheckout
+        ? estimatedDeliveryDays === undefined
+          ? 'A estimativa não está disponível para a opção selecionada.'
+          : !hasValidBusinessTimezone
+            ? 'A data estimada está indisponível porque o fuso horário da empresa não foi projetado.'
+            : undefined
+        : undefined,
+    [estimatedCheckout, estimatedDeliveryDays, hasValidBusinessTimezone],
+  );
 
   const effectiveImageGallery = useMemo<ProductImageGallery | undefined>(
     () =>

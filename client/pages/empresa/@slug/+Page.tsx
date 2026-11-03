@@ -34,8 +34,9 @@ export default function Page(): JSX.Element {
     ),
   });
 
-  if (status && status !== 'ready')
+  if (status && status !== 'ready') {
     return <CompanyCatalogTemplate catalog={null} status={status} />;
+  }
 
   return <CompanyCatalogPage slug={slug} />;
 }

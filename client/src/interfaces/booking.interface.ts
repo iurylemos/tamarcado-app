@@ -7,12 +7,13 @@ import type {
   AvailableProfessional,
   AvailableSlot,
 } from '@shared/interfaces/availability.interface';
+import type { PaymentMethod } from '@shared/interfaces/appointment.interface';
 
 export type BookingFormValues = {
   customerName: string;
   customerPhone: string;
   whatsappOptIn: boolean;
-  paymentMethod: 'debit' | 'credit' | 'cash' | 'pix';
+  paymentMethod: PaymentMethod;
   installments?: number;
 };
 
@@ -30,7 +31,7 @@ export type BookingReceipt = {
   endsAt: string;
   professionalName: string;
   estimatedDelivery?: BookingEstimatedDelivery;
-  paymentMethod: 'debit' | 'credit' | 'cash' | 'pix';
+  paymentMethod: PaymentMethod;
   installments?: number;
 };
 

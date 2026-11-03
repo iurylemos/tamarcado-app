@@ -4,6 +4,7 @@ import type {
   CommissionType,
   ProductCustomizationSnapshot,
 } from '../../../shared/domain/interfaces/product.interface';
+import type { PaymentMethod } from '../../../shared/domain/interfaces/appointment.interface';
 
 export interface AppointmentPromotionSnapshot {
   promotionApplied: true;
@@ -30,7 +31,7 @@ export interface AppointmentDocument {
   estimatedDeliveryDaysSnapshot?: number;
   estimatedDeliveryDateSnapshot?: string;
   estimatedDeliveryTimezoneSnapshot?: string;
-  paymentMethodSnapshot?: 'debit' | 'credit' | 'cash' | 'pix';
+  paymentMethodSnapshot?: PaymentMethod;
   installmentsSnapshot?: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;
