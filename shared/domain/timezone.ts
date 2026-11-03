@@ -18,6 +18,10 @@ export function isValidIanaTimezone(timeZone: string): boolean {
   }
 }
 
+function part(values: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): number {
+  return Number(values.find((item) => item.type === type)?.value);
+}
+
 export function getZonedDateTimeParts(date: Date, timeZone: string): LocalDateTimeParts {
   const values = new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -29,24 +33,17 @@ export function getZonedDateTimeParts(date: Date, timeZone: string): LocalDateTi
     hourCycle: 'h23',
   }).formatToParts(date);
 
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(values.find((item) => item.type === type)?.value);
-
   return {
-    year: part('year'),
-    month: part('month'),
-    day: part('day'),
-    hour: part('hour'),
-    minute: part('minute'),
+    year: part(values, 'year'),
+    month: part(values, 'month'),
+    day: part(values, 'day'),
+    hour: part(values, 'hour'),
+    minute: part(values, 'minute'),
   };
 }
 
 export function addCalendarDays(date: string, days: number): string {
-  if (
-    !isValidDateString(date) ||
-    !Number.isSafeInteger(days) ||
-    days <= 0
-  ) {
+  if (!isValidDateString(date) || !Number.isSafeInteger(days) || days <= 0) {
     throw new RangeError('A valid date and a positive integer day offset are required.');
   }
 
@@ -55,11 +52,7 @@ export function addCalendarDays(date: string, days: number): string {
   return `${result.getUTCFullYear()}-${String(result.getUTCMonth() + 1).padStart(2, '0')}-${String(result.getUTCDate()).padStart(2, '0')}`;
 }
 
-export function estimateDateFromInstant(
-  instant: Date,
-  days: number,
-  timeZone: string,
-): string {
+export function estimateDateFromInstant(instant: Date, days: number, timeZone: string): string {
   if (!Number.isFinite(instant.getTime()) || !Number.isSafeInteger(days) || days <= 0) {
     throw new RangeError('A valid instant and a positive integer day offset are required.');
   }

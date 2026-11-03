@@ -29,11 +29,7 @@ import {
   eligibleProfessionalsWithinHorizon,
 } from '../services/professional.service';
 import { estimateDateFromInstant, isValidIanaTimezone } from '@shared/timezone';
-import {
-  formatTimeRange,
-  getDateInBusinessTimezone,
-  getNextBookableDate,
-} from '../utils/date.util';
+import { DateUtil } from '../utils/date.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import { ReactQueryConfig } from '../config/react-query.config';
 import CompanyCatalogPage from './CompanyCatalogPage';
@@ -63,7 +59,7 @@ export default function BookingPage({
     [initialBusiness, initialProduct],
   );
   const [catalog, setCatalog] = useState<CompanyCatalog | null>(seededCatalog);
-  const [date, setDate] = useState<string>(getNextBookableDate());
+  const [date, setDate] = useState<string>(DateUtil.getNextBookableDate());
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [estimatedProfessionals, setEstimatedProfessionals] = useState<AvailableProfessional[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
@@ -254,7 +250,7 @@ export default function BookingPage({
         const searchDate =
           typeof currentCatalog.business.timezone === 'string' &&
           isValidIanaTimezone(currentCatalog.business.timezone)
-            ? getDateInBusinessTimezone(new Date(), currentCatalog.business.timezone)
+            ? DateUtil.getDateInBusinessTimezone(new Date(), currentCatalog.business.timezone)
             : undefined;
         result = await searchAvailabilityForEstimation({
           businessSlug: slug,
@@ -554,7 +550,7 @@ export default function BookingPage({
             dateStyle: 'full',
             timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
           }).format(new Date(receipt.startsAt))}`,
-          `Horário: ${formatTimeRange(receipt)}`,
+          `Horário: ${DateUtil.formatTimeRange(receipt)}`,
           `Protocolo: ${receipt.appointmentId}`,
         ].join('\n'),
       });
@@ -574,7 +570,7 @@ export default function BookingPage({
               dateStyle: 'full',
               timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
             }).format(new Date(receipt.startsAt))}`,
-            `Horário: ${formatTimeRange(receipt)}`,
+            `Horário: ${DateUtil.formatTimeRange(receipt)}`,
             `Protocolo: ${receipt.appointmentId}`,
           ].join('\n')
         : '',
@@ -610,7 +606,7 @@ export default function BookingPage({
           status="loading"
           slug={slug}
           date={date}
-          minimumDate={getNextBookableDate(new Date(Date.now() - 86_400_000))}
+          minimumDate={DateUtil.getNextBookableDate(new Date(Date.now() - 86_400_000))}
           onDateChange={selectDate}
         />
       );
@@ -664,7 +660,7 @@ export default function BookingPage({
       provisionalEstimatedDate={provisionalEstimatedDate}
       estimateUnavailableMessage={estimateUnavailableMessage}
       date={date}
-      minimumDate={getNextBookableDate(new Date(Date.now() - 86_400_000))}
+      minimumDate={DateUtil.getNextBookableDate(new Date(Date.now() - 86_400_000))}
       onDateChange={selectDate}
       professionals={professionals}
       selectedProfessionalId={selectedProfessionalId}
