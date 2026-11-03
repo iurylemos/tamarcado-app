@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
-import type { EligibleProfessional } from '../../../interfaces/professional.interface';
+import type { AvailableProfessional } from '@shared/interfaces/availability.interface';
 
 type ProfessionalSelectorProps = {
-  professionals: EligibleProfessional[];
+  professionals: AvailableProfessional[];
   value: string;
   onChange: (professionalId: string) => void;
 };

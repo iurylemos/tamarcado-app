@@ -31,6 +31,8 @@ import type { Tenant } from '@shared/interfaces/tenant.interface';
 import type { AppointmentDocument, BookingReservationDocument } from '../model/appointment.model';
 import type { TenantDocument } from '../model/tenant.model';
 
+type FirstDaySearchAvailabilityInput = SearchAvailabilityInput & { date: string };
+
 function nextDate(date: string): string {
   const [year, month, day] = date.split('-').map(Number);
 
@@ -366,7 +368,7 @@ async function loadSearchBase(input: SearchAvailabilityInput): Promise<SearchAva
           .map((document) => document.data())
           .filter((data) => data.tenantId === business.tenantId)
           .map((data) => String(data.professionalId))
-          .filter(Boolean),
+          .filter((id) => Boolean(id) && (!input.professionalId || id === input.professionalId)),
       ),
     ],
   };
@@ -606,7 +608,7 @@ function findFirstDay(
   context: BoundedAvailabilityContext,
   fromOffset: number,
   toOffset: number,
-  input: SearchAvailabilityInput,
+  input: FirstDaySearchAvailabilityInput,
 ): SearchAvailabilityResult | null {
   for (let offset = fromOffset; offset <= toOffset; offset += 1) {
     const date = addDays(input.date, offset);
@@ -628,7 +630,10 @@ export async function searchAvailability(
     !input ||
     typeof input.businessSlug !== 'string' ||
     typeof input.productId !== 'string' ||
-    !isAvailabilityDate(input.date)
+    (input.professionalId !== undefined &&
+      (typeof input.professionalId !== 'string' || input.professionalId.length === 0)) ||
+    (input.date !== undefined && !isAvailabilityDate(input.date)) ||
+    (input.date === undefined && input.includeEligibleProfessionals !== true)
   ) {
     throw new DomainError('INVALID_INPUT', 'Informe empresa, serviço e uma data válida.');
   }
@@ -637,14 +642,54 @@ export async function searchAvailability(
   const sharedStartedAt = performance.now();
 
   const base = await loadSearchBase(input);
+  const searchDate =
+    input.date ??
+    (() => {
+      const local = getZonedDateTimeParts(new Date(), base.timezone);
+      return `${local.year}-${String(local.month).padStart(2, '0')}-${String(local.day).padStart(2, '0')}`;
+    })();
+  const searchInput = { ...input, date: searchDate };
 
   logAvailabilityDuration('availability_search', 'shared_data_resolution', sharedStartedAt);
 
   const conflictReadsStartedAt = performance.now();
 
+  if (input.includeEligibleProfessionals === true) {
+    const evaluationStartedAt = performance.now();
+    const [professionals, window] = await Promise.all([
+      loadActiveProfessionals(base.tenantId, base.assignedIds),
+      loadSearchWindow(base, searchDate, 0, SEARCH_HORIZON_DAYS - 1, base.assignedIds),
+    ]);
+    const context = buildContext(base, professionals, window);
+    const result = findFirstDay(context, 0, SEARCH_HORIZON_DAYS - 1, searchInput);
+    const eligibleProfessionals = context.professionals
+      .filter((schedule) => {
+        for (let offset = 0; offset < SEARCH_HORIZON_DAYS; offset += 1) {
+          if (
+            listSlotsForDate({ ...context, professionals: [schedule] }, addDays(searchDate, offset))
+              .length > 0
+          ) {
+            return true;
+          }
+        }
+
+        return false;
+      })
+      .map(({ professional }) => ({ id: professional.id, name: professional.name }));
+
+    logAvailabilityDuration('availability_search', 'conflict_reads', conflictReadsStartedAt);
+    logAvailabilityDuration('availability_search', 'slot_evaluation', evaluationStartedAt);
+    logAvailabilityDuration('availability_search', 'total', requestStartedAt);
+
+    return {
+      ...(result ?? { date: null, slots: [] }),
+      eligibleProfessionals,
+    };
+  }
+
   const [professionals, firstWindow] = await Promise.all([
     loadActiveProfessionals(base.tenantId, base.assignedIds),
-    loadSearchWindow(base, input.date, 0, FIRST_SEARCH_WINDOW_DAYS - 1, base.assignedIds),
+    loadSearchWindow(base, searchDate, 0, FIRST_SEARCH_WINDOW_DAYS - 1, base.assignedIds),
   ]);
 
   logAvailabilityDuration('availability_search', 'conflict_reads', conflictReadsStartedAt);
@@ -655,13 +700,13 @@ export async function searchAvailability(
     buildContext(base, professionals, firstWindow),
     0,
     FIRST_SEARCH_WINDOW_DAYS - 1,
-    input,
+    searchInput,
   );
 
   if (!result && professionals.size > 0) {
     const restWindow = await loadSearchWindow(
       base,
-      input.date,
+      searchDate,
       FIRST_SEARCH_WINDOW_DAYS,
       SEARCH_HORIZON_DAYS - 1,
       [...professionals.keys()],
@@ -671,7 +716,7 @@ export async function searchAvailability(
       buildContext(base, professionals, restWindow),
       FIRST_SEARCH_WINDOW_DAYS,
       SEARCH_HORIZON_DAYS - 1,
-      input,
+      searchInput,
     );
   }
 

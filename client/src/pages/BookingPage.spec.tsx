@@ -4,7 +4,11 @@ import type { JSX } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '../services/appointment.service';
-import { listAvailability, searchAvailability } from '../services/availability.service';
+import {
+  listAvailability,
+  searchAvailability,
+  searchAvailabilityForEstimation,
+} from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import { addDaysToDate, getNextBookableDate } from '../utils/date.util';
@@ -19,6 +23,7 @@ function BookingRoutePage(): JSX.Element {
 vi.mock('../services/availability.service', () => ({
   listAvailability: vi.fn(),
   searchAvailability: vi.fn(),
+  searchAvailabilityForEstimation: vi.fn(),
 }));
 vi.mock('../services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
 vi.mock('../services/appointment.service', () => ({ createAppointment: vi.fn() }));
@@ -377,6 +382,9 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'debit' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
@@ -450,6 +458,13 @@ describe('BookingPage professional selection', () => {
     vi.mocked(createAppointment).mockResolvedValue({
       appointmentId: 'appointment-12345678',
       status: 'pending',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+      startsAt: bookedSlot.startsAt,
+      endsAt: bookedSlot.endsAt,
+      effectivePriceCents: 12000,
+      originalPriceCents: 12000,
+      promotionApplied: false,
     });
 
     renderWithQueryClient(
@@ -468,6 +483,9 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'debit' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Solicitação enviada!');
@@ -567,6 +585,13 @@ describe('BookingPage professional selection', () => {
     vi.mocked(createAppointment).mockResolvedValue({
       appointmentId: 'appointment-customized',
       status: 'pending',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+      startsAt: '2030-02-04T12:00:00.000Z',
+      endsAt: '2030-02-04T14:00:00.000Z',
+      effectivePriceCents: 12000,
+      originalPriceCents: 12000,
+      promotionApplied: false,
     });
 
     renderWithQueryClient(
@@ -606,6 +631,9 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'debit' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
@@ -670,6 +698,13 @@ describe('BookingPage professional selection', () => {
     vi.mocked(createAppointment).mockResolvedValue({
       appointmentId: 'appointment-default-customizations',
       status: 'pending',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+      startsAt: '2030-02-04T12:00:00.000Z',
+      endsAt: '2030-02-04T14:00:00.000Z',
+      effectivePriceCents: 12000,
+      originalPriceCents: 12000,
+      promotionApplied: false,
     });
 
     const { container } = renderWithQueryClient(
@@ -694,6 +729,9 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'debit' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
@@ -801,6 +839,9 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'debit' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(
@@ -1022,5 +1063,210 @@ describe('BookingPage professional selection', () => {
       'href',
       '/empresa/studio-aurora',
     );
+  });
+
+  it('submits estimated checkouts without a customer-selected slot and shows the official result', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+        timezone: 'America/New_York',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 3,
+        },
+      ],
+    });
+    vi.mocked(searchAvailabilityForEstimation).mockResolvedValue({
+      date: '2026-11-04',
+      slots: [
+        {
+          startsAt: '2026-11-04T15:00:00.000Z',
+          endsAt: '2026-11-04T17:00:00.000Z',
+          professionalId: 'ana',
+          professionalName: 'Ana Souza',
+        },
+      ],
+      eligibleProfessionals: [{ id: 'ana', name: 'Ana Souza' }],
+    });
+    vi.mocked(createAppointment).mockResolvedValue({
+      appointmentId: 'appointment-estimated',
+      status: 'pending',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+      startsAt: '2026-11-04T15:00:00.000Z',
+      endsAt: '2026-11-04T17:00:00.000Z',
+      effectivePriceCents: 12000,
+      originalPriceCents: 12000,
+      promotionApplied: false,
+      estimatedDelivery: {
+        days: 3,
+        estimatedDate: '2026-11-06',
+        timezone: 'America/New_York',
+      },
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Prazo estimado: até 3 dias corridos.')).toBeInTheDocument();
+    expect(screen.getByText(/Previsão provisória:/)).toHaveTextContent(/\d{4}/);
+    expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
+    expect(await screen.findByLabelText('Profissional selecionado')).toHaveTextContent(
+      'Ana Souza',
+    );
+
+    fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    const paymentMethod = screen.getByLabelText('Forma de pagamento');
+    expect(screen.getByRole('option', { name: 'Débito' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Crédito' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Dinheiro' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Pix' })).toBeInTheDocument();
+    fireEvent.change(paymentMethod, { target: { value: 'debit' } });
+    expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
+    fireEvent.change(paymentMethod, { target: { value: 'cash' } });
+    expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
+    fireEvent.change(paymentMethod, { target: { value: 'pix' } });
+    expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'credit' },
+    });
+    for (const installments of [1, 2, 3, 4, 5]) {
+      expect(screen.getByRole('option', { name: `${installments}x` })).toBeInTheDocument();
+    }
+    fireEvent.change(screen.getByLabelText('Parcelas sem juros'), {
+      target: { value: '5' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+
+    const receipt = await screen.findByRole('dialog');
+    expect(receipt).toHaveTextContent('Previsão oficial de conclusão');
+    expect(receipt).toHaveTextContent('6 de novembro de 2026');
+    expect(receipt).toHaveTextContent('Crédito em 5x sem juros');
+    expect(receipt).toHaveTextContent('nenhum pagamento foi processado ou recebido');
+    await waitFor(() =>
+      expect(createAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          professionalId: 'ana',
+          paymentMethod: 'credit',
+          installments: 5,
+        }),
+      ),
+    );
+    expect(createAppointment.mock.calls[0]?.[0]).not.toHaveProperty('startsAt');
+  });
+
+  it('requires a customer choice when multiple professionals have estimated availability', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+        timezone: 'America/Sao_Paulo',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 2,
+        },
+      ],
+    });
+    vi.mocked(searchAvailabilityForEstimation).mockResolvedValue({
+      date: '2026-11-04',
+      slots: [
+        {
+          startsAt: '2026-11-04T12:00:00.000Z',
+          endsAt: '2026-11-04T14:00:00.000Z',
+          professionalId: 'ana',
+          professionalName: 'Ana Souza',
+        },
+      ],
+      eligibleProfessionals: [
+        { id: 'ana', name: 'Ana Souza' },
+        { id: 'bruna', name: 'Bruna Lima' },
+      ],
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByLabelText('Profissional')).toHaveValue('');
+    expect(screen.queryByLabelText('Seu nome')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Profissional'), { target: { value: 'bruna' } });
+    expect(await screen.findByLabelText('Seu nome')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
+  });
+
+  it('does not calculate an estimated date using the device timezone when the business timezone is missing', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 2,
+        },
+      ],
+    });
+    vi.mocked(searchAvailabilityForEstimation).mockResolvedValue({
+      date: '2026-11-04',
+      slots: [],
+      eligibleProfessionals: [],
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText(
+        'A data estimada está indisponível porque o fuso horário da empresa não foi projetado.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Previsão provisória:/)).not.toBeInTheDocument();
   });
 });

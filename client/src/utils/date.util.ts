@@ -51,3 +51,17 @@ export function formatTimeRange(slot: AvailableSlot | BookingReceipt): string {
 
   return `${formatTime(slot.startsAt)} - ${formatTime(slot.endsAt)}`;
 }
+
+export function productDate(value: string, timeZone: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'full',
+    timeZone,
+  }).format(new Date(value));
+}
+
+export function civilDate(value: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T12:00:00Z`));
+}

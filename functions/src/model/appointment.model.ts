@@ -5,6 +5,11 @@ import type {
   ProductCustomizationSnapshot,
 } from '../../../shared/domain/interfaces/product.interface';
 
+export interface AppointmentPromotionSnapshot {
+  promotionApplied: true;
+  promotionalPriceCents: number;
+}
+
 export interface AppointmentDocument {
   tenantId: string;
   customerPhoneE164: string;
@@ -20,6 +25,13 @@ export interface AppointmentDocument {
   productImageUrlSnapshot?: string;
   customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
+  productOriginalPriceCentsSnapshot?: number;
+  promotionSnapshot?: AppointmentPromotionSnapshot;
+  estimatedDeliveryDaysSnapshot?: number;
+  estimatedDeliveryDateSnapshot?: string;
+  estimatedDeliveryTimezoneSnapshot?: string;
+  paymentMethodSnapshot?: 'debit' | 'credit' | 'cash' | 'pix';
+  installmentsSnapshot?: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;
   commissionAmountCentsSnapshot: number;

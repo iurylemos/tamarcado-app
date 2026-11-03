@@ -34,10 +34,18 @@ export interface ListAvailabilityInput {
 export interface SearchAvailabilityInput {
   businessSlug: string;
   productId: string;
-  date: string;
+  date?: string;
+  professionalId?: string;
+  includeEligibleProfessionals?: boolean;
+}
+
+export interface AvailableProfessional {
+  id: string;
+  name: string;
 }
 
 export interface SearchAvailabilityResult {
   date: string | null;
   slots: AvailableSlot[];
+  eligibleProfessionals?: AvailableProfessional[];
 }

@@ -5,6 +5,11 @@ import type {
   ProductCustomizationSnapshot,
 } from './product.interface.js';
 
+export interface AppointmentPromotionSnapshot {
+  promotionApplied: true;
+  promotionalPriceCents: number;
+}
+
 export interface Appointment {
   id: string;
   tenantId: string;
@@ -21,6 +26,13 @@ export interface Appointment {
   productImageUrlSnapshot?: string;
   customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
+  productOriginalPriceCentsSnapshot?: number;
+  promotionSnapshot?: AppointmentPromotionSnapshot;
+  estimatedDeliveryDaysSnapshot?: number;
+  estimatedDeliveryDateSnapshot?: string;
+  estimatedDeliveryTimezoneSnapshot?: string;
+  paymentMethodSnapshot?: PaymentMethod;
+  installmentsSnapshot?: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;
   commissionAmountCentsSnapshot: number;
@@ -30,14 +42,37 @@ export interface Appointment {
   createdBy: string;
 }
 
+export type PaymentMethod = 'debit' | 'credit' | 'cash' | 'pix';
+
 export interface CreatePublicAppointmentInput {
   businessSlug: string;
   productId: string;
-  professionalId: string;
-  startsAt: string;
+  professionalId?: string;
+  startsAt?: string;
   customerPhone: string;
   customerName: string;
   whatsappOptIn?: boolean;
   customizationSelections?: ProductCustomizationSelection[];
   selectedImageId?: string;
+  paymentMethod: PaymentMethod;
+  installments?: number;
+}
+
+export interface AppointmentEstimatedDelivery {
+  days: number;
+  estimatedDate: string;
+  timezone: string;
+}
+
+export interface CreatePublicAppointmentResult {
+  appointmentId: string;
+  status: 'pending';
+  professionalId: string;
+  professionalName: string;
+  startsAt: string;
+  endsAt: string;
+  effectivePriceCents: number;
+  originalPriceCents: number;
+  promotionApplied: boolean;
+  estimatedDelivery?: AppointmentEstimatedDelivery;
 }

@@ -3,13 +3,23 @@ import type {
   ProductImage,
 } from '@shared/interfaces/product.interface';
 import type { CompanyCatalog, PublicProductSummary } from './company.interface';
-import type { EligibleProfessional } from './professional.interface';
-import type { AvailableSlot } from '@shared/interfaces/availability.interface';
+import type {
+  AvailableProfessional,
+  AvailableSlot,
+} from '@shared/interfaces/availability.interface';
 
 export type BookingFormValues = {
   customerName: string;
   customerPhone: string;
   whatsappOptIn: boolean;
+  paymentMethod: 'debit' | 'credit' | 'cash' | 'pix';
+  installments?: number;
+};
+
+export type BookingEstimatedDelivery = {
+  days: number;
+  estimatedDate: string;
+  timezone: string;
 };
 
 export type BookingReceipt = {
@@ -18,6 +28,10 @@ export type BookingReceipt = {
   customerPhone: string;
   startsAt: string;
   endsAt: string;
+  professionalName: string;
+  estimatedDelivery?: BookingEstimatedDelivery;
+  paymentMethod: 'debit' | 'credit' | 'cash' | 'pix';
+  installments?: number;
 };
 
 export type BookingTemplateProps =
@@ -43,7 +57,11 @@ export type BookingTemplateProps =
       date: string;
       minimumDate: string;
       onDateChange: (date: string) => void;
-      professionals: EligibleProfessional[];
+      estimatedCheckout: boolean;
+      estimatedDeliveryDays?: number;
+      provisionalEstimatedDate?: string;
+      estimateUnavailableMessage?: string;
+      professionals: AvailableProfessional[];
       selectedProfessionalId: string;
       onProfessionalChange: (professionalId: string) => void;
       availabilityLoading: boolean;
@@ -56,6 +74,7 @@ export type BookingTemplateProps =
       nextDateSearchError: string;
       error: string;
       busy: boolean;
+      canSubmit: boolean;
       receipt: BookingReceipt | null;
       shareError: string;
       appointmentShareText: string;

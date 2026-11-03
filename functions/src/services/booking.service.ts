@@ -3,12 +3,23 @@ import { Timestamp, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { performance } from 'node:perf_hooks';
-import type { CreatePublicAppointmentInput } from '../../../shared/domain/interfaces/appointment.interface';
+import type {
+  CreatePublicAppointmentInput,
+  CreatePublicAppointmentResult,
+} from '../../../shared/domain/interfaces/appointment.interface';
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { fiveMinuteBucketStarts } from '../../../shared/domain/interval';
 import { calculateCommissionCents } from '../../../shared/domain/money';
-import { resolveProductPricing } from '../../../shared/domain/product-price';
-import { getZonedDateTimeParts, isValidDateString } from '../../../shared/domain/timezone';
+import {
+  hasValidActivePromotion,
+  resolveProductPricing,
+} from '../../../shared/domain/product-price';
+import {
+  estimateDateFromInstant,
+  getZonedDateTimeParts,
+  isValidDateString,
+  isValidIanaTimezone,
+} from '../../../shared/domain/timezone';
 import { DomainError } from '../../../shared/domain/errors';
 import type {
   ProductCustomizationAttribute,
@@ -18,7 +29,7 @@ import type {
 import { collections } from '../config/collections';
 import { firestore, professionalProductId } from './firestore.service';
 import { findBookableProduct, findPublicBusiness } from './public-catalog.service';
-import { isRequestedSlotAvailable } from './availability.service';
+import { isRequestedSlotAvailable, searchAvailability } from './availability.service';
 import { isFirestoreIndexUnavailableError } from './firestore-error.service';
 import {
   defaultProductImages,
@@ -36,6 +47,10 @@ type BookingCustomizationData = {
 const validName = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length <= 100;
 
+function isPaymentMethod(value: unknown): value is CreatePublicAppointmentInput['paymentMethod'] {
+  return value === 'debit' || value === 'credit' || value === 'cash' || value === 'pix';
+}
+
 const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   if (typeof value !== 'object' || value === null) {
     throw new HttpsError('invalid-argument', 'Os dados do agendamento estão incompletos.');
@@ -46,14 +61,30 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   if (
     typeof input.businessSlug !== 'string' ||
     typeof input.productId !== 'string' ||
-    typeof input.professionalId !== 'string' ||
-    typeof input.startsAt !== 'string' ||
+    (input.professionalId !== undefined &&
+      (typeof input.professionalId !== 'string' || input.professionalId.trim().length === 0)) ||
+    (input.startsAt !== undefined && typeof input.startsAt !== 'string') ||
     typeof input.customerPhone !== 'string' ||
+    !isPaymentMethod(input.paymentMethod) ||
     !validName(input.customerName) ||
     input.customerName.trim().length === 0 ||
     (input.whatsappOptIn !== undefined && typeof input.whatsappOptIn !== 'boolean')
   ) {
     throw new HttpsError('invalid-argument', 'Revise os dados do agendamento e tente novamente.');
+  }
+
+  if (
+    (input.paymentMethod === 'credit' &&
+      (typeof input.installments !== 'number' ||
+        !Number.isSafeInteger(input.installments) ||
+        Number(input.installments) < 1 ||
+        Number(input.installments) > 5)) ||
+    (input.paymentMethod !== 'credit' && input.installments !== undefined)
+  ) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Informe de 1 a 5 parcelas somente para pagamento no crédito.',
+    );
   }
 
   let customizationSelections: ProductCustomizationSelection[] | undefined;
@@ -95,15 +126,56 @@ const parseCallableInput = (value: unknown): CreatePublicAppointmentInput => {
   return {
     businessSlug: input.businessSlug,
     productId: input.productId,
-    professionalId: input.professionalId,
-    startsAt: input.startsAt,
+    ...(input.professionalId !== undefined ? { professionalId: input.professionalId } : {}),
+    ...(input.startsAt !== undefined ? { startsAt: input.startsAt } : {}),
     customerPhone: input.customerPhone,
     customerName: input.customerName.trim(),
     whatsappOptIn: input.whatsappOptIn === true,
+    paymentMethod: input.paymentMethod,
+    ...(input.installments !== undefined ? { installments: Number(input.installments) } : {}),
     ...(customizationSelections !== undefined ? { customizationSelections } : {}),
     ...(input.selectedImageId !== undefined ? { selectedImageId: input.selectedImageId } : {}),
   };
 };
+
+function configuredEstimatedDeliveryDays(
+  product: Awaited<ReturnType<typeof findBookableProduct>>,
+  selections: ProductCustomizationSelection[],
+): number | undefined {
+  if (product.estimatedDeliveryEnabled !== true) return undefined;
+
+  const variants = product.variantPrices;
+  const variant = variants?.length
+    ? variants.find(
+        (candidate) =>
+          candidate.selections.length === selections.length &&
+          candidate.selections.every((selection) =>
+            selections.some(
+              (selected) =>
+                selected.attributeId === selection.attributeId &&
+                selected.optionId === selection.optionId,
+            ),
+          ),
+      )
+    : undefined;
+  const days = variants?.length ? variant?.estimatedDeliveryDays : product.estimatedDeliveryDays;
+
+  return Number.isSafeInteger(days) && Number(days) > 0 ? Number(days) : undefined;
+}
+
+function parseStartsAt(value: string | undefined): Date {
+  if (!value) {
+    throw new HttpsError('invalid-argument', 'Escolha um horário válido para o agendamento.');
+  }
+
+  const startsAt = new Date(value);
+
+  if (!Number.isFinite(startsAt.getTime()) || startsAt.toISOString() !== value) {
+    throw new HttpsError('invalid-argument', 'Escolha um horário válido para o agendamento.');
+  }
+
+  return startsAt;
+}
 
 function validateCustomizationSelections(
   attributes: ProductCustomizationAttribute[] | undefined,
@@ -223,18 +295,12 @@ export function reservationDocumentId(
 
 export async function createPublicAppointment(
   value: unknown,
-): Promise<{ appointmentId: string; status: 'pending' }> {
+): Promise<CreatePublicAppointmentResult> {
   const input = parseCallableInput(value);
   const phoneE164 = normalizeBrazilianPhone(input.customerPhone);
 
   if (!phoneE164) {
     throw new HttpsError('invalid-argument', 'Informe um telefone brasileiro válido com DDD.');
-  }
-
-  const startsAt = new Date(input.startsAt);
-
-  if (!Number.isFinite(startsAt.getTime()) || startsAt.toISOString() !== input.startsAt) {
-    throw new HttpsError('invalid-argument', 'Escolha um horário válido para o agendamento.');
   }
 
   const requestStartedAt = performance.now();
@@ -245,16 +311,13 @@ export async function createPublicAppointment(
 
     const business = await findPublicBusiness(input.businessSlug);
 
-    const [tenantSnapshot, product, professionalSnapshot, publicProductSnapshot] =
-      await Promise.all([
-        firestore.collection(collections.tenants).doc(business.tenantId).get(),
-        findBookableProduct(business, input.productId),
-        firestore.collection(collections.professionals).doc(input.professionalId).get(),
-        firestore.collection(collections.publicProducts).doc(input.productId).get(),
-      ]);
+    const [tenantSnapshot, product, publicProductSnapshot] = await Promise.all([
+      firestore.collection(collections.tenants).doc(business.tenantId).get(),
+      findBookableProduct(business, input.productId),
+      firestore.collection(collections.publicProducts).doc(input.productId).get(),
+    ]);
 
     const tenant = tenantSnapshot.data();
-    const professional = professionalSnapshot.data();
     const publicProduct = publicProductSnapshot.data();
 
     if (
@@ -264,34 +327,9 @@ export async function createPublicAppointment(
       publicProduct?.tenantId !== business.tenantId ||
       publicProduct.businessSlug !== business.slug ||
       publicProduct.active !== true ||
-      publicProduct.published !== true ||
-      !professionalSnapshot.exists ||
-      professional?.tenantId !== business.tenantId ||
-      professional.active !== true
+      publicProduct.published !== true
     ) {
       throw new HttpsError('failed-precondition', 'Empresa, serviço ou profissional indisponível.');
-    }
-
-    const associationId = professionalProductId(
-      business.tenantId,
-      input.professionalId,
-      product.id,
-    );
-
-    const association = await firestore
-      .collection(collections.professionalProducts)
-      .doc(associationId)
-      .get();
-
-    if (
-      !association.exists ||
-      association.data()?.tenantId !== business.tenantId ||
-      association.data()?.active !== true
-    ) {
-      throw new HttpsError(
-        'failed-precondition',
-        'Este profissional não atende o serviço selecionado.',
-      );
     }
 
     const customization = validateCustomizationSelections(
@@ -306,7 +344,9 @@ export async function createPublicAppointment(
       !Number.isSafeInteger(pricing.originalPriceCents) ||
       pricing.originalPriceCents < 0 ||
       !Number.isSafeInteger(pricing.effectivePriceCents) ||
-      pricing.effectivePriceCents < 0
+      pricing.effectivePriceCents < 0 ||
+      (product.promotionActive === true &&
+        (!pricing.promotionApplied || !hasValidActivePromotion(product)))
     ) {
       throw new HttpsError(
         'failed-precondition',
@@ -314,6 +354,34 @@ export async function createPublicAppointment(
       );
     }
     const priceCents = pricing.effectivePriceCents;
+    const estimatedDays = configuredEstimatedDeliveryDays(product, customization.selections);
+    const hasEstimatedDelivery = product.estimatedDeliveryEnabled === true;
+
+    if (hasEstimatedDelivery && estimatedDays === undefined) {
+      throw new HttpsError(
+        'failed-precondition',
+        'O prazo estimado desta combinação não está mais disponível.',
+      );
+    }
+
+    if (hasEstimatedDelivery && input.startsAt !== undefined) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Não envie data ou horário para serviços com prazo estimado.',
+      );
+    }
+
+    if (!hasEstimatedDelivery && (!input.professionalId || !input.startsAt)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Escolha um profissional, uma data e um horário para este serviço.',
+      );
+    }
+
+    const timezone = typeof tenant.timezone === 'string' ? tenant.timezone : '';
+    if (!isValidIanaTimezone(timezone)) {
+      throw new HttpsError('failed-precondition', 'O fuso horário da empresa está inválido.');
+    }
 
     const effectiveImages = await resolveEffectiveGallery(
       business,
@@ -339,7 +407,6 @@ export async function createPublicAppointment(
       correlationId,
     });
 
-    const timezone = String(tenant.timezone);
     const bookingIntervalMinutes = Number(tenant.bookingIntervalMinutes);
 
     if (
@@ -348,6 +415,74 @@ export async function createPublicAppointment(
       bookingIntervalMinutes % 5 !== 0
     ) {
       throw new HttpsError('internal', 'O intervalo de agendamento da empresa é inválido.');
+    }
+
+    let professionalId = input.professionalId;
+    let startsAt: Date;
+
+    if (hasEstimatedDelivery) {
+      const availability = await searchAvailability({
+        businessSlug: business.slug,
+        productId: product.id,
+        date: toBusinessLocalDate(new Date(), timezone),
+        ...(professionalId ? { professionalId } : {}),
+        ...(!professionalId ? { includeEligibleProfessionals: true } : {}),
+      });
+
+      if (!professionalId) {
+        const eligible = availability.eligibleProfessionals ?? [];
+
+        if (eligible.length !== 1) {
+          throw new HttpsError(
+            'failed-precondition',
+            eligible.length === 0
+              ? 'Não há profissional com horário reservável nos próximos 31 dias.'
+              : 'Selecione um profissional para continuar.',
+          );
+        }
+
+        professionalId = eligible[0]!.id;
+      }
+
+      const nearestSlot = availability.slots.find((slot) => slot.professionalId === professionalId);
+
+      if (!availability.date || !nearestSlot) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Não há horário reservável para este profissional nos próximos 31 dias.',
+        );
+      }
+
+      startsAt = new Date(nearestSlot.startsAt);
+    } else {
+      startsAt = parseStartsAt(input.startsAt);
+    }
+
+    if (!professionalId) {
+      throw new HttpsError('invalid-argument', 'Selecione um profissional para continuar.');
+    }
+
+    const [professionalSnapshot, association] = await Promise.all([
+      firestore.collection(collections.professionals).doc(professionalId).get(),
+      firestore
+        .collection(collections.professionalProducts)
+        .doc(professionalProductId(business.tenantId, professionalId, product.id))
+        .get(),
+    ]);
+    const professional = professionalSnapshot.data();
+
+    if (
+      !professionalSnapshot.exists ||
+      professional?.tenantId !== business.tenantId ||
+      professional.active !== true ||
+      !association.exists ||
+      association.data()?.tenantId !== business.tenantId ||
+      association.data()?.active !== true
+    ) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Este profissional não atende o serviço selecionado.',
+      );
     }
 
     const local = getZonedDateTimeParts(startsAt, timezone);
@@ -359,7 +494,7 @@ export async function createPublicAppointment(
 
     const slotAvailable = await isRequestedSlotAvailable({
       tenantId: business.tenantId,
-      professionalId: input.professionalId,
+      professionalId,
       startsAt,
       durationMinutes: product.durationMinutes,
       timezone,
@@ -388,12 +523,12 @@ export async function createPublicAppointment(
     const reservationRefs = buckets.map((bucket) =>
       firestore
         .collection(collections.bookingReservations)
-        .doc(reservationDocumentId(business.tenantId, input.professionalId, bucket)),
+        .doc(reservationDocumentId(business.tenantId, professionalId, bucket)),
     );
 
     const appointmentId = reservationDocumentId(
       business.tenantId,
-      input.professionalId,
+      professionalId,
       buckets[0] ?? 0,
     );
 
@@ -404,7 +539,8 @@ export async function createPublicAppointment(
 
     const transactionStartedAt = performance.now();
 
-    await firestore.runTransaction(async (transaction: Transaction): Promise<void> => {
+    const result = await firestore.runTransaction(
+      async (transaction: Transaction): Promise<CreatePublicAppointmentResult> => {
       const reservations = await Promise.all(
         reservationRefs.map((reference) => transaction.get(reference)),
       );
@@ -417,6 +553,10 @@ export async function createPublicAppointment(
       }
 
       const createdAt = Timestamp.now();
+      const estimatedDate =
+        estimatedDays !== undefined
+          ? estimateDateFromInstant(createdAt.toDate(), estimatedDays, timezone)
+          : undefined;
 
       const commissionAmountCents = calculateCommissionCents(
         priceCents,
@@ -429,7 +569,7 @@ export async function createPublicAppointment(
         customerPhoneE164: phoneE164,
         customerName: input.customerName?.trim() || undefined,
         productId: product.id,
-        professionalId: input.professionalId,
+        professionalId,
         professionalNameSnapshot: professional.name,
         startsAt: Timestamp.fromDate(startsAt),
         endsAt: Timestamp.fromDate(endsAt),
@@ -439,6 +579,24 @@ export async function createPublicAppointment(
         productImageUrlSnapshot: selectedImage.downloadUrl,
         ...(customization.snapshot ? { customizationSnapshot: customization.snapshot } : {}),
         productPriceCentsSnapshot: priceCents,
+        productOriginalPriceCentsSnapshot: pricing.originalPriceCents,
+        ...(pricing.promotionApplied
+          ? {
+              promotionSnapshot: {
+                promotionApplied: true as const,
+                promotionalPriceCents: pricing.effectivePriceCents,
+              },
+            }
+          : {}),
+        ...(estimatedDays !== undefined && estimatedDate
+          ? {
+              estimatedDeliveryDaysSnapshot: estimatedDays,
+              estimatedDeliveryDateSnapshot: estimatedDate,
+              estimatedDeliveryTimezoneSnapshot: timezone,
+            }
+          : {}),
+        paymentMethodSnapshot: input.paymentMethod,
+        ...(input.installments !== undefined ? { installmentsSnapshot: input.installments } : {}),
         commissionTypeSnapshot: product.commissionType,
         commissionValueSnapshot: product.commissionValue,
         commissionAmountCentsSnapshot: commissionAmountCents,
@@ -452,7 +610,7 @@ export async function createPublicAppointment(
         if (reservationRefs[index]) {
           transaction.create(reservationRefs[index], {
             tenantId: business.tenantId,
-            professionalId: input.professionalId,
+            professionalId,
             appointmentId,
             bucketStartAt: Timestamp.fromMillis(bucket),
             createdAt,
@@ -468,7 +626,28 @@ export async function createPublicAppointment(
         createdAt,
         updatedAt: createdAt,
       });
-    });
+      return {
+        appointmentId,
+        status: 'pending',
+        professionalId,
+        professionalName: professional.name,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        effectivePriceCents: pricing.effectivePriceCents,
+        originalPriceCents: pricing.originalPriceCents,
+        promotionApplied: pricing.promotionApplied,
+        ...(estimatedDays !== undefined && estimatedDate
+          ? {
+              estimatedDelivery: {
+                days: estimatedDays,
+                estimatedDate,
+                timezone,
+              },
+            }
+          : {}),
+      };
+      },
+    );
 
     logger.info('booking.performance', {
       operation: 'appointment_registration',
@@ -477,7 +656,7 @@ export async function createPublicAppointment(
       correlationId,
     });
 
-    return { appointmentId, status: 'pending' };
+    return result;
   } catch (error) {
     if (error instanceof HttpsError) throw error;
 

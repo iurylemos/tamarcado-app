@@ -18,6 +18,10 @@ export default function BookingReady({
   effectiveImages,
   selectedImageId,
   onImageSelect,
+  estimatedCheckout,
+  estimatedDeliveryDays,
+  provisionalEstimatedDate,
+  estimateUnavailableMessage,
   date,
   minimumDate,
   onDateChange,
@@ -34,6 +38,7 @@ export default function BookingReady({
   nextDateSearchError,
   error,
   busy,
+  canSubmit,
   receipt,
   shareError,
   appointmentShareText,
@@ -62,8 +67,15 @@ export default function BookingReady({
             onImageSelect={onImageSelect}
           />
 
-          <section className="booking-panel" aria-label="Escolha seu horário">
+          <section
+            className="booking-panel"
+            aria-label={estimatedCheckout ? 'Prazo e profissional' : 'Escolha seu horário'}
+          >
             <BookingAvailability
+              estimatedCheckout={estimatedCheckout}
+              estimatedDeliveryDays={estimatedDeliveryDays}
+              provisionalEstimatedDate={provisionalEstimatedDate}
+              estimateUnavailableMessage={estimateUnavailableMessage}
               date={date}
               minimumDate={minimumDate}
               onDateChange={onDateChange}
@@ -82,7 +94,7 @@ export default function BookingReady({
               durationMinutes={product.durationMinutes}
             />
             <BookingCustomerDetails
-              selectedStartsAt={selectedStartsAt}
+              canSubmit={canSubmit}
               busy={busy}
               error={error}
               onSubmit={onSubmit}

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { AvailableSlot } from '@shared/interfaces/availability.interface';
+import type {
+  AvailableProfessional,
+  AvailableSlot,
+  SearchAvailabilityResult,
+} from '@shared/interfaces/availability.interface';
 import type {
   PublicProductSummary,
   CompanyCatalog,
@@ -12,13 +16,24 @@ import type {
   ProductImage,
   ProductImageGallery,
 } from '@shared/interfaces/product.interface';
-import type { EligibleProfessional } from '../interfaces/professional.interface';
 import type { PublicCatalogStatus } from '../interfaces/catalog.interface';
-import { listAvailability, searchAvailability } from '../services/availability.service';
+import {
+  listAvailability,
+  searchAvailability,
+  searchAvailabilityForEstimation,
+} from '../services/availability.service';
 import { createAppointment } from '../services/appointment.service';
 import { getCompanyCatalog } from '../services/catalog.service';
-import { eligibleProfessionals } from '../services/professional.service';
-import { formatTimeRange, getNextBookableDate } from '../utils/date.util';
+import {
+  eligibleProfessionals,
+  eligibleProfessionalsWithinHorizon,
+} from '../services/professional.service';
+import { estimateDateFromInstant, isValidIanaTimezone } from '@shared/timezone';
+import {
+  formatTimeRange,
+  getDateInBusinessTimezone,
+  getNextBookableDate,
+} from '../utils/date.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import { ReactQueryConfig } from '../config/react-query.config';
 import CompanyCatalogPage from './CompanyCatalogPage';
@@ -50,6 +65,7 @@ export default function BookingPage({
   const [catalog, setCatalog] = useState<CompanyCatalog | null>(seededCatalog);
   const [date, setDate] = useState<string>(getNextBookableDate());
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [estimatedProfessionals, setEstimatedProfessionals] = useState<AvailableProfessional[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>('');
   const [selectedStartsAt, setSelectedStartsAt] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(initialStatus === undefined);
@@ -98,6 +114,57 @@ export default function BookingPage({
         : { attributeId: attribute.id, optionId: attribute.defaultOptionId };
     });
   }, [customizationSelectionState, product]);
+
+  const estimatedCheckout = useMemo<boolean>(
+    () => product?.estimatedDeliveryEnabled === true,
+    [product],
+  );
+
+  const estimatedDeliveryDays = useMemo<number | undefined>(() => {
+    if (!estimatedCheckout || !product) return undefined;
+
+    const hasAttributes = (product.customizationAttributes?.length ?? 0) > 0;
+    const variant = hasAttributes
+      ? product.variantPrices?.find(
+          (candidate) =>
+            candidate.selections.length === customizationSelections.length &&
+            candidate.selections.every((selection) =>
+              customizationSelections.some(
+                (selected) =>
+                  selected.attributeId === selection.attributeId &&
+                  selected.optionId === selection.optionId,
+              ),
+            ),
+        )
+      : undefined;
+    const days = hasAttributes ? variant?.estimatedDeliveryDays : product.estimatedDeliveryDays;
+
+    return Number.isSafeInteger(days) && Number(days) > 0 ? Number(days) : undefined;
+  }, [customizationSelections, estimatedCheckout, product]);
+
+  const businessTimezone = useMemo<string | undefined>(() => catalog?.business.timezone, [catalog]);
+
+  const hasValidBusinessTimezone = useMemo<boolean>(
+    () => typeof businessTimezone === 'string' && isValidIanaTimezone(businessTimezone),
+    [businessTimezone],
+  );
+
+  const provisionalEstimatedDate = useMemo<string | undefined>(() => {
+    return estimatedCheckout &&
+      estimatedDeliveryDays !== undefined &&
+      typeof businessTimezone === 'string' &&
+      hasValidBusinessTimezone
+      ? estimateDateFromInstant(new Date(), estimatedDeliveryDays, businessTimezone)
+      : undefined;
+  }, [estimatedCheckout, estimatedDeliveryDays, businessTimezone, hasValidBusinessTimezone]);
+
+  const estimateUnavailableMessage = estimatedCheckout
+    ? estimatedDeliveryDays === undefined
+      ? 'A estimativa não está disponível para a opção selecionada.'
+      : !hasValidBusinessTimezone
+        ? 'A data estimada está indisponível porque o fuso horário da empresa não foi projetado.'
+        : undefined
+    : undefined;
 
   const effectiveImageGallery = useMemo<ProductImageGallery | undefined>(
     () =>
@@ -173,25 +240,54 @@ export default function BookingPage({
           ? currentCatalog.products.find((item) => item.id === productId)
           : undefined;
 
-      if (!currentProduct) {
+      if (!currentCatalog || !currentProduct) {
         setCatalog(currentCatalog);
         return;
       }
 
-      const result = await queryClient.query({
-        queryKey: ReactQueryConfig.availabilitySearchQueryKey(slug, productId, date),
-        queryFn: () => searchAvailability({ businessSlug: slug, productId, date }),
-        staleTime: 15000,
-      });
+      let result: SearchAvailabilityResult;
+      if (currentProduct.estimatedDeliveryEnabled === true) {
+        const searchDate =
+          typeof currentCatalog.business.timezone === 'string' &&
+          isValidIanaTimezone(currentCatalog.business.timezone)
+            ? getDateInBusinessTimezone(new Date(), currentCatalog.business.timezone)
+            : undefined;
+        result = await searchAvailabilityForEstimation({
+          businessSlug: slug,
+          productId,
+          ...(searchDate ? { date: searchDate } : {}),
+        });
+      } else {
+        const searchInput = { businessSlug: slug, productId, date };
+        result = await queryClient.query({
+          queryKey: ReactQueryConfig.availabilitySearchQueryKey(slug, productId, date),
+          queryFn: () => searchAvailability(searchInput),
+          staleTime: 15000,
+        });
+      }
 
       if (current) {
         setSlots(result.slots);
         setSelectedStartsAt('');
-        const choices = eligibleProfessionals(result.slots);
-        setSelectedProfessionalId(choices[0]?.id ?? '');
+        const choices =
+          currentProduct.estimatedDeliveryEnabled === true
+            ? eligibleProfessionalsWithinHorizon(result)
+            : eligibleProfessionals(result.slots);
+        setEstimatedProfessionals(currentProduct.estimatedDeliveryEnabled === true ? choices : []);
+        setSelectedProfessionalId(
+          currentProduct.estimatedDeliveryEnabled === true
+            ? choices.length === 1
+              ? (choices[0]?.id ?? '')
+              : ''
+            : (choices[0]?.id ?? ''),
+        );
         setNextDateSearchComplete(result.date === null);
 
-        if (result.date && result.date !== date) {
+        if (
+          currentProduct.estimatedDeliveryEnabled !== true &&
+          result.date &&
+          result.date !== date
+        ) {
           skipSearchForDate.current = result.date;
           setDate(result.date);
         }
@@ -255,6 +351,7 @@ export default function BookingPage({
     setError('');
     setSelectedStartsAt('');
     setSlots([]);
+    setEstimatedProfessionals([]);
 
     void loadAvailability(current)
       .catch((error: unknown) => {
@@ -288,9 +385,9 @@ export default function BookingPage({
     setNextDateSearchError('');
   }, [date]);
 
-  const professionals = useMemo<EligibleProfessional[]>(
-    () => eligibleProfessionals(slots),
-    [slots],
+  const professionals = useMemo<AvailableProfessional[]>(
+    () => (estimatedCheckout ? estimatedProfessionals : eligibleProfessionals(slots)),
+    [estimatedCheckout, estimatedProfessionals, slots],
   );
 
   const visibleSlots = useMemo<AvailableSlot[]>(
@@ -344,13 +441,20 @@ export default function BookingPage({
     setError('');
 
     try {
-      const selectedSlot = slots.find(
-        (slot) =>
-          slot.professionalId === selectedProfessionalId && slot.startsAt === selectedStartsAt,
-      );
+      const selectedSlot = estimatedCheckout
+        ? undefined
+        : slots.find(
+            (slot) =>
+              slot.professionalId === selectedProfessionalId && slot.startsAt === selectedStartsAt,
+          );
 
-      if (!selectedSlot) {
+      if (!estimatedCheckout && !selectedSlot) {
         setError('Escolha novamente um horário disponível antes de continuar.');
+        return;
+      }
+
+      if (!selectedProfessionalId) {
+        setError('Selecione um profissional para continuar.');
         return;
       }
 
@@ -377,10 +481,12 @@ export default function BookingPage({
         businessSlug: slug,
         productId,
         professionalId: selectedProfessionalId,
-        startsAt: selectedStartsAt,
+        ...(!estimatedCheckout ? { startsAt: selectedStartsAt } : {}),
         customerName: values.customerName,
         customerPhone: values.customerPhone,
         whatsappOptIn: values.whatsappOptIn,
+        paymentMethod: values.paymentMethod,
+        ...(values.installments !== undefined ? { installments: values.installments } : {}),
         ...(customizationSelections.length > 0 ? { customizationSelections } : {}),
         ...(effectiveSelectedImageId ? { selectedImageId: effectiveSelectedImageId } : {}),
       });
@@ -389,27 +495,35 @@ export default function BookingPage({
         appointmentId: result.appointmentId,
         customerName: values.customerName,
         customerPhone: values.customerPhone,
-        startsAt: selectedSlot.startsAt,
-        endsAt: selectedSlot.endsAt,
+        startsAt: result.startsAt,
+        endsAt: result.endsAt,
+        professionalName: result.professionalName,
+        ...(result.estimatedDelivery ? { estimatedDelivery: result.estimatedDelivery } : {}),
+        paymentMethod: values.paymentMethod,
+        ...(values.installments !== undefined ? { installments: values.installments } : {}),
       });
 
-      setSlots((current) =>
-        current.filter(
-          (slot) =>
-            slot.professionalId !== selectedProfessionalId || slot.startsAt !== selectedStartsAt,
-        ),
-      );
+      if (selectedSlot) {
+        setSlots((current) =>
+          current.filter(
+            (slot) =>
+              slot.professionalId !== selectedProfessionalId || slot.startsAt !== selectedStartsAt,
+          ),
+        );
+      }
 
       setSelectedStartsAt('');
 
-      void refreshAvailability(date, selectedSlot).catch(() => {
-        if (selectedDateRef.current === date) {
-          setSlots([]);
-          setError(
-            'Seu agendamento foi enviado, mas não foi possível atualizar os horários. Atualize a página para consultar a disponibilidade.',
-          );
-        }
-      });
+      if (selectedSlot) {
+        void refreshAvailability(date, selectedSlot).catch(() => {
+          if (selectedDateRef.current === date) {
+            setSlots([]);
+            setError(
+              'Seu agendamento foi enviado, mas não foi possível atualizar os horários. Atualize a página para consultar a disponibilidade.',
+            );
+          }
+        });
+      }
     } catch (error: unknown) {
       setError(
         getBookingErrorMessage(
@@ -434,7 +548,7 @@ export default function BookingPage({
           `Serviço: ${product?.name ?? ''}`,
           `Data: ${new Intl.DateTimeFormat('pt-BR', {
             dateStyle: 'full',
-            timeZone: 'America/Sao_Paulo',
+            timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
           }).format(new Date(receipt.startsAt))}`,
           `Horário: ${formatTimeRange(receipt)}`,
           `Protocolo: ${receipt.appointmentId}`,
@@ -454,13 +568,31 @@ export default function BookingPage({
             `Serviço: ${product.name}`,
             `Data: ${new Intl.DateTimeFormat('pt-BR', {
               dateStyle: 'full',
-              timeZone: 'America/Sao_Paulo',
+              timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
             }).format(new Date(receipt.startsAt))}`,
             `Horário: ${formatTimeRange(receipt)}`,
             `Protocolo: ${receipt.appointmentId}`,
           ].join('\n')
         : '',
     [receipt, catalog, product],
+  );
+
+  const canSubmit = useMemo<boolean>(
+    () =>
+      estimatedCheckout
+        ? !availabilityLoading &&
+          estimatedDeliveryDays !== undefined &&
+          professionals.length > 0 &&
+          Boolean(selectedProfessionalId)
+        : Boolean(selectedStartsAt),
+    [
+      estimatedCheckout,
+      availabilityLoading,
+      estimatedDeliveryDays,
+      professionals.length,
+      selectedProfessionalId,
+      selectedStartsAt,
+    ],
   );
 
   if (!catalog) {
@@ -523,6 +655,10 @@ export default function BookingPage({
       effectiveImages={effectiveImages}
       selectedImageId={effectiveSelectedImageId}
       onImageSelect={setSelectedImageId}
+      estimatedCheckout={estimatedCheckout}
+      estimatedDeliveryDays={estimatedDeliveryDays}
+      provisionalEstimatedDate={provisionalEstimatedDate}
+      estimateUnavailableMessage={estimateUnavailableMessage}
       date={date}
       minimumDate={getNextBookableDate(new Date(Date.now() - 86_400_000))}
       onDateChange={selectDate}
@@ -542,6 +678,7 @@ export default function BookingPage({
       nextDateSearchError={nextDateSearchError}
       error={error}
       busy={busy}
+      canSubmit={canSubmit}
       receipt={receipt}
       shareError={shareError}
       appointmentShareText={appointmentShareText}
