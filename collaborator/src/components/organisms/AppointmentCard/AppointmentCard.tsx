@@ -50,7 +50,9 @@ export default function AppointmentCard({
         installmentCount <= 5
           ? installmentCount
           : undefined;
+
       const estimatedDays = appointment.estimatedDeliveryDaysSnapshot;
+
       const originalPriceCents = appointment.productOriginalPriceCentsSnapshot;
 
       const originalPrice =

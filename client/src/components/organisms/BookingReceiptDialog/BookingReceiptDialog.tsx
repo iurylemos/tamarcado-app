@@ -1,8 +1,8 @@
 import type { JSX, MouseEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { BookingReceipt } from '../../../interfaces/booking.interface';
-import { civilDate, formatTimeRange, productDate } from '../../../utils/date.util';
 import { PaymentUtil } from '../../../utils/payment.util';
+import { DateUtil } from '../../../utils/date.util';
 
 type BookingReceiptDialogProps = {
   receipt: BookingReceipt | null;
@@ -66,7 +66,7 @@ export default function BookingReceiptDialog({
               <div>
                 <dt>Data</dt>
                 <dd>
-                  {productDate(
+                  {DateUtil.productDate(
                     receipt.startsAt,
                     receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
                   )}
@@ -74,7 +74,7 @@ export default function BookingReceiptDialog({
               </div>
               <div>
                 <dt>Horário</dt>
-                <dd>{formatTimeRange(receipt)}</dd>
+                <dd>{DateUtil.formatTimeRange(receipt)}</dd>
               </div>
               <div>
                 <dt>Profissional</dt>
@@ -84,7 +84,7 @@ export default function BookingReceiptDialog({
                 <div>
                   <dt>Previsão oficial de conclusão</dt>
                   <dd>
-                    {civilDate(receipt.estimatedDelivery.estimatedDate)} (até{' '}
+                    {DateUtil.civilDate(receipt.estimatedDelivery.estimatedDate)} (até{' '}
                     {receipt.estimatedDelivery.days} dias corridos)
                   </dd>
                 </div>

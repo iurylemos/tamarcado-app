@@ -11,7 +11,7 @@ import {
 } from '../services/availability.service';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
-import { addDaysToDate, getNextBookableDate } from '../utils/date.util';
+import { DateUtil } from '../utils/date.util';
 import BookingPage from './BookingPage';
 import { renderWithQueryClient } from '../test/render';
 
@@ -34,8 +34,9 @@ describe('BookingPage professional selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(searchAvailability).mockImplementation(async (input) => {
-      const slots = await vi.mocked(listAvailability)(input);
-      return { date: slots.length > 0 ? input.date : null, slots };
+      const date = input.date ?? '';
+      const slots = await vi.mocked(listAvailability)({ ...input, date });
+      return { date: slots.length > 0 ? date : null, slots };
     });
     vi.stubGlobal('scrollTo', vi.fn());
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -918,7 +919,7 @@ describe('BookingPage professional selection', () => {
       professionalName: 'Ana Souza',
     };
     vi.mocked(searchAvailability)
-      .mockResolvedValueOnce({ date: getNextBookableDate(), slots: [staleSlot] })
+      .mockResolvedValueOnce({ date: DateUtil.getNextBookableDate(), slots: [staleSlot] })
       .mockRejectedValueOnce(new Error('network error'));
 
     renderWithQueryClient(
@@ -930,7 +931,7 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
-    const nextDate = addDaysToDate(getNextBookableDate(), 1);
+    const nextDate = DateUtil.addDaysToDate(DateUtil.getNextBookableDate(), 1);
     fireEvent.change(screen.getByLabelText('Data do atendimento'), {
       target: { value: nextDate },
     });
@@ -940,7 +941,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('automatically selects the nearest date with available hours when the selected date is empty', async () => {
-    const nextAvailableDate = addDaysToDate(getNextBookableDate(), 3);
+    const nextAvailableDate = DateUtil.addDaysToDate(DateUtil.getNextBookableDate(), 3);
     vi.mocked(searchAvailability).mockResolvedValue({
       date: nextAvailableDate,
       slots: [
@@ -987,7 +988,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('ignores availability results for a date that is no longer selected', async () => {
-    const selectedDate = addDaysToDate(getNextBookableDate(), 2);
+    const selectedDate = DateUtil.addDaysToDate(DateUtil.getNextBookableDate(), 2);
     const results = new Map<
       string,
       (value: Awaited<ReturnType<typeof searchAvailability>>) => void
@@ -995,7 +996,7 @@ describe('BookingPage professional selection', () => {
     vi.mocked(searchAvailability).mockImplementation(
       ({ date }) =>
         new Promise((resolve) => {
-          results.set(date, resolve);
+          results.set(date ?? '', resolve);
         }),
     );
 
@@ -1008,7 +1009,7 @@ describe('BookingPage professional selection', () => {
     );
 
     await screen.findByLabelText('Data do atendimento');
-    const oldDate = getNextBookableDate();
+    const oldDate = DateUtil.getNextBookableDate();
     await waitFor(() =>
       expect(searchAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: oldDate })),
     );
@@ -1127,9 +1128,7 @@ describe('BookingPage professional selection', () => {
     expect(screen.getByText(/Previsão provisória:/)).toHaveTextContent(/\d{4}/);
     expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
-    expect(await screen.findByLabelText('Profissional selecionado')).toHaveTextContent(
-      'Ana Souza',
-    );
+    expect(await screen.findByLabelText('Profissional selecionado')).toHaveTextContent('Ana Souza');
 
     fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
     fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
@@ -1172,7 +1171,7 @@ describe('BookingPage professional selection', () => {
         }),
       ),
     );
-    expect(createAppointment.mock.calls[0]?.[0]).not.toHaveProperty('startsAt');
+    expect(vi.mocked(createAppointment).mock.calls[0]?.[0]).not.toHaveProperty('startsAt');
   });
 
   it('requires a customer choice when multiple professionals have estimated availability', async () => {

@@ -4,7 +4,7 @@ import type {
   AvailableProfessional,
   AvailableSlot,
 } from '@shared/interfaces/availability.interface';
-import { formatTimeRange } from '../../../utils/date.util';
+import { DateUtil } from '../../../utils/date.util';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard';
 import ProfessionalSelector from '../ProfessionalSelector/ProfessionalSelector';
 
@@ -181,7 +181,7 @@ export default function BookingAvailability({
                   checked={selectedStartsAt === slot.startsAt}
                   onChange={() => onTimeChange(slot.startsAt)}
                 />
-                <span>{formatTimeRange(slot)}</span>
+                <span>{DateUtil.formatTimeRange(slot)}</span>
               </motion.label>
             ))}
           </div>
