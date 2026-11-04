@@ -82,7 +82,7 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
-    expect(screen.getByText('RESUMO DO SERVIÇO')).toBeInTheDocument();
+    expect(screen.getByText('SERVIÇO ESCOLHIDO')).toBeInTheDocument();
     expect(container.querySelector('.booking-summary-options')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Quando você quer vir?' })).toBeInTheDocument();
     expect(screen.getByText('Buscando horários disponíveis...')).toBeInTheDocument();
@@ -145,13 +145,30 @@ describe('BookingPage professional selection', () => {
     const procedure = await screen.findByRole('radio', { name: 'Lash Lifting' });
     const summaryDetails = container.querySelector('.booking-summary-details');
     const variantPrices = container.querySelector('.booking-summary-variant-prices');
+    const choiceCard = container.querySelector('.booking-summary-choices-card');
+    const selectedCard = container.querySelector('.booking-summary');
     expect(procedure).toBeChecked();
     expect(screen.getByRole('group', { name: 'Procedimento' })).toBeInTheDocument();
+    expect(screen.getByText('SERVIÇO ESCOLHIDO')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Escolha suas opções' })).toBeInTheDocument();
+    expect(choiceCard).toContainElement(procedure);
+    expect(selectedCard).not.toContainElement(procedure);
+    expect(selectedCard?.parentElement).toHaveClass('booking-product-column');
     expect(variantPrices).toHaveTextContent('Lash Lifting');
     expect(variantPrices).toHaveTextContent('80,00');
     expect(variantPrices).toHaveTextContent('Volume Brasileiro');
     expect(variantPrices).toHaveTextContent('95,00');
+    expect(variantPrices?.querySelector('.promotion-original-price')).toBeInTheDocument();
+    expect(variantPrices?.querySelector('.promotion-current-price')).toBeInTheDocument();
     expect(summaryDetails?.textContent).toContain('80,00');
+    expect(summaryDetails?.querySelector('.promotion-original-price')).toBeInTheDocument();
+    expect(summaryDetails?.querySelector('.promotion-current-price')).toBeInTheDocument();
+    const summaryPriceValues = summaryDetails?.querySelector('.promotion-price-values');
+    expect(summaryPriceValues).toHaveTextContent('100,00');
+    expect(summaryPriceValues).toHaveTextContent('80,00');
+    expect(
+      summaryPriceValues?.querySelectorAll('.promotion-original-price, .promotion-current-price'),
+    ).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('radio', { name: 'Volume Brasileiro' }));
 
@@ -240,11 +257,14 @@ describe('BookingPage professional selection', () => {
       'aria-busy',
       'true',
     );
-    expect(screen.getByLabelText('Data do atendimento')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Quando você quer vir?' })).toBeInTheDocument();
-    expect(screen.getByText('Preparando horários disponíveis...')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Preparando seu agendamento' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Carregando informações do serviço...')).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--booking')).toHaveLength(0);
-    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(4);
+    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
   });
 
   it('offers an actionable catalog link when business validation fails', async () => {
@@ -1124,8 +1144,10 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Prazo estimado: até 3 dias corridos.')).toBeInTheDocument();
-    expect(screen.getByText(/Previsão provisória:/)).toHaveTextContent(/\d{4}/);
+    expect(await screen.findByText('Prazo estimado:')).toBeInTheDocument();
+    expect(screen.getByText(/até 3 dias corridos/)).toBeInTheDocument();
+    expect(screen.getByText('Previsão provisória:').parentElement).toHaveTextContent(/\d{4}/);
+    expect(screen.queryByText('120 minutos')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
     expect(await screen.findByLabelText('Profissional selecionado')).toHaveTextContent('Ana Souza');

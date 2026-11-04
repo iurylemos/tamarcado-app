@@ -39,9 +39,6 @@ export type BookingTemplateProps =
   | {
       status: 'loading';
       slug: string;
-      date: string;
-      minimumDate: string;
-      onDateChange: (date: string) => void;
     }
   | { status: 'error'; slug: string; error: string }
   | { status: 'not-found'; slug: string }

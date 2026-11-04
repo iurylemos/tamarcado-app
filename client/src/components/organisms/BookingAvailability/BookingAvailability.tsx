@@ -65,15 +65,17 @@ export default function BookingAvailability({
       </div>
 
       {estimatedCheckout ? (
-        <div className="state-card state-card-compact">
+        <div className="state-card state-card-compact flex-col">
           {estimatedDeliveryDays !== undefined ? (
-            <p>Prazo estimado: até {estimatedDeliveryDays} dias corridos.</p>
+            <p>
+              <b>Prazo estimado:</b> até {estimatedDeliveryDays} dias corridos.
+            </p>
           ) : (
             <p role="status">O prazo estimado não está disponível para esta opção.</p>
           )}
           {provisionalEstimatedDate ? (
             <p>
-              Previsão provisória:{' '}
+              <b>Previsão provisória:</b>{' '}
               {new Intl.DateTimeFormat('pt-BR', {
                 dateStyle: 'long',
                 timeZone: 'UTC',

@@ -243,7 +243,9 @@ export default function CompanyCatalogTemplate({
                             })}
                           </div>
                           <span className="store">
-                            {product.durationMinutes} min · Escolher horário
+                            {product.estimatedDeliveryEnabled
+                              ? 'Prazo estimado · Solicitar serviço'
+                              : `${product.durationMinutes} min · Escolher horário`}
                           </span>
                         </div>
                       </a>
@@ -313,7 +315,9 @@ export default function CompanyCatalogTemplate({
                             <p className="service-description">{product.description}</p>
                           )}
                           <span className="store">
-                            {product.durationMinutes} min · Escolher horário →
+                            {product.estimatedDeliveryEnabled
+                              ? 'Prazo estimado · Solicitar serviço →'
+                              : `${product.durationMinutes} min · Escolher horário →`}
                           </span>
                         </div>
                       </a>

@@ -605,9 +605,6 @@ export default function BookingPage({
         <BookingTemplate
           status="loading"
           slug={slug}
-          date={date}
-          minimumDate={DateUtil.getNextBookableDate(new Date(Date.now() - 86_400_000))}
-          onDateChange={selectDate}
         />
       );
     }

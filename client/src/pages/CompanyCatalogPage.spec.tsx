@@ -186,6 +186,7 @@ describe('CompanyCatalogPage', () => {
           imageUrl: '/offer.jpg',
           priceCents: 10000,
           promotionActive: true,
+          estimatedDeliveryEnabled: true,
           customizationAttributes: [
             {
               id: 'color',
@@ -225,11 +226,15 @@ describe('CompanyCatalogPage', () => {
     expect(offers).toHaveTextContent('Cor: Azul');
     expect(offers).toHaveTextContent('Cor: Vermelho');
     expect(offers.querySelectorAll('.promotion-original-price')).toHaveLength(2);
+    expect(offers.querySelectorAll('.promotion-card')).toHaveLength(1);
     expect(offers).toHaveTextContent(/R\$\s*150,00/);
     expect(offers).toHaveTextContent(/R\$\s*120,00/);
     expect(offers).toHaveTextContent(/R\$\s*110,00/);
     expect(offers).toHaveTextContent(/R\$\s*90,00/);
+    expect(offers).toHaveTextContent('Prazo estimado · Solicitar serviço');
+    expect(offers).not.toHaveTextContent('60 min');
     expect(screen.getByRole('heading', { name: 'Serviço regular' })).toBeInTheDocument();
+    expect(regularCatalog).toHaveTextContent('30 min · Escolher horário');
   });
 
   it('offers a business-named PWA install prompt only after a valid catalog loads', async () => {

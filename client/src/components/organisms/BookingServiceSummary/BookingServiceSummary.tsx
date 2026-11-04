@@ -79,96 +79,122 @@ export default function BookingServiceSummary({
   );
 
   return (
-    <motion.aside
-      className="booking-summary"
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-    >
-      <p className="eyebrow">RESUMO DO SERVIÇO</p>
-      <span className="booking-summary-icon" aria-hidden="true">
-        ✂
-      </span>
-      <p className="muted">{catalog.business.name}</p>
-      <h2>{product.name}</h2>
-      <ProductImageGallery
-        images={images}
-        selectedImageId={selectedImageId}
-        onSelect={onImageSelect}
-        productName={product.name}
-      />
-      {product.description && <p>{product.description}</p>}
-      {attributes.map((attribute) => (
-        <fieldset className="booking-summary-options" key={attribute.id}>
-          <legend>{attribute.label}</legend>
-          <div className="booking-summary-option-list">
-            {attribute.options.map((option) => (
-              <label className="booking-summary-option" key={option.id}>
-                <input
-                  type="radio"
-                  name={`product-${product.id}-${attribute.id}`}
-                  checked={
-                    priceSelections.find((selection) => selection.attributeId === attribute.id)
-                      ?.optionId === option.id
-                  }
-                  onChange={() => onCustomizationChange(attribute.id, option.id)}
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ))}
-      {!!variantPrices?.length && (
-        <ul className="booking-summary-variant-prices" aria-label="Preços das combinações">
-          {variantPrices.map(({ combinationLabel, pricing }, index) => (
-            <li
-              className="booking-summary-variant-price"
-              key={`${combinationLabel ?? 'combination'}-${index}`}
-            >
-              <span>{combinationLabel || 'Combinação indisponível'}</span>
-              {pricing ? (
-                <span>
-                  {pricing.promotionApplied && <del>{formatBrl(pricing.originalPriceCents)}</del>}
-                  <strong>{formatBrl(pricing.effectivePriceCents)}</strong>
-                </span>
-              ) : (
-                <strong>Preço indisponível</strong>
-              )}
-            </li>
+    <div className="booking-product-column">
+      {(attributes.length > 0 || !!variantPrices?.length) && (
+        <section className="booking-summary-choices-card" aria-labelledby="booking-choice-heading">
+          <p className="eyebrow">PERSONALIZE SEU SERVIÇO</p>
+          <h3 id="booking-choice-heading">Escolha suas opções</h3>
+          {attributes.map((attribute) => (
+            <fieldset className="booking-summary-options" key={attribute.id}>
+              <legend>{attribute.label}</legend>
+              <div className="booking-summary-option-list">
+                {attribute.options.map((option) => (
+                  <label className="booking-summary-option" key={option.id}>
+                    <input
+                      type="radio"
+                      name={`product-${product.id}-${attribute.id}`}
+                      checked={
+                        priceSelections.find((selection) => selection.attributeId === attribute.id)
+                          ?.optionId === option.id
+                      }
+                      onChange={() => onCustomizationChange(attribute.id, option.id)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           ))}
-        </ul>
-      )}
-      {customizationSelections.length > 0 && (
-        <ul className="booking-summary-customizations">
-          {customizationSelections.map((selection) => {
-            const attribute = product.customizationAttributes?.find(
-              (item) => item.id === selection.attributeId,
-            );
-            const option = attribute?.options.find((item) => item.id === selection.optionId);
-            if (!attribute || !option) return null;
-            return (
-              <li key={selection.attributeId}>
-                <strong>{attribute.label}:</strong> {option.label}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <div className="booking-summary-details">
-        <span>
-          {selectedPricing === undefined ? (
-            'Preço indisponível'
-          ) : (
-            <>
-              {selectedPricing.promotionApplied && (
-                <del>{formatBrl(selectedPricing.originalPriceCents)}</del>
-              )}
-              <strong>{formatBrl(selectedPricing.effectivePriceCents)}</strong>
-            </>
+          {!!variantPrices?.length && (
+            <ul className="booking-summary-variant-prices" aria-label="Preços das combinações">
+              {variantPrices.map(({ combinationLabel, pricing }, index) => (
+                <li
+                  className="booking-summary-variant-price"
+                  key={`${combinationLabel ?? 'combination'}-${index}`}
+                >
+                  <span>{combinationLabel || 'Combinação indisponível'}</span>
+                  {pricing ? (
+                    <span>
+                      <span className={pricing.promotionApplied ? 'promotion-price-values' : ''}>
+                        {pricing.promotionApplied && (
+                          <del className="promotion-original-price">
+                            {formatBrl(pricing.originalPriceCents)}
+                          </del>
+                        )}
+                        <strong
+                          className={pricing.promotionApplied ? 'promotion-current-price' : ''}
+                        >
+                          {formatBrl(pricing.effectivePriceCents)}
+                        </strong>
+                      </span>
+                    </span>
+                  ) : (
+                    <strong>Preço indisponível</strong>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
+        </section>
+      )}
+      <motion.aside
+        className="booking-summary"
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+      >
+        <p className="eyebrow">SERVIÇO ESCOLHIDO</p>
+        <span className="booking-summary-icon" aria-hidden="true">
+          ✂
         </span>
-        <span>{product.durationMinutes} minutos</span>
-      </div>
-    </motion.aside>
+        <p className="muted">{catalog.business.name}</p>
+        <h2>{product.name}</h2>
+        <ProductImageGallery
+          images={images}
+          selectedImageId={selectedImageId}
+          onSelect={onImageSelect}
+          productName={product.name}
+        />
+        {product.description && <p>{product.description}</p>}
+        {customizationSelections.length > 0 && (
+          <ul className="booking-summary-customizations">
+            {customizationSelections.map((selection) => {
+              const attribute = product.customizationAttributes?.find(
+                (item) => item.id === selection.attributeId,
+              );
+              const option = attribute?.options.find((item) => item.id === selection.optionId);
+              if (!attribute || !option) return null;
+              return (
+                <li key={selection.attributeId}>
+                  <strong>{attribute.label}:</strong> {option.label}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <div className="booking-summary-details">
+          <span>
+            {selectedPricing === undefined ? (
+              'Preço indisponível'
+            ) : (
+              <>
+                <span className={selectedPricing.promotionApplied ? 'promotion-price-values' : ''}>
+                  {selectedPricing.promotionApplied && (
+                    <del className="promotion-original-price">
+                      {formatBrl(selectedPricing.originalPriceCents)}
+                    </del>
+                  )}
+                  <strong
+                    className={selectedPricing.promotionApplied ? 'promotion-current-price' : ''}
+                  >
+                    {formatBrl(selectedPricing.effectivePriceCents)}
+                  </strong>
+                </span>
+              </>
+            )}
+          </span>
+          {!product.estimatedDeliveryEnabled && <span>{product.durationMinutes} minutos</span>}
+        </div>
+      </motion.aside>
+    </div>
   );
 }

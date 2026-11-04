@@ -480,9 +480,18 @@ select {
 .promotion-card {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgb(249 115 22 / 0.5);
   border-radius: 12px;
   background: var(--color-surface);
+  box-shadow: 0 4px 16px rgb(124 45 18 / 0.08);
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .promotion-card:hover {
+    box-shadow: 0 10px 24px rgb(124 45 18 / 0.14);
+  }
 }
 .promotion-card-link {
   display: block;
@@ -546,12 +555,13 @@ select {
   gap: 0.6rem;
 }
 .promotion-original-price {
-  color: var(--color-danger);
+  color: #9ca3af;
   font-size: 0.9rem;
 }
 .promotion-current-price {
-  color: var(--color-brand);
-  font-size: 1.2rem;
+  color: #16a34a;
+  font-size: 1rem;
+  font-weight: 800;
 }
 .catalog-loading-title {
   width: 100%;
@@ -679,6 +689,26 @@ select {
   top: 1rem;
   padding: 1.4rem;
 }
+.booking-product-column {
+  display: grid;
+  min-width: 0;
+  align-self: start;
+  gap: 1rem;
+}
+.booking-summary-choices-card {
+  border: 1px solid rgb(249 115 22 / 0.3);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: linear-gradient(145deg, #fff 0%, #fff7ed 100%);
+}
+.booking-summary-choices-card > .eyebrow {
+  color: #c2410c;
+}
+.booking-summary-choices-card h3 {
+  margin: 0 0 0.8rem;
+  color: var(--color-text);
+  font-size: 1.05rem;
+}
 .booking-summary-icon {
   display: grid;
   width: 3.3rem;
@@ -784,8 +814,8 @@ select {
   cursor: pointer;
 }
 .booking-summary-option:has(input:checked) {
-  border-color: #b91c1c;
-  background: #fff7f7;
+  border-color: #f97316;
+  background: #fff7ed;
 }
 .booking-summary-option input {
   appearance: none;
@@ -810,14 +840,14 @@ select {
   transition: transform 120ms ease-in-out;
 }
 .booking-summary-option input:checked {
-  border-color: #b91c1c;
-  background: #b91c1c;
+  border-color: #f97316;
+  background: #f97316;
 }
 .booking-summary-option input:checked::before {
   transform: scale(1);
 }
 .booking-summary-option input:focus-visible {
-  outline: 2px solid #b91c1c;
+  outline: 2px solid #f97316;
   outline-offset: 2px;
 }
 .booking-summary-variant-prices {
@@ -844,8 +874,12 @@ select {
   font-size: 0.85em;
   font-weight: 400;
 }
-.booking-summary-variant-price strong {
-  color: #b91c1c;
+.booking-summary-variant-price del.promotion-original-price,
+.booking-summary-details del.promotion-original-price {
+  color: #9ca3af;
+}
+.booking-summary-details span:first-child .promotion-current-price {
+  color: #16a34a;
 }
 .booking-summary-customizations {
   display: grid;
@@ -871,6 +905,10 @@ select {
   color: #b91c1c;
   font-size: 1.15rem;
   font-weight: 800;
+}
+.booking-summary-details .promotion-price-values {
+  justify-content: flex-start;
+  gap: 0.75rem;
 }
 .booking-panel {
   display: grid;
@@ -1190,6 +1228,9 @@ select {
   .booking-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+  .booking-product-column {
+    gap: 0.75rem;
+  }
   .booking-summary {
     position: static;
   }
@@ -1214,9 +1255,8 @@ select {
   .booking-summary > .product-image-gallery,
   .booking-summary-loading-content,
   .booking-summary-details,
-  .booking-summary-options,
-  .booking-summary-variant-prices,
-  .booking-summary-customizations {
+  .booking-summary-customizations,
+  .booking-summary-choices-card {
     grid-column: 1 / -1;
   }
   .booking-summary-icon {
