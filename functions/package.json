@@ -21,12 +21,7 @@
     "framer-motion": "^14.6.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-streaming": "^0.4.19",
-    "twilio": "^5.10.6",
-    "vike": "^0.4.268",
-    "vike-react": "^0.6.31",
-    "vike-react-query": "^0.1.13",
-    "vite": "^8.3.2"
+    "twilio": "^5.10.6"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0"

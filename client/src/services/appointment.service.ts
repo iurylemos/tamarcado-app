@@ -1,5 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../config/firebase.config';
+import { getFunctionsInstance } from '../config/firebase-functions.config';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
 import { trackClientRequest } from '../config/sentry.config';
 import type {
@@ -14,7 +14,7 @@ export async function createAppointment(
     SentryClientRequestOperation.APPOINTMENT_REGISTRATION,
     async (): Promise<CreatePublicAppointmentResult> => {
       const call = httpsCallable<CreatePublicAppointmentInput, CreatePublicAppointmentResult>(
-        functions,
+        getFunctionsInstance(),
         'createPublicAppointment',
       );
       const response = await call(input);

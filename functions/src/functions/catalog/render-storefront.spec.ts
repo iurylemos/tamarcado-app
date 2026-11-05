@@ -7,11 +7,39 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '../../../../shared/domain/errors';
 import { findPublicBusiness, findPublicProductRecord } from '../../services/public-catalog.service';
 import { renderStorefront } from './render-storefront';
+import type {
+  StorefrontRendererModule,
+  StorefrontRenderInput,
+} from '../../../../client/src/interfaces/storefront-render.interface.js';
 
 vi.mock('../../services/public-catalog.service', () => ({
   findPublicBusiness: vi.fn(),
   findPublicProductRecord: vi.fn(),
 }));
+
+vi.mock('../../../../client/src/config/firebase.config', () => ({ db: {} }));
+vi.mock('../../../../client/src/config/firebase-functions.config', () => ({ functions: {} }));
+
+// Uses the client sources directly so the test does not depend on a production build.
+vi.mock('./storefront-renderer', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { resolve } = await import('node:path');
+  const entryPath = resolve(__dirname, '../../../../client/src/entry-server.tsx');
+  const entry = (await import(/* @vite-ignore */ entryPath)) as StorefrontRendererModule;
+  const template = readFileSync(resolve(__dirname, '../../../../client/index.html'), 'utf8');
+
+  return {
+    loadStorefrontRenderer: async () => ({
+      renderHtml: (input: StorefrontRenderInput) => {
+        const output = entry.render(input);
+        return {
+          html: entry.renderDocument(template, output),
+          statusCode: output.statusCode,
+        };
+      },
+    }),
+  };
+});
 
 class TestResponse extends Writable {
   public statusCode = 200;
@@ -160,10 +188,11 @@ describe('renderStorefront', () => {
     const response = await requestStorefront('/empresa/studio-aurora');
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(response.body).toContain('Studio Aurora');
     expect(response.body).not.toContain('Corte e finalização');
     expect(response.body).toContain('<title>Studio Aurora | Tá Marcado</title>');
-    expect(response.body).toContain('class="_rqd_"');
+    expect(response.body).toContain('id="__STOREFRONT_STATE__"');
     expect(response.body).toContain('application/json');
     expect(response.body).not.toContain('private-tenant-aurora');
   });

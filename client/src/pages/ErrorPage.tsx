@@ -1,26 +1,8 @@
 import type { JSX } from 'react';
 import { motion } from 'framer-motion';
-import { usePageContext } from 'vike-react/usePageContext';
 
-export default function Page(): JSX.Element {
-  const pageContext = usePageContext();
-
-  let msg: string = '';
-
-  const { abortReason, abortStatusCode, is404 } = pageContext;
-
-  if (typeof abortReason === 'object' && abortReason.notAdmin) {
-    msg = 'Você não pode acessar esta página porque não é um administrador.';
-  } else if (typeof abortReason === 'string') {
-    msg = abortReason;
-  } else if (abortStatusCode === 403) {
-    msg = 'Você não pode acessar esta página porque não possui permissões suficientes.';
-  } else if (abortStatusCode === 401) {
-    msg =
-      'Você não pode acessar esta página porque não está autenticado. Faça login para continuar.';
-  } else {
-    msg = is404 ? 'Esta página não existe.' : 'Algo deu errado. Tente novamente mais tarde.';
-  }
+export default function ErrorPage(): JSX.Element {
+  const msg = 'Esta página não existe.';
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-6 py-16 text-slate-900">

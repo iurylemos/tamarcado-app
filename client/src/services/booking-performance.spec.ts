@@ -11,7 +11,7 @@ const sentryMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('firebase/functions', () => ({ httpsCallable }));
-vi.mock('../config/firebase.config', () => ({ functions: {} }));
+vi.mock('../config/firebase-functions.config', () => ({ getFunctionsInstance: () => ({}) }));
 vi.mock('@sentry/react', () => sentryMocks);
 
 describe('booking service timing', () => {
