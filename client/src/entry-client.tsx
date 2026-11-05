@@ -6,6 +6,7 @@ import type { PageComponents } from './interfaces/page.interface';
 import { matchRoute } from './app/routes';
 import { createQueryClient } from './config/query-client.config';
 import './styles/index.css';
+import './styles/theme.css';
 
 const stateElementId = '__STOREFRONT_STATE__';
 

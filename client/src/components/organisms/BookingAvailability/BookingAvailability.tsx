@@ -174,6 +174,7 @@ export default function BookingAvailability({
                 className={`slot-option${selectedStartsAt === slot.startsAt ? ' is-selected' : ''}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
+                        whileTap={{ scale: 0.95 }}
                 transition={{ delay: Math.min(index, 12) * 0.025 }}
               >
                 <input

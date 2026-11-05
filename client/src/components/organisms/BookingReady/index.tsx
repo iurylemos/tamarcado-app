@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { MotionConfig } from 'framer-motion';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import BookingHero from '../../atoms/BookingHero';
@@ -47,7 +48,7 @@ export default function BookingReady({
   onCloseReceipt,
 }: Readonly<BookingReadyProps>): JSX.Element {
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <MarketBackground />
       <main className="page stack market-page booking-page">
         <a aria-label="Voltar ao catálogo" className="market-back-link" href={`/empresa/${slug}`}>
@@ -112,6 +113,6 @@ export default function BookingReady({
           onClose={onCloseReceipt}
         />
       </main>
-    </>
+    </MotionConfig>
   );
 }

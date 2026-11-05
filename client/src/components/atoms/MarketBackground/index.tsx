@@ -1,30 +1,24 @@
 import type { JSX } from 'react';
-import { motion } from 'framer-motion';
+import { MotionConfig, motion } from 'framer-motion';
 
-const floaters = ['🛍️', '✂️', '💅', '🏪', '💆', '🚗', '🏷️', '💈', '🧴', '🎁', '⭐', '🛒'];
+const orbs = [
+  { className: 'market-orb market-orb--a', x: [0, 24, 0], y: [0, 18, 0], duration: 16 },
+  { className: 'market-orb market-orb--b', x: [0, -20, 0], y: [0, 26, 0], duration: 19 },
+] as const;
 
 export default function MarketBackground(): JSX.Element {
   return (
-    <div className="market-bg" aria-hidden="true">
-      {floaters.map((icon, index) => (
-        <motion.span
-          key={icon}
-          style={{
-            left: `${(index * 83) % 96}%`,
-            top: `${(index * 37) % 90}%`,
-            fontSize: `${2 + (index % 3)}rem`,
-          }}
-          animate={{ y: [0, -28, 0], rotate: [-8, 8, -8] }}
-          transition={{
-            duration: 6 + (index % 5),
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: index * 0.3,
-          }}
-        >
-          {icon}
-        </motion.span>
-      ))}
-    </div>
+    <MotionConfig reducedMotion="user">
+      <div className="market-bg" aria-hidden="true">
+        {orbs.map((orb) => (
+          <motion.span
+            key={orb.className}
+            className={orb.className}
+            animate={{ x: [...orb.x], y: [...orb.y] }}
+            transition={{ duration: orb.duration, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </div>
+    </MotionConfig>
   );
 }
