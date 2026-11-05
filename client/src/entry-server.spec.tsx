@@ -5,8 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, renderDocument } from './entry-server';
 import type { CompanySummary } from './interfaces/company.interface';
 
-vi.mock('./config/firebase.config', () => ({ db: {} }));
-vi.mock('./config/firebase-functions.config', () => ({ getFunctionsInstance: () => ({}) }));
+vi.mock('./config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
 
 const template = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 

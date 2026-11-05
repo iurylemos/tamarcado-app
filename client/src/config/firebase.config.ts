@@ -1,5 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { FirebaseUtil } from '../utils/firebase.util';
 
 const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true';
@@ -37,6 +39,11 @@ export const db = initializeFirestore(
   FirebaseUtil.defaultFirestore,
 );
 
-if (useEmulators) connectFirestoreEmulator(db, '127.0.0.1', 8080);
+export const auth = getAuth(app);
+export const functions = getFunctions(app, FirebaseUtil.region);
 
-export { app, useEmulators };
+if (useEmulators) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+}

@@ -104,6 +104,15 @@ export default defineConfig(({ mode, isSsrBuild }): UserConfig => {
         '@shared': path.resolve(root, '../shared/domain'),
       },
     },
+    // Bundle the Firebase browser ESM builds so a single SDK instance serves SSR in the Function.
+    ...(isSsrBuild
+      ? {
+          ssr: {
+            noExternal: [/^firebase(\/|$)/, /^@firebase\//, 'idb', 're2js'],
+            resolve: { conditions: ['browser', 'module', 'import'], externalConditions: ['node'] },
+          },
+        }
+      : {}),
     build: isSsrBuild
       ? {
           outDir: 'dist/server',

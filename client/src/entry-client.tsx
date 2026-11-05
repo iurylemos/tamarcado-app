@@ -1,7 +1,8 @@
 ﻿import { createRoot, hydrateRoot } from 'react-dom/client';
-import StorefrontApp, { createPageElement, type PageComponents } from './app/StorefrontApp';
+import StorefrontApp, { createPageElement } from './app/StorefrontApp';
 import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
+import type { PageComponents } from './interfaces/page.interface';
 import { matchRoute } from './app/routes';
 import { createQueryClient } from './config/query-client.config';
 import './styles/index.css';

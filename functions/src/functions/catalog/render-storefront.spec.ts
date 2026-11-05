@@ -17,8 +17,7 @@ vi.mock('../../services/public-catalog.service', () => ({
   findPublicProductRecord: vi.fn(),
 }));
 
-vi.mock('../../../../client/src/config/firebase.config', () => ({ db: {} }));
-vi.mock('../../../../client/src/config/firebase-functions.config', () => ({ functions: {} }));
+vi.mock('../../../../client/src/config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
 
 // Uses the client sources directly so the test does not depend on a production build.
 vi.mock('./storefront-renderer', async () => {

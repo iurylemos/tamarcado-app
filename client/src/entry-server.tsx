@@ -1,5 +1,5 @@
 ﻿import { renderToString } from 'react-dom/server';
-import StorefrontApp, { createPageElement, type PageComponents } from './app/StorefrontApp';
+import StorefrontApp, { createPageElement } from './app/StorefrontApp';
 import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
 import { escapeHtml, renderPageMetaTags, resolvePageMeta } from './app/page-meta';
@@ -13,6 +13,7 @@ import BookingPage from './pages/BookingPage';
 import CatalogRoutePage from './pages/CatalogRoutePage';
 import ErrorPage from './pages/ErrorPage';
 import HomePage from './pages/HomePage';
+import type { PageComponents } from './interfaces/page.interface';
 
 export const storefrontStateElementId = '__STOREFRONT_STATE__';
 

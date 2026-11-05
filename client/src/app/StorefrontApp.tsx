@@ -1,22 +1,8 @@
+import type { JSX } from 'react';
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
-import type { ComponentType, JSX } from 'react';
-import type { PublicCatalogStatus } from '../interfaces/catalog.interface';
-import type { CompanySummary, PublicProductSummary } from '../interfaces/company.interface';
-import Layout from './Layout';
 import type { PageData } from './page-data';
-
-export type PageComponents = {
-  home: ComponentType;
-  catalog: ComponentType<{ slug: string; status?: PublicCatalogStatus }>;
-  booking: ComponentType<{
-    slug: string;
-    productId: string;
-    initialBusiness?: CompanySummary | null;
-    initialProduct?: PublicProductSummary | null;
-    initialStatus?: PublicCatalogStatus;
-  }>;
-  notFound: ComponentType;
-};
+import type { PageComponents } from '../interfaces/page.interface';
+import Layout from './Layout';
 
 export function createPageElement(
   page: PageData,
