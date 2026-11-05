@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, type JSX } from 'react';
+import { MotionConfig, motion } from 'framer-motion';
 import { formatBrl } from '../../../../../shared/domain/money.js';
 import {
   hasValidActivePromotion,
@@ -99,7 +100,7 @@ export default function CompanyCatalogTemplate({
   }, [catalog, status]);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <div className="market-bg" aria-hidden="true" />
       {status === 'error' && (
         <main className="page market-page">
@@ -179,7 +180,11 @@ export default function CompanyCatalogTemplate({
                     ? product.variantPrices
                     : [undefined];
                   return (
-                    <article className="promotion-card" key={product.id}>
+                    <motion.article
+                      className="promotion-card"
+                      key={product.id}
+                      whileTap={{ scale: 0.98 }}
+                    >
                       <a
                         href={`/empresa/${encodeURIComponent(businessSlug)}/agendar/${encodeURIComponent(product.id)}`}
                         className="promotion-card-link"
@@ -249,7 +254,7 @@ export default function CompanyCatalogTemplate({
                           </span>
                         </div>
                       </a>
-                    </article>
+                    </motion.article>
                   );
                 })}
               </section>
@@ -295,10 +300,15 @@ export default function CompanyCatalogTemplate({
                 </p>
               ) : (
                 <section className="showcase-grid catalog-grid" aria-label="Serviços">
-                  {catalog.products.map((product) => (
-                    <div key={product.id}>
-                      <a
+                  {catalog.products.map((product, index) => (
+                    <div
+                      key={product.id}
+                      className="rise-in"
+                      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                    >
+                      <motion.a
                         className="product-card catalog-service-card"
+                        whileTap={{ scale: 0.97 }}
                         href={`/empresa/${encodeURIComponent(catalog.business.slug)}/agendar/${encodeURIComponent(product.id)}`}
                       >
                         <div className="media">
@@ -320,7 +330,7 @@ export default function CompanyCatalogTemplate({
                               : `${product.durationMinutes} min · Escolher horário →`}
                           </span>
                         </div>
-                      </a>
+                      </motion.a>
                     </div>
                   ))}
                   {hasMore && (
@@ -339,6 +349,6 @@ export default function CompanyCatalogTemplate({
           {catalog && <PwaInstallPrompt businessName={catalog.business.name} />}
         </main>
       )}
-    </>
+    </MotionConfig>
   );
 }

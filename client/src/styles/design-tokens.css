@@ -1,13 +1,26 @@
 :root {
-  --color-brand: #ea1d2c;
-  --color-brand-hover: #c91825;
+  --color-brand: #0c243c;
+  --color-brand-hover: #12385c;
+  --color-brand-deep: #081a2c;
+  --color-brand-ink: #061320;
+  --color-brand-soft: #eaf0f6;
+  --color-brand-line: #d4dfea;
+  --color-promo: #fab205;
   --color-success: #0f766e;
   --color-danger: #b91c1c;
-  --color-text: #0f172a;
-  --color-muted: #475569;
+  --color-text: #0b1c2c;
+  --color-muted: #566a7c;
   --color-surface: #fff;
-  --color-background: #f8fafc;
-  --color-border: #cbd5e1;
+  --color-background: #f3f6f9;
+  --color-border: #d9e3ec;
   --font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --gutter: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-control: 0.85rem;
+  --shadow-card: 0 1px 2px rgb(6 19 32 / 0.06), 0 8px 24px -8px rgb(12 36 60 / 0.24);
+  --shadow-lift: 0 2px 4px rgb(6 19 32 / 0.08), 0 18px 36px -10px rgb(12 36 60 / 0.4);
+  --gradient-brand: linear-gradient(135deg, #17456f 0%, #0c243c 55%, #07172a 100%);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }

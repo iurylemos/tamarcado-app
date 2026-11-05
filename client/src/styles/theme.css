@@ -1,0 +1,958 @@
+/* Tá Marcado storefront theme: purple identity, edge-to-edge imagery, compact mobile-first layout.
+   Loaded after index.css so it refines the structural rules defined there. */
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+}
+:focus-visible {
+  outline: 3px solid rgb(250 178 5 / 0.85);
+  outline-offset: 2px;
+}
+::selection {
+  background: rgb(250 178 5 / 0.35);
+}
+
+/* ---------- Motion primitives ---------- */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in 420ms var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+}
+
+/* ---------- Page shell & background ---------- */
+.page {
+  width: min(100% - var(--gutter) * 2, 64rem);
+  padding: 0.75rem 0 4rem;
+}
+.market-bg {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgb(12 36 60 / 0.1), transparent 60%),
+    linear-gradient(180deg, #f9fbfc 0%, var(--color-background) 100%);
+}
+.market-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+}
+.market-orb--a {
+  top: 18%;
+  right: -8rem;
+  width: 22rem;
+  height: 22rem;
+  background: rgb(23 69 111 / 0.22);
+}
+.market-orb--b {
+  bottom: -6rem;
+  left: -7rem;
+  width: 20rem;
+  height: 20rem;
+  background: rgb(250 178 5 / 0.18);
+}
+.eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--color-brand);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.market-back-link {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  padding: 0 0.85rem 0 0.7rem;
+  background: rgb(255 255 255 / 0.8);
+  color: var(--color-brand-deep);
+  font-size: 0.82rem;
+  box-shadow: 0 1px 2px rgb(6 19 32 / 0.08);
+  backdrop-filter: blur(8px);
+  transition:
+    transform 160ms var(--ease-out),
+    background 160ms ease;
+}
+.market-back-link:active {
+  transform: scale(0.96);
+}
+@media (hover: hover) and (pointer: fine) {
+  .market-back-link:hover {
+    background: white;
+    color: var(--color-brand);
+  }
+}
+.state-card {
+  border-color: var(--color-brand-line);
+  border-radius: var(--radius-card);
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: var(--shadow-card);
+}
+.button {
+  border-radius: var(--radius-control);
+  background: var(--gradient-brand);
+  font-weight: 700;
+  transition:
+    transform 160ms var(--ease-out),
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+.button:hover {
+  background: var(--gradient-brand);
+  filter: brightness(1.06);
+}
+.button:active {
+  transform: scale(0.98);
+}
+
+/* ---------- Home (neutral) ---------- */
+.neutral-home-card {
+  border: 1px solid var(--color-brand-line);
+  border-radius: 1.75rem;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: var(--shadow-lift);
+}
+.neutral-home-card h1 {
+  color: var(--color-brand-ink);
+  font-weight: 800;
+}
+
+/* ---------- Catalog hero (edge-to-edge on mobile) ---------- */
+.catalog-page {
+  gap: 1rem;
+}
+.company-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1.75rem;
+  padding: 1.25rem;
+  background: var(--gradient-brand);
+  color: white;
+  box-shadow: var(--shadow-lift);
+}
+.company-hero::before,
+.company-hero::after {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  content: '';
+}
+.company-hero::before {
+  top: -35%;
+  right: -12%;
+  width: 16rem;
+  height: 16rem;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.28), transparent 68%);
+}
+.company-hero::after {
+  bottom: -55%;
+  left: 12%;
+  width: 14rem;
+  height: 14rem;
+  background: radial-gradient(circle, rgb(250 178 5 / 0.42), transparent 68%);
+}
+.company-hero .eyebrow {
+  color: rgb(255 255 255 / 0.72);
+}
+.company-identity h1 {
+  font-size: clamp(1.45rem, 5vw, 2.3rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.company-identity p:last-child {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.35rem;
+  color: rgb(255 255 255 / 0.82);
+  font-size: 0.88rem;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+}
+.company-logo {
+  width: 4.25rem;
+  height: 4.25rem;
+  border: 3px solid rgb(255 255 255 / 0.9);
+  border-radius: 1.2rem;
+  background: white;
+  box-shadow: 0 8px 20px -6px rgb(6 19 32 / 0.5);
+}
+.company-logo-placeholder {
+  background: rgb(255 255 255 / 0.18);
+  color: white;
+  font-size: 1.9rem;
+  backdrop-filter: blur(6px);
+}
+.company-hero-note {
+  max-width: none;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  background: rgb(255 255 255 / 0.14);
+  color: white;
+  font-size: 0.8rem;
+  backdrop-filter: blur(8px);
+}
+.catalog-loading-logo {
+  background: rgb(255 255 255 / 0.25);
+}
+.company-hero .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.16) 20%,
+    rgb(255 255 255 / 0.32) 38%,
+    rgb(255 255 255 / 0.16) 56%
+  );
+  background-size: 220% 100%;
+}
+@media (max-width: 639px) {
+  .catalog-page {
+    padding-top: 0;
+  }
+  .catalog-page .company-hero {
+    margin-inline: calc(50% - 50vw);
+    border-radius: 0 0 1.75rem 1.75rem;
+    padding: max(1.25rem, env(safe-area-inset-top)) calc(50vw - 50% + 0.5rem) 1.5rem;
+  }
+}
+@media (min-width: 640px) {
+  .page {
+    padding-top: 1.25rem;
+  }
+  .company-hero {
+    padding: 1.75rem 2rem;
+  }
+  .company-logo {
+    width: 5.5rem;
+    height: 5.5rem;
+  }
+}
+
+/* ---------- Sections ---------- */
+.catalog-section {
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+}
+.section-heading h2 {
+  color: var(--color-brand-ink);
+  font-size: clamp(1.1rem, 3.5vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.catalog-count {
+  border: 1px solid var(--color-brand-line);
+  background: white;
+  color: var(--color-brand-deep);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+/* ---------- Promotions: swipeable shelf ---------- */
+.promotions-section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.promotions-section .section-heading h2::before {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-promo);
+  box-shadow: 0 0 0 4px rgb(250 178 5 / 0.3);
+  content: '';
+  vertical-align: 0.15em;
+}
+.promotions-description {
+  font-size: 0.82rem;
+}
+.promotion-grid {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  margin-inline: calc(var(--gutter) * -1);
+  padding: 0.25rem var(--gutter) 1rem;
+  scroll-padding-inline: var(--gutter);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.promotion-grid::-webkit-scrollbar {
+  display: none;
+}
+.promotion-card {
+  scroll-snap-align: start;
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+@media (hover: hover) and (pointer: fine) {
+  .promotion-card:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-2px);
+  }
+}
+.promotion-card-link:focus-visible {
+  outline-color: var(--color-brand);
+}
+.promotion-image {
+  aspect-ratio: 16 / 11;
+}
+.promotion-image::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #fff 0%, rgb(255 255 255 / 0) 55%);
+  content: '';
+}
+.promotion-badge {
+  z-index: 1;
+  background: linear-gradient(135deg, #fcc94a, var(--color-promo));
+  color: var(--color-brand-ink);
+  box-shadow: 0 4px 12px -2px rgb(250 178 5 / 0.6);
+  font-size: 0.72rem;
+}
+.promotion-body {
+  position: relative;
+  z-index: 1;
+  gap: 0.4rem;
+  margin-top: -1.6rem;
+  padding: 0 0.9rem 0.9rem;
+}
+.promotion-body h3 {
+  color: var(--color-brand-ink);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.promotion-price-row {
+  border-top: 1px dashed var(--color-brand-line);
+  padding: 0.5rem 0;
+}
+.promotion-price-row:first-child {
+  border-top: 0;
+}
+.promotion-variant-label {
+  font-size: 0.78rem;
+}
+.promotion-original-price {
+  color: #93a5b6;
+  font-size: 0.8rem;
+}
+.promotion-current-price {
+  color: var(--color-brand);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.promotion-body .store {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+/* ---------- Service cards: image fills the whole card ---------- */
+.catalog-grid {
+  gap: 0.65rem;
+}
+@media (min-width: 640px) {
+  .catalog-grid {
+    gap: 1rem;
+  }
+}
+.product-card {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.catalog-service-card {
+  position: relative;
+  isolation: isolate;
+  justify-content: flex-end;
+  aspect-ratio: 4 / 5;
+  background: var(--color-brand-ink);
+  color: white;
+  transition:
+    box-shadow 220ms var(--ease-out),
+    transform 220ms var(--ease-out);
+}
+.catalog-service-card .media {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  background: var(--gradient-brand);
+}
+.catalog-service-card .media img {
+  transition: transform 600ms var(--ease-out);
+}
+.catalog-service-card::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgb(4 14 24 / 0.94) 0%,
+    rgb(4 14 24 / 0.62) 34%,
+    rgb(4 14 24 / 0.08) 66%,
+    rgb(4 14 24 / 0.18) 100%
+  );
+  content: '';
+  pointer-events: none;
+}
+.catalog-service-card .price {
+  z-index: 2;
+  top: 0.55rem;
+  right: auto;
+  bottom: auto;
+  left: 0.55rem;
+  background: rgb(255 255 255 / 0.94);
+  color: var(--color-brand-deep);
+  font-size: 0.86rem;
+  letter-spacing: -0.02em;
+  box-shadow: 0 4px 12px -2px rgb(6 19 32 / 0.35);
+  backdrop-filter: blur(6px);
+}
+.catalog-service-card .body {
+  position: relative;
+  z-index: 2;
+  gap: 0.2rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+}
+.catalog-service-card h3 {
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.catalog-service-card .service-description {
+  color: rgb(255 255 255 / 0.78);
+  font-size: 0.76rem;
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
+}
+.catalog-service-card .store {
+  color: #fcd978;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+@media (min-width: 640px) {
+  .catalog-service-card h3 {
+    font-size: 1.02rem;
+  }
+  .catalog-service-card .service-description {
+    font-size: 0.8rem;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .catalog-service-card:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-3px);
+  }
+  .catalog-service-card:hover .media img {
+    transform: scale(1.06);
+  }
+}
+.catalog-service-card:focus-visible {
+  outline-offset: 3px;
+}
+
+/* Skeleton mirrors the full-bleed card */
+.skeleton {
+  background: linear-gradient(90deg, #e9eff4 20%, #d9e3eb 38%, #e9eff4 56%);
+  background-size: 220% 100%;
+}
+.skeleton-card {
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.skeleton-card--service {
+  position: relative;
+  aspect-ratio: 4 / 5;
+}
+.skeleton-card--service .skeleton-card__image-placeholder {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  background: linear-gradient(160deg, #e2eaf0, #cbd8e2);
+}
+.skeleton-card--service .skeleton-card__body {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 0.75rem;
+}
+.skeleton-card--service .skeleton-card__body .skeleton {
+  background: rgb(255 255 255 / 0.55);
+}
+.skeleton-card--service .skeleton-card__price {
+  top: 0.55rem;
+  bottom: auto;
+}
+.skeleton-card--time {
+  border-radius: var(--radius-control);
+}
+
+/* ---------- Booking: hero ---------- */
+.booking-page {
+  gap: 0.85rem;
+}
+.booking-hero {
+  min-height: 0;
+  isolation: isolate;
+  border-radius: 1.5rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--gradient-brand);
+  box-shadow: var(--shadow-lift);
+}
+.booking-hero::before {
+  position: absolute;
+  z-index: -1;
+  top: -50%;
+  right: -10%;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.26), transparent 68%);
+  content: '';
+}
+.booking-hero .eyebrow {
+  color: rgb(255 255 255 / 0.72);
+}
+.booking-hero h1 {
+  font-size: clamp(1.3rem, 4.6vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.booking-hero p:last-child {
+  margin-top: 0.35rem;
+  font-size: 0.86rem;
+}
+.booking-hero-mark {
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 1.25rem;
+  font-size: 1.9rem;
+}
+@media (min-width: 640px) {
+  .booking-hero {
+    padding: 1.75rem 2rem;
+  }
+  .booking-hero-mark {
+    width: 5rem;
+    height: 5rem;
+    font-size: 2.6rem;
+  }
+}
+
+/* ---------- Booking: layout ---------- */
+.booking-layout {
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(0, 1.4fr);
+  gap: 0.85rem;
+}
+@media (min-width: 721px) {
+  .booking-product-column {
+    position: sticky;
+    top: 1rem;
+  }
+  .booking-summary {
+    position: static;
+  }
+}
+.booking-summary,
+.booking-panel {
+  border: 0;
+  border-radius: var(--radius-card);
+  background: white;
+  box-shadow: var(--shadow-card);
+}
+
+/* Summary: gallery bleeds to the card edges and fades into the surface */
+.booking-summary {
+  --pad: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.3rem;
+  overflow: hidden;
+  padding: var(--pad);
+}
+.booking-summary > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.booking-summary-icon {
+  display: none;
+}
+.booking-summary > .eyebrow {
+  margin: 0;
+}
+.booking-summary > .muted {
+  color: var(--color-brand);
+  font-weight: 700;
+}
+.booking-summary h2 {
+  margin: 0;
+  color: var(--color-brand-ink);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.booking-summary > p:not(.eyebrow, .muted) {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 0.86rem;
+}
+.product-image-gallery {
+  order: -1;
+  gap: 0.5rem;
+  margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 0.35rem;
+}
+.product-image-gallery__main {
+  width: 100%;
+  max-height: 22rem;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+.product-image-gallery__empty {
+  margin: var(--pad);
+  width: auto;
+  border-color: var(--color-brand-line);
+  border-radius: var(--radius-control);
+  background: var(--color-brand-soft);
+  font-size: 0.85rem;
+}
+.product-image-gallery__controls,
+.product-image-gallery__thumbnails {
+  margin-top: -1.1rem;
+  padding-inline: var(--pad);
+  position: relative;
+}
+.product-image-gallery__controls {
+  margin-top: -2rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+.product-image-gallery__controls button,
+.product-image-gallery__thumbnails button {
+  border-color: var(--color-brand-line);
+  border-radius: 0.7rem;
+  font-size: 0.78rem;
+  transition:
+    transform 140ms var(--ease-out),
+    border-color 140ms ease;
+}
+.product-image-gallery__controls button {
+  min-height: 2.25rem;
+  padding-inline: 0.8rem;
+  color: var(--color-brand-deep);
+  font-weight: 600;
+}
+.product-image-gallery__controls button:active,
+.product-image-gallery__thumbnails button:active {
+  transform: scale(0.94);
+}
+.product-image-gallery__thumbnails {
+  margin-top: 0;
+  overflow-x: auto;
+  justify-content: flex-start;
+  scrollbar-width: none;
+}
+.product-image-gallery__thumbnails button[aria-pressed='true'] {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 2px rgb(12 36 60 / 0.25);
+}
+.product-image-gallery__thumbnails img {
+  width: 3.4rem;
+  height: 2.5rem;
+}
+
+/* Price block */
+.booking-summary-details {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-top: 0.4rem;
+  border-top: 1px dashed var(--color-brand-line);
+  padding-top: 0.75rem;
+}
+.booking-summary-details span {
+  font-size: 0.8rem;
+}
+.booking-summary-details span:last-child:not(:first-child) {
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  background: var(--color-brand-soft);
+  color: var(--color-brand-deep);
+  font-weight: 700;
+}
+.booking-summary-details span:first-child {
+  color: var(--color-brand);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.booking-summary-details span:first-child .promotion-current-price,
+.booking-summary-details span:first-child strong {
+  color: var(--color-brand);
+}
+.booking-summary-details span:first-child .promotion-current-price {
+  font-size: 1.5rem;
+}
+.booking-summary-customizations {
+  margin: 0.3rem 0;
+  font-size: 0.82rem;
+}
+
+/* Customization choices as touch-friendly chips */
+.booking-summary-choices-card {
+  border: 0;
+  border-radius: var(--radius-card);
+  padding: 1rem;
+  background: linear-gradient(160deg, #fff 0%, var(--color-brand-soft) 100%);
+  box-shadow: var(--shadow-card);
+}
+.booking-summary-choices-card > .eyebrow {
+  color: var(--color-brand);
+}
+.booking-summary-choices-card h3 {
+  color: var(--color-brand-ink);
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+.booking-summary-options legend {
+  font-size: 0.82rem;
+}
+.booking-summary-option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.booking-summary-option {
+  min-height: 2.5rem;
+  border-color: var(--color-brand-line);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem 0.35rem 0.7rem;
+  background: white;
+  font-size: 0.86rem;
+  font-weight: 600;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms var(--ease-out);
+}
+.booking-summary-option:active {
+  transform: scale(0.97);
+}
+.booking-summary-option:has(input:checked) {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-deep);
+}
+.booking-summary-option input {
+  border-radius: 50%;
+  border-color: #8aa0b0;
+}
+.booking-summary-option input::before {
+  border-radius: 50%;
+}
+.booking-summary-option input:checked {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+}
+.booking-summary-option input:focus-visible {
+  outline-color: var(--color-brand);
+}
+.booking-summary-variant-price {
+  border-radius: 0.7rem;
+  padding: 0.45rem 0.65rem;
+  background: rgb(255 255 255 / 0.8);
+  font-size: 0.84rem;
+}
+.booking-summary-variant-price strong {
+  color: var(--color-brand);
+}
+.booking-summary-variant-price .promotion-current-price {
+  font-size: 0.95rem;
+}
+
+/* ---------- Booking: panel & form ---------- */
+.booking-panel {
+  gap: 1rem;
+  padding: 1.1rem;
+}
+@media (min-width: 640px) {
+  .booking-panel {
+    padding: 1.5rem;
+  }
+}
+.booking-panel .field input,
+.booking-panel .field select,
+.booking-form .field input {
+  min-height: 3rem;
+  border-color: var(--color-border);
+  border-radius: var(--radius-control);
+  background: #fafcfd;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+.booking-panel .field input:focus,
+.booking-panel .field select:focus,
+.booking-form .field input:focus {
+  border-color: var(--color-brand);
+  background: white;
+  outline: 0;
+  box-shadow: 0 0 0 4px rgb(250 178 5 / 0.3);
+}
+.booking-panel > .field,
+.booking-panel > label.field,
+.booking-form .field {
+  color: var(--color-brand-ink);
+  font-size: 0.85rem;
+}
+.booking-panel .field select {
+  width: 100%;
+  box-sizing: border-box;
+}
+.slot-fieldset {
+  border-top-color: var(--color-brand-line);
+}
+.slot-fieldset legend {
+  color: var(--color-brand-ink);
+  font-weight: 800;
+}
+.slot-grid {
+  grid-template-columns: repeat(auto-fill, minmax(6.6rem, 1fr));
+  gap: 0.45rem;
+}
+.slot-option {
+  min-height: 2.75rem;
+  border-color: var(--color-brand-line);
+  border-radius: var(--radius-control);
+  background: #fafcfd;
+  color: var(--color-brand-deep);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.slot-option:hover {
+  border-color: #8fb0c6;
+  background: var(--color-brand-soft);
+}
+.slot-option.is-selected {
+  border-color: transparent;
+  background: var(--gradient-brand);
+  color: white;
+  box-shadow: 0 8px 18px -6px rgb(12 36 60 / 0.6);
+}
+.slot-option:focus-within {
+  outline-color: rgb(250 178 5 / 0.85);
+}
+.next-availability-button {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-deep);
+}
+.booking-contact {
+  border-top-color: var(--color-brand-line);
+}
+.whatsapp-consent {
+  border-color: var(--color-brand-line);
+  border-radius: var(--radius-control);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-ink);
+  font-size: 0.82rem;
+}
+.whatsapp-consent input {
+  accent-color: var(--color-brand);
+}
+.booking-submit {
+  min-height: 3.1rem;
+  border-radius: var(--radius-control);
+  font-size: 0.98rem;
+  box-shadow: 0 10px 22px -8px rgb(12 36 60 / 0.65);
+}
+.booking-submit:not(:disabled):active {
+  transform: scale(0.98);
+}
+.booking-submit:disabled {
+  background: #e1e8ee;
+  color: #7a8e9c;
+  box-shadow: none;
+}
+.booking-submit .skeleton {
+  background: rgb(255 255 255 / 0.4);
+}
+.tamarcado-brand {
+  color: var(--color-muted);
+}
+
+/* ---------- Receipt dialog & install prompt ---------- */
+.receipt-backdrop,
+.pwa-install-backdrop {
+  background: rgb(6 19 32 / 0.62);
+}
+.receipt-card {
+  border-radius: 1.5rem;
+}
+.receipt-check {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+.receipt-card h2 {
+  color: var(--color-brand-ink);
+  font-weight: 800;
+}
+.receipt-divider {
+  border-top-color: var(--color-brand-line);
+}
+.receipt-share-link {
+  border-color: var(--color-brand-line);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-deep);
+}
+.receipt-share-link:hover {
+  border-color: #8fb0c6;
+  background: #dbe8f0;
+}
+@media (max-width: 540px) {
+  .pwa-install-prompt {
+    border-color: var(--color-brand-line);
+    border-radius: 1.1rem;
+    box-shadow: var(--shadow-lift);
+  }
+  .pwa-install-prompt button {
+    background: var(--gradient-brand);
+  }
+  .booking-summary {
+    --pad: 0.9rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .booking-panel {
+    padding: 1rem;
+  }
+}
+@media (max-width: 720px) {
+  .booking-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
