@@ -37,6 +37,9 @@ describe('BookingForm', () => {
     expect(phoneInput).toHaveValue('(11) 99999-0000');
     expect(submitButton).toBeDisabled();
 
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
+      target: { value: 'debit' },
+    });
     fireEvent.click(consent);
     expect(submitButton).toBeEnabled();
     fireEvent.click(submitButton);
@@ -46,6 +49,7 @@ describe('BookingForm', () => {
         customerName: 'Maria Silva',
         customerPhone: '(11) 99999-0000',
         whatsappOptIn: true,
+        paymentMethod: 'debit',
       }),
     );
   });

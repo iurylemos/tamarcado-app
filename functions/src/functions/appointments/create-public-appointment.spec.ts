@@ -10,7 +10,11 @@ import {
 } from '../../services/public-catalog.service';
 import { createSeedDocuments } from '../../../test/fixtures/seed-data';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { getZonedDateTimeParts, localDateTimeToUtc } from '../../../../shared/domain/timezone';
+import {
+  estimateDateFromInstant,
+  getZonedDateTimeParts,
+  localDateTimeToUtc,
+} from '../../../../shared/domain/timezone';
 import { logger } from 'firebase-functions';
 import { processAppointmentNotification } from '../../services/appointment-notification.service';
 import {
@@ -84,6 +88,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       customizationSelections: customizationTestSelections.map((selection) => ({
         ...selection,
         attributeLabel: 'client label is ignored',
@@ -132,6 +137,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       customizationSelections: [{ attributeId: 'lash-service', optionId: 'volume-brasileiro' }],
     });
     const appointment = (
@@ -139,8 +145,8 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     ).data();
 
     expect(appointment).toMatchObject({
-      productPriceCentsSnapshot: 12000,
-      commissionAmountCentsSnapshot: 4200,
+      productPriceCentsSnapshot: 10500,
+      commissionAmountCentsSnapshot: 3675,
       customizationSnapshot: [
         {
           attributeId: 'lash-service',
@@ -149,6 +155,126 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         },
       ],
     });
+  });
+
+  it('resolves the current internal promotional price instead of client-submitted pricing', async () => {
+    await db
+      .collection('products')
+      .doc(customizationTestProductId)
+      .update({
+        promotionActive: true,
+        variantPrices: [
+          {
+            selections: customizationTestSelections,
+            priceCents: 15000,
+            promotionalPriceCents: 12500,
+          },
+        ],
+      });
+
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    expect(slot).toBeDefined();
+
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: customizationTestProductId,
+      professionalId: 'professional-ana',
+      startsAt: slot!.startsAt,
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
+      customizationSelections: customizationTestSelections,
+      priceCents: 1,
+      promotionalPriceCents: 0,
+      promotionActive: false,
+    });
+    const appointment = (
+      await db.collection('appointments').doc(result.appointmentId).get()
+    ).data();
+
+    expect(appointment).toMatchObject({
+      productPriceCentsSnapshot: 12500,
+      commissionAmountCentsSnapshot: 4375,
+    });
+  });
+
+  it('rejects a selected combination that is no longer configured', async () => {
+    await db
+      .collection('products')
+      .doc(customizationTestProductId)
+      .update({
+        variantPrices: [
+          {
+            selections: [
+              { attributeId: 'color', optionId: 'color-standard' },
+              { attributeId: 'size', optionId: 'size-couple' },
+            ],
+            priceCents: 10000,
+          },
+        ],
+      });
+
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    expect(slot).toBeDefined();
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: customizationTestProductId,
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
+        customizationSelections: customizationTestSelections,
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(
+      await db
+        .collection('appointments')
+        .where('productId', '==', customizationTestProductId)
+        .get(),
+    ).toMatchObject({ empty: true });
+  });
+
+  it('rejects a product that is no longer published', async () => {
+    await db.collection('public_products').doc('service-corte').update({ published: false });
+
+    const slot = (
+      await listAvailableSlots({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        date: nextOpenDate(),
+      })
+    )[0];
+    expect(slot).toBeDefined();
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        startsAt: slot!.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
   });
 
   it.each([
@@ -192,6 +318,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         startsAt: slot!.startsAt,
         customerName: 'Maria Silva',
         customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
         customizationSelections,
       }),
     ).rejects.toMatchObject({ code: 'invalid-argument' });
@@ -222,6 +349,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         startsAt: slot!.startsAt,
         customerName: 'Maria Silva',
         customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
         customizationSelections: customizationTestSelections,
         selectedImageId: 'not-in-gallery',
       }),
@@ -414,6 +542,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
         startsAt: slot!.startsAt,
         customerName: 'Maria Silva',
         customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
         whatsappOptIn: false,
       }),
     ).rejects.toThrow('Este horário não está mais disponível.');
@@ -437,6 +566,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       whatsappOptIn: false,
     });
     const sendTemplate = vi.fn().mockResolvedValue({ providerMessageId: 'message-1' });
@@ -476,6 +606,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       whatsappOptIn: false,
     });
     const provider: WhatsAppProvider = {
@@ -515,6 +646,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       whatsappOptIn: false,
     });
     const provider: WhatsAppProvider = {
@@ -551,6 +683,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Private Customer Name',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       whatsappOptIn: false,
     });
     const notificationJob = await db
@@ -631,6 +764,7 @@ emulatorOnly('public booking on the Firestore emulator', () => {
       startsAt: slot!.startsAt,
       customerName: 'Maria Silva',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       whatsappOptIn: false,
     };
     const outcomes = await Promise.allSettled([
@@ -664,6 +798,276 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     });
     expect(jobs.docs[0]?.data()).not.toHaveProperty('customerPhoneE164');
   });
+
+  it('never returns estimated-checkout success without a persisted appointment and reservation', async () => {
+    await db.collection('products').doc('service-corte').update({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 3,
+    });
+    const beforeAppointments = await db.collection('appointments').get();
+    const beforeNotifications = await db.collection('appointment_notification_jobs').get();
+    const existingAppointmentIds = new Set(beforeAppointments.docs.map((document) => document.id));
+    const request = {
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit' as const,
+    };
+    const outcomes = await Promise.allSettled([
+      createPublicAppointment(request),
+      createPublicAppointment(request),
+    ]);
+    const successful = outcomes.flatMap((outcome) =>
+      outcome.status === 'fulfilled' ? [outcome.value] : [],
+    );
+
+    expect(successful.length).toBeGreaterThan(0);
+
+    for (const result of successful) {
+      const appointment = await db.collection('appointments').doc(result.appointmentId).get();
+      const reservations = await db
+        .collection('booking_reservations')
+        .where('appointmentId', '==', result.appointmentId)
+        .get();
+      const notification = await db
+        .collection('appointment_notification_jobs')
+        .doc(result.appointmentId)
+        .get();
+
+      expect(appointment.exists).toBe(true);
+      expect(reservations.empty).toBe(false);
+      expect(notification.exists).toBe(true);
+      expect(result.startsAt).toBe(appointment.data()?.startsAt.toDate().toISOString());
+      expect(
+        reservations.docs.every(
+          (reservation) =>
+            reservation.data().tenantId === 'tenant-aurora' &&
+            reservation.data().professionalId === 'professional-ana',
+        ),
+      ).toBe(true);
+    }
+
+    expect(new Set(successful.map((result) => result.appointmentId)).size).toBe(successful.length);
+    const afterAppointments = await db.collection('appointments').get();
+    const newAppointmentIds = afterAppointments.docs
+      .map((document) => document.id)
+      .filter((id) => !existingAppointmentIds.has(id));
+    const afterNotifications = await db.collection('appointment_notification_jobs').get();
+    expect(newAppointmentIds.sort()).toEqual(
+      successful.map((result) => result.appointmentId).sort(),
+    );
+    expect(afterAppointments.size).toBe(beforeAppointments.size + successful.length);
+    expect(afterNotifications.size).toBe(beforeNotifications.size + successful.length);
+  });
+
+  it('continues requiring an explicit professional and time for a product without an estimate', async () => {
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
+      }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect((await db.collection('appointment_notification_jobs').get()).empty).toBe(true);
+  });
+
+  it('creates an estimated booking with the nearest server-selected slot and official snapshots', async () => {
+    const productRef = db.collection('products').doc('service-vitoria-lashes');
+    const productData = (await productRef.get()).data();
+    const variantPrices = productData?.variantPrices as Array<Record<string, unknown>>;
+    await productRef.update({
+      estimatedDeliveryEnabled: true,
+      variantPrices: variantPrices.map((variant) => ({
+        ...variant,
+        estimatedDeliveryDays: 5,
+      })),
+    });
+
+    const date = nextOpenDate();
+    const discovery = await searchAvailability({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      date,
+      includeEligibleProfessionals: true,
+    });
+    expect(discovery.eligibleProfessionals).toEqual([
+      { id: 'professional-vitoria-moura', name: 'Vitória Moura' },
+    ]);
+
+    const nearest = await searchAvailability({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      date,
+      professionalId: 'professional-vitoria-moura',
+    });
+    const nearestSlot = nearest.slots[0];
+    expect(nearestSlot).toBeDefined();
+
+    const result = await createPublicAppointment({
+      businessSlug: 'vitoria-moura-beauty',
+      productId: 'service-vitoria-lashes',
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      paymentMethod: 'credit',
+      installments: 5,
+      customizationSelections: [{ attributeId: 'lash-service', optionId: 'volume-brasileiro' }],
+      priceCents: 1,
+      promotionalPriceCents: 0,
+      estimatedDeliveryDays: 99,
+      estimatedDeliveryDate: '1900-01-01',
+    });
+
+    expect(result).toMatchObject({
+      professionalId: 'professional-vitoria-moura',
+      professionalName: 'Vitória Moura',
+      startsAt: nearestSlot!.startsAt,
+      effectivePriceCents: 10500,
+      originalPriceCents: 12000,
+      promotionApplied: true,
+      estimatedDelivery: {
+        days: 5,
+        timezone: 'America/Sao_Paulo',
+      },
+    });
+    const appointment = (
+      await db.collection('appointments').doc(result.appointmentId).get()
+    ).data();
+    const expectedDate = estimateDateFromInstant(
+      appointment!.createdAt.toDate(),
+      5,
+      'America/Sao_Paulo',
+    );
+    expect(result.estimatedDelivery?.estimatedDate).toBe(expectedDate);
+    expect(appointment).toMatchObject({
+      professionalId: 'professional-vitoria-moura',
+      startsAt: Timestamp.fromDate(new Date(nearestSlot!.startsAt)),
+      productPriceCentsSnapshot: 10500,
+      productOriginalPriceCentsSnapshot: 12000,
+      promotionSnapshot: {
+        promotionApplied: true,
+        promotionalPriceCents: 10500,
+      },
+      estimatedDeliveryDaysSnapshot: 5,
+      estimatedDeliveryDateSnapshot: expectedDate,
+      estimatedDeliveryTimezoneSnapshot: 'America/Sao_Paulo',
+      paymentMethodSnapshot: 'credit',
+      installmentsSnapshot: 5,
+      commissionAmountCentsSnapshot: 3675,
+    });
+    const reservations = await db
+      .collection('booking_reservations')
+      .where('appointmentId', '==', result.appointmentId)
+      .get();
+    expect(reservations.empty).toBe(false);
+    expect(
+      await db.collection('appointment_notification_jobs').doc(result.appointmentId).get(),
+    ).toMatchObject({ exists: true });
+  });
+
+  it('requires a professional when multiple professionals are eligible and validates selected availability', async () => {
+    await db.collection('products').doc('service-corte').update({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 3,
+    });
+    const date = nextOpenDate();
+    const discovery = await searchAvailability({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      date,
+      includeEligibleProfessionals: true,
+    });
+    expect(discovery.eligibleProfessionals?.map(({ id }) => id).sort()).toEqual([
+      'professional-ana',
+      'professional-bruna',
+    ]);
+
+    const before = await db.collection('appointments').get();
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'pix',
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect((await db.collection('appointments').get()).size).toBe(before.size);
+
+    const nearest = await searchAvailability({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      date,
+      professionalId: 'professional-bruna',
+    });
+    const result = await createPublicAppointment({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-bruna',
+      customerName: 'Maria Silva',
+      customerPhone: '(11) 99999-0009',
+      paymentMethod: 'pix',
+    });
+    expect(result.professionalId).toBe('professional-bruna');
+    expect(result.startsAt).toBe(nearest.slots[0]?.startsAt);
+    const appointment = await db.collection('appointments').doc(result.appointmentId).get();
+    expect(appointment.data()).toMatchObject({
+      paymentMethodSnapshot: 'pix',
+      estimatedDeliveryDaysSnapshot: 3,
+      estimatedDeliveryTimezoneSnapshot: 'America/Sao_Paulo',
+    });
+    expect(appointment.data()).not.toHaveProperty('installmentsSnapshot');
+  });
+
+  it('fails explicitly without an eligible reservable professional', async () => {
+    for (const professionalId of ['professional-ana', 'professional-bruna']) {
+      await db
+        .collection('professional_products')
+        .doc(`tenant-aurora__${professionalId}__service-corte`)
+        .update({ active: false });
+    }
+    await db.collection('products').doc('service-corte').update({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 3,
+    });
+    const before = await db.collection('appointments').get();
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
+      }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' });
+    expect((await db.collection('appointments').get()).size).toBe(before.size);
+    expect((await db.collection('appointment_notification_jobs').get()).empty).toBe(true);
+  });
+
+  it('rejects a client-provided time for an estimated product and does not create success', async () => {
+    await db.collection('products').doc('service-corte').update({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 3,
+    });
+    const before = await db.collection('appointments').get();
+
+    await expect(
+      createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        startsAt: '2030-02-04T12:00:00.000Z',
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'cash',
+      }),
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+    expect((await db.collection('appointments').get()).size).toBe(before.size);
+  });
 });
 
 describe('reservationDocumentId', () => {
@@ -685,6 +1089,7 @@ describe('public appointment customer name validation', () => {
       professionalId: 'professional-ana',
       startsAt: '2030-02-04T12:00:00.000Z',
       customerPhone: '(11) 99999-0009',
+      paymentMethod: 'debit',
       whatsappOptIn: true,
     };
 
@@ -694,5 +1099,30 @@ describe('public appointment customer name validation', () => {
     await expect(createPublicAppointment({ ...request, customerName: '   ' })).rejects.toThrow(
       'Revise os dados do agendamento e tente novamente.',
     );
+  });
+});
+
+describe('public appointment payment validation', () => {
+  const base = {
+    businessSlug: 'studio-aurora',
+    productId: 'service-corte',
+    customerName: 'Maria Silva',
+    customerPhone: '(11) 99999-0009',
+  };
+
+  it.each([
+    ['missing method', {}],
+    ['unknown method', { paymentMethod: 'card' }],
+    ['credit without installments', { paymentMethod: 'credit' }],
+    ['zero credit installments', { paymentMethod: 'credit', installments: 0 }],
+    ['too many credit installments', { paymentMethod: 'credit', installments: 6 }],
+    ['fractional credit installments', { paymentMethod: 'credit', installments: 1.5 }],
+    ['installments for debit', { paymentMethod: 'debit', installments: 2 }],
+    ['installments for cash', { paymentMethod: 'cash', installments: 2 }],
+    ['installments for pix', { paymentMethod: 'pix', installments: 2 }],
+  ])('rejects %s', async (_label, payment) => {
+    await expect(createPublicAppointment({ ...base, ...payment })).rejects.toMatchObject({
+      code: 'invalid-argument',
+    });
   });
 });

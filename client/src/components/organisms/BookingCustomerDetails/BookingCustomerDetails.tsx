@@ -4,30 +4,29 @@ import type { BookingFormValues } from '../../../interfaces/booking.interface';
 import BookingForm from '../BookingForm/BookingForm';
 
 type BookingCustomerDetailsProps = {
-  selectedStartsAt: string;
+  canSubmit: boolean;
   busy: boolean;
   error: string;
   onSubmit: (values: BookingFormValues) => Promise<void>;
 };
 
 export default function BookingCustomerDetails({
-  selectedStartsAt,
+  canSubmit,
   busy,
   error,
   onSubmit,
 }: Readonly<BookingCustomerDetailsProps>): JSX.Element {
   const contactRef = useRef<HTMLDivElement>(null);
-  const previousSelectedStartsAt = useRef('');
+  const wasReady = useRef(false);
   const shouldScrollToContact = useRef(false);
 
   useEffect(() => {
-    const wasUnselected = !previousSelectedStartsAt.current;
-    previousSelectedStartsAt.current = selectedStartsAt;
-
-    if (!selectedStartsAt || !wasUnselected) return;
+    const justBecameReady = canSubmit && !wasReady.current;
+    wasReady.current = canSubmit;
+    if (!justBecameReady) return;
 
     shouldScrollToContact.current = true;
-  }, [selectedStartsAt]);
+  }, [canSubmit]);
 
   const scrollToContactAfterExpand = (): void => {
     if (!shouldScrollToContact.current) return;
@@ -45,7 +44,7 @@ export default function BookingCustomerDetails({
 
   return (
     <AnimatePresence initial={false}>
-      {selectedStartsAt && (
+      {canSubmit && (
         <motion.div
           ref={contactRef}
           className="booking-contact"

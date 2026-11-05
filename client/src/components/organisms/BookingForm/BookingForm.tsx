@@ -1,5 +1,6 @@
 import { useState, type SubmitEvent, type JSX } from 'react';
 import { formatBrazilianPhone, isValidBrazilianPhone } from '@shared/phone';
+import type { PaymentMethod } from '@shared/interfaces/appointment.interface';
 import type { BookingFormValues } from '../../../interfaces/booking.interface';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
 
@@ -17,6 +18,8 @@ export default function BookingForm({
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [whatsappOptIn, setWhatsappOptIn] = useState<boolean>(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
+  const [installments, setInstallments] = useState<number>(1);
   const [validationError, setValidationError] = useState<string>('');
   const nameIsValid = customerName.trim().length > 0;
   const phoneIsValid = isValidBrazilianPhone(customerPhone);
@@ -40,8 +43,18 @@ export default function BookingForm({
       setValidationError('Aceite receber mensagens pelo WhatsApp para solicitar o agendamento.');
       return;
     }
+    if (!paymentMethod) {
+      setValidationError('Selecione uma forma de pagamento.');
+      return;
+    }
     setValidationError('');
-    await onSubmit({ customerName: customerName.trim(), customerPhone, whatsappOptIn });
+    await onSubmit({
+      customerName: customerName.trim(),
+      customerPhone,
+      whatsappOptIn,
+      paymentMethod,
+      ...(paymentMethod === 'credit' ? { installments } : {}),
+    });
   };
 
   return (
@@ -91,6 +104,49 @@ export default function BookingForm({
         />{' '}
         Aceito receber mensagens deste estabelecimento pelo WhatsApp sobre este agendamento.
       </label>
+      <label className="field" htmlFor="payment-method">
+        Forma de pagamento
+        <select
+          id="payment-method"
+          value={paymentMethod}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value === 'debit' || value === 'credit' || value === 'cash' || value === 'pix') {
+              setPaymentMethod(value);
+            } else {
+              setPaymentMethod('');
+            }
+            setValidationError('');
+          }}
+          required
+        >
+          <option value="">Selecione uma forma de pagamento</option>
+          <option value="debit">Débito</option>
+          <option value="credit">Crédito</option>
+          <option value="cash">Dinheiro</option>
+          <option value="pix">Pix</option>
+        </select>
+      </label>
+      {paymentMethod === 'credit' && (
+        <label className="field" htmlFor="payment-installments">
+          Parcelas sem juros
+          <select
+            id="payment-installments"
+            value={installments}
+            onChange={(event) => setInstallments(Number(event.target.value))}
+          >
+            {[1, 2, 3, 4, 5].map((count) => (
+              <option key={count} value={count}>
+                {count}x
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <p className="muted">
+        A forma de pagamento é apenas informativa. Nenhum pagamento será processado ou recebido
+        agora.
+      </p>
       {validationError && (
         <p role="alert" className="error">
           {validationError}
@@ -104,7 +160,7 @@ export default function BookingForm({
       <button
         className="button booking-submit"
         type="submit"
-        disabled={busy || !nameIsValid || !whatsappOptIn || !phoneIsValid}
+        disabled={busy || !nameIsValid || !whatsappOptIn || !phoneIsValid || !paymentMethod}
         aria-busy={busy}
       >
         {busy ? (

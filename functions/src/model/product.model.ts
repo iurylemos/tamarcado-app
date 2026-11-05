@@ -16,6 +16,10 @@ export interface ProductDocument {
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;
@@ -33,6 +37,10 @@ export interface PublicProductDocument {
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   active: boolean;
   published: boolean;

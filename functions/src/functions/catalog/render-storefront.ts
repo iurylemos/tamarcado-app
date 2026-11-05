@@ -41,6 +41,10 @@ function toPublicProduct({
   defaultImages,
   imageGalleries,
   priceCents,
+  promotionActive,
+  promotionalPriceCents,
+  estimatedDeliveryEnabled,
+  estimatedDeliveryDays,
   durationMinutes,
 }: PublicProductRecord): PublicProductSummary {
   return {
@@ -53,6 +57,10 @@ function toPublicProduct({
     ...(defaultImages ? { defaultImages } : {}),
     ...(imageGalleries ? { imageGalleries } : {}),
     priceCents,
+    ...(promotionActive !== undefined ? { promotionActive } : {}),
+    ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+    ...(estimatedDeliveryEnabled !== undefined ? { estimatedDeliveryEnabled } : {}),
+    ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
     durationMinutes,
   };
 }

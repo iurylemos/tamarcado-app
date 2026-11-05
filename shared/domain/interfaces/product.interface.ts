@@ -24,6 +24,8 @@ export interface ProductCustomizationSelection {
 export interface ProductVariantPrice {
   selections: ProductCustomizationSelection[];
   priceCents: number;
+  promotionalPriceCents?: number;
+  estimatedDeliveryDays?: number;
 }
 
 export interface ProductCustomizationSnapshot extends ProductCustomizationSelection {
@@ -51,6 +53,10 @@ export interface PublicProduct {
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   active: boolean;
   published: boolean;

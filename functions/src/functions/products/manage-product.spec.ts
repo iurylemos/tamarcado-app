@@ -11,6 +11,7 @@ import {
 } from '../../services/backoffice.service';
 import { findPublicBusiness } from '../../services/public-catalog.service';
 import { productGalleryDocumentId } from '../../model/product-gallery.model';
+import { getPublicCatalog } from '../catalog/get-public-catalog';
 
 const validProduct = {
   name: 'Corte e finalização',
@@ -219,6 +220,192 @@ describe('product administration validation', () => {
       }).variantPrices,
     ).toBeNull();
   });
+
+  it('accepts and normalizes a valid active product promotion', () => {
+    expect(
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        promotionalPriceCents: 9000,
+      }),
+    ).toMatchObject({
+      promotionActive: true,
+      promotionalPriceCents: 9000,
+    });
+  });
+
+  it.each([
+    ['missing', undefined, /preço promocional/i],
+    ['negative', -1, /número inteiro/i],
+    ['fractional', 9000.5, /número inteiro/i],
+    ['equal to the original', 12000, /preço promocional.*menor que o preço original/i],
+    ['greater than the original', 12001, /preço promocional.*menor que o preço original/i],
+  ])(
+    'rejects an active product promotion with a %s price',
+    (_label, promotionalPriceCents, message) => {
+      expect(() =>
+        validateProductInput({
+          ...validProduct,
+          promotionActive: true,
+          ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+        }),
+      ).toThrow(message);
+    },
+  );
+
+  it('validates active promotions against each variant original price', () => {
+    const customizationAttributes = [
+      {
+        id: 'color',
+        label: 'Cor',
+        options: [
+          { id: 'blue', label: 'Azul' },
+          { id: 'red', label: 'Vermelho' },
+        ],
+        defaultOptionId: 'blue',
+      },
+    ];
+    const variantPrices = [
+      {
+        selections: [{ attributeId: 'color', optionId: 'blue' }],
+        priceCents: 15000,
+        promotionalPriceCents: 12000,
+      },
+      {
+        selections: [{ attributeId: 'color', optionId: 'red' }],
+        priceCents: 11000,
+        promotionalPriceCents: 8000,
+      },
+    ];
+
+    expect(
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        customizationAttributes,
+        variantPrices,
+      }).variantPrices,
+    ).toEqual(variantPrices);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map((variant, index) =>
+          index === 1 ? { ...variant, promotionalPriceCents: 11000 } : variant,
+        ),
+      }),
+    ).toThrow(/preço promocional menor que o preço original para cada combinação/i);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        promotionActive: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map((variant, index) =>
+          index === 1
+            ? { selections: variant.selections, priceCents: variant.priceCents }
+            : variant,
+        ),
+      }),
+    ).toThrow(/preço promocional menor que o preço original para cada combinação/i);
+  });
+
+  it('keeps legacy products valid when promotion fields are absent', () => {
+    expect(validateProductInput(validProduct)).not.toHaveProperty('promotionActive');
+    expect(validateProductInput(validProduct)).not.toHaveProperty('promotionalPriceCents');
+  });
+
+  it('accepts a positive whole-day estimate for a simple product', () => {
+    expect(
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        estimatedDeliveryDays: 1,
+      }),
+    ).toMatchObject({
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 1,
+    });
+  });
+
+  it.each([
+    ['missing', undefined, /prazo estimado/i],
+    ['zero', 0, /número inteiro entre 1/i],
+    ['negative', -1, /número inteiro entre 1/i],
+    ['fractional', 1.5, /número inteiro entre 1/i],
+    ['unsafe integer', Number.MAX_SAFE_INTEGER + 1, /número inteiro entre 1/i],
+  ])(
+    'rejects a %s simple-product estimate when enabled',
+    (_label, estimatedDeliveryDays, message) => {
+      expect(() =>
+        validateProductInput({
+          ...validProduct,
+          estimatedDeliveryEnabled: true,
+          ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
+        }),
+      ).toThrow(message);
+    },
+  );
+
+  it('requires a valid estimate for every customization combination', () => {
+    const customizationAttributes = [
+      {
+        id: 'color',
+        label: 'Cor',
+        options: [
+          { id: 'blue', label: 'Azul' },
+          { id: 'red', label: 'Vermelho' },
+        ],
+        defaultOptionId: 'blue',
+      },
+    ];
+    const variantPrices = [
+      {
+        selections: [{ attributeId: 'color', optionId: 'blue' }],
+        priceCents: 12000,
+        estimatedDeliveryDays: 7,
+      },
+      {
+        selections: [{ attributeId: 'color', optionId: 'red' }],
+        priceCents: 13000,
+        estimatedDeliveryDays: 15,
+      },
+    ];
+
+    expect(
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        customizationAttributes,
+        variantPrices,
+      }).variantPrices,
+    ).toEqual(variantPrices);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map(({ estimatedDeliveryDays, ...variant }, index) =>
+          index === 1 ? variant : { ...variant, estimatedDeliveryDays },
+        ),
+      }),
+    ).toThrow(/prazo estimado.*cada combinação/i);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        estimatedDeliveryEnabled: true,
+        customizationAttributes,
+        variantPrices: variantPrices.map((variant, index) =>
+          index === 1 ? { ...variant, estimatedDeliveryDays: 0 } : variant,
+        ),
+      }),
+    ).toThrow(/prazo estimado da combinação.*número inteiro entre 1/i);
+  });
+
+  it('keeps legacy products valid when estimated-delivery fields are absent', () => {
+    expect(validateProductInput(validProduct)).not.toHaveProperty('estimatedDeliveryEnabled');
+    expect(validateProductInput(validProduct)).not.toHaveProperty('estimatedDeliveryDays');
+  });
 });
 
 const emulatorOnly = describeVitest.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
@@ -379,6 +566,151 @@ emulatorOnly('product gallery administration on Firestore emulator', () => {
       });
       expect(projection).not.toHaveProperty('commissionValue');
       expect(projection).toHaveProperty('variantPrices', validProductInput.variantPrices);
+    },
+  );
+
+  itVitest(
+    'saves active promotions for the owning tenant and clears inactive public prices',
+    async () => {
+      const variantPrices = validProductInput.variantPrices.map((variant) => ({
+        ...variant,
+        promotionalPriceCents: variant.priceCents - 1000,
+      }));
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        promotionActive: true,
+        variantPrices,
+      });
+
+      const internalProduct = (
+        await firestore.collection(collections.products).doc(testProductId).get()
+      ).data();
+      const publicProduct = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      expect(internalProduct).toMatchObject({ promotionActive: true, variantPrices });
+      expect(publicProduct).toMatchObject({ promotionActive: true, variantPrices });
+
+      const activeCatalog = await getPublicCatalog.run({
+        data: { businessSlug: 'product-gallery-test' },
+        rawRequest: {},
+        acceptsStreaming: false,
+      } as never);
+      const activeCatalogProduct = activeCatalog.products.find(
+        (product) => product.id === testProductId,
+      );
+      expect(activeCatalogProduct).toMatchObject({ promotionActive: true });
+      expect(activeCatalogProduct?.variantPrices?.[0]).toMatchObject({
+        promotionalPriceCents: 9000,
+      });
+
+      const offerQuery = await firestore
+        .collection(collections.publicProducts)
+        .where('businessSlug', '==', 'product-gallery-test')
+        .where('active', '==', true)
+        .where('published', '==', true)
+        .where('promotionActive', '==', true)
+        .orderBy('name')
+        .get();
+      expect(offerQuery.docs.map((document) => document.id)).toContain(testProductId);
+
+      await expect(
+        saveProduct('another-tenant', {
+          ...validProductInput,
+          promotionActive: true,
+          variantPrices,
+        }),
+      ).rejects.toMatchObject({ code: 'not-found' });
+      expect(
+        (await firestore.collection(collections.products).doc(testProductId).get()).data(),
+      ).toMatchObject({ tenantId: testTenantId, promotionActive: true });
+
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        promotionActive: false,
+        variantPrices,
+      });
+      const inactiveProjection = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      expect(inactiveProjection).toHaveProperty('promotionActive', false);
+      expect(inactiveProjection?.variantPrices?.[0]).not.toHaveProperty('promotionalPriceCents');
+
+      const publicCatalog = await getPublicCatalog.run({
+        data: { businessSlug: 'product-gallery-test' },
+        rawRequest: {},
+        acceptsStreaming: false,
+      } as never);
+      const catalogProduct = publicCatalog.products.find((product) => product.id === testProductId);
+      expect(catalogProduct).toMatchObject({ promotionActive: false });
+      expect(catalogProduct).not.toHaveProperty('promotionalPriceCents');
+      expect(catalogProduct?.variantPrices?.[0]).not.toHaveProperty('promotionalPriceCents');
+    },
+  );
+
+  itVitest(
+    'persists valid estimates, projects the business timezone, and rejects another tenant',
+    async () => {
+      const variantPrices = validProductInput.variantPrices.map((variant, index) => ({
+        ...variant,
+        estimatedDeliveryDays: index + 1,
+      }));
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        estimatedDeliveryEnabled: true,
+        variantPrices,
+      });
+
+      const internalProduct = (
+        await firestore.collection(collections.products).doc(testProductId).get()
+      ).data();
+      const publicProduct = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      const publicBusiness = (
+        await firestore.collection(collections.publicBusinesses).doc(testTenantId).get()
+      ).data();
+      expect(internalProduct).toMatchObject({
+        estimatedDeliveryEnabled: true,
+        variantPrices,
+      });
+      expect(publicProduct).toMatchObject({
+        estimatedDeliveryEnabled: true,
+        variantPrices,
+      });
+      expect(publicBusiness).toMatchObject({ timezone: 'America/Sao_Paulo' });
+
+      const catalog = await getPublicCatalog.run({
+        data: { businessSlug: 'product-gallery-test' },
+        rawRequest: {},
+        acceptsStreaming: false,
+      } as never);
+      expect(catalog.business).toMatchObject({ timezone: 'America/Sao_Paulo' });
+      expect(
+        catalog.products.find((product) => product.id === testProductId)?.variantPrices,
+      ).toEqual(variantPrices);
+
+      await expect(
+        saveProduct('another-tenant', {
+          ...validProductInput,
+          estimatedDeliveryEnabled: true,
+          variantPrices,
+        }),
+      ).rejects.toMatchObject({ code: 'not-found' });
+      expect(
+        (await firestore.collection(collections.products).doc(testProductId).get()).data(),
+      ).toMatchObject({ tenantId: testTenantId, estimatedDeliveryEnabled: true });
+
+      await saveProduct(testTenantId, {
+        ...validProductInput,
+        estimatedDeliveryEnabled: false,
+        variantPrices,
+      });
+      const disabledProjection = (
+        await firestore.collection(collections.publicProducts).doc(testProductId).get()
+      ).data();
+      expect(disabledProjection).toHaveProperty('estimatedDeliveryEnabled', false);
+      expect(disabledProjection?.variantPrices?.[0]).not.toHaveProperty('estimatedDeliveryDays');
     },
   );
 

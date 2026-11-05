@@ -2,7 +2,6 @@ import type { JSX } from 'react';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
-import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard';
 import BookingHero from '../../atoms/BookingHero';
 import BookingReady from '../../organisms/BookingReady';
 
@@ -35,32 +34,17 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
               </div>
             </aside>
 
-            <section className="booking-panel" aria-label="Escolha seu horário">
+            <section className="booking-panel" aria-label="Carregando serviço">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">1. ESCOLHA A DATA E O HORÁRIO</p>
-                  <h2>Quando você quer vir?</h2>
+                  <p className="eyebrow">CARREGANDO SERVIÇO</p>
+                  <h2>Preparando seu agendamento</h2>
                 </div>
               </div>
-              <label className="field" htmlFor="booking-date">
-                Data do atendimento
-                <input
-                  id="booking-date"
-                  type="date"
-                  value={props.date}
-                  min={props.minimumDate}
-                  onChange={(event) => props.onDateChange(event.target.value)}
-                />
-              </label>
               <div aria-busy="true">
                 <p className="skeleton-status" role="status">
-                  Preparando horários disponíveis...
+                  Carregando informações do serviço...
                 </p>
-                <div className="slot-grid" aria-label="Carregando horários disponíveis">
-                  {Array.from({ length: 4 }, (_, index) => (
-                    <SkeletonCard key={`booking-loading-time-${index}`} variant="time" />
-                  ))}
-                </div>
               </div>
             </section>
           </div>

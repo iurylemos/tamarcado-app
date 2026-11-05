@@ -13,11 +13,13 @@ export interface CompanySummary {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  timezone?: string;
 }
 
 export interface CompanyCatalog {
   business: CompanySummary;
   products: PublicProductSummary[];
+  promotions?: PublicProductSummary[];
   hasMore?: boolean;
 }
 
@@ -31,5 +33,9 @@ export interface PublicProductSummary {
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
 }

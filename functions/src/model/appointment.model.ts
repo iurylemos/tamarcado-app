@@ -4,6 +4,12 @@ import type {
   CommissionType,
   ProductCustomizationSnapshot,
 } from '../../../shared/domain/interfaces/product.interface';
+import type { PaymentMethod } from '../../../shared/domain/interfaces/appointment.interface';
+
+export interface AppointmentPromotionSnapshot {
+  promotionApplied: true;
+  promotionalPriceCents: number;
+}
 
 export interface AppointmentDocument {
   tenantId: string;
@@ -20,6 +26,13 @@ export interface AppointmentDocument {
   productImageUrlSnapshot?: string;
   customizationSnapshot?: ProductCustomizationSnapshot[];
   productPriceCentsSnapshot: number;
+  productOriginalPriceCentsSnapshot?: number;
+  promotionSnapshot?: AppointmentPromotionSnapshot;
+  estimatedDeliveryDaysSnapshot?: number;
+  estimatedDeliveryDateSnapshot?: string;
+  estimatedDeliveryTimezoneSnapshot?: string;
+  paymentMethodSnapshot?: PaymentMethod;
+  installmentsSnapshot?: number;
   commissionTypeSnapshot: CommissionType;
   commissionValueSnapshot: number;
   commissionAmountCentsSnapshot: number;

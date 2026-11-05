@@ -14,7 +14,7 @@ export default function ProductImageGallery({
   onSelect,
   productName,
 }: Readonly<ProductImageGalleryProps>): JSX.Element | null {
-  if (images.length === 0) {
+  if (!images.length) {
     return (
       <section className="product-image-gallery" aria-label={`Imagens de ${productName}`}>
         <div className="product-image-gallery__empty" role="status">
@@ -28,7 +28,9 @@ export default function ProductImageGallery({
     0,
     images.findIndex((image) => image.id === selectedImageId),
   );
+
   const selectedImage = images[selectedIndex]!;
+
   const selectRelative = (offset: number): void => {
     const nextIndex = (selectedIndex + offset + images.length) % images.length;
     onSelect(images[nextIndex]!.id);

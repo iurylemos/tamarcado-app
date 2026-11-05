@@ -7,6 +7,7 @@ export interface PublicBusiness {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  timezone?: string;
 }
 
 export interface Tenant {

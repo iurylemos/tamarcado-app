@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, type JSX } from 'react';
 import { formatBrl } from '../../../../../shared/domain/money.js';
-import type { CompanyCatalog } from '../../../interfaces/company.interface.js';
+import {
+  hasValidActivePromotion,
+  resolveProductPricing,
+} from '../../../../../shared/domain/product-price.js';
+import type {
+  CompanyCatalog,
+  PublicProductSummary,
+} from '../../../interfaces/company.interface.js';
 import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service.js';
 import Skeleton from '../../atoms/Skeleton/Skeleton.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
@@ -8,6 +15,7 @@ import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.
 
 type CompanyCatalogTemplateProps = {
   catalog: CompanyCatalog | null;
+  promotions?: PublicProductSummary[];
   status: 'loading' | 'error' | 'unavailable' | 'not-found' | 'ready';
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -16,6 +24,7 @@ type CompanyCatalogTemplateProps = {
 
 export default function CompanyCatalogTemplate({
   catalog,
+  promotions,
   status,
   hasMore = false,
   loadingMore = false,
@@ -23,6 +32,8 @@ export default function CompanyCatalogTemplate({
 }: Readonly<CompanyCatalogTemplateProps>): JSX.Element {
   const isLoading = useMemo<boolean>(() => status === 'loading', [status]);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const promotionalProducts = promotions ?? catalog?.promotions ?? [];
+  const businessSlug = catalog?.business.slug;
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -149,6 +160,101 @@ export default function CompanyCatalogTemplate({
             </div>
             <span className="company-hero-note">Encontre seu próximo horário</span>
           </header>
+          {businessSlug && promotionalProducts.some(hasValidActivePromotion) && (
+            <section
+              className="catalog-section promotions-section"
+              aria-labelledby="promotions-heading"
+            >
+              <div className="section-heading">
+                <div>
+                  <h2 id="promotions-heading">Ofertas</h2>
+                  <p className="promotions-description">
+                    Preços especiais em serviços selecionados.
+                  </p>
+                </div>
+              </div>
+              <section className="promotion-grid" aria-label="Produtos em promoção">
+                {promotionalProducts.filter(hasValidActivePromotion).map((product) => {
+                  const variants = product.variantPrices?.length
+                    ? product.variantPrices
+                    : [undefined];
+                  return (
+                    <article className="promotion-card" key={product.id}>
+                      <a
+                        href={`/empresa/${encodeURIComponent(businessSlug)}/agendar/${encodeURIComponent(product.id)}`}
+                        className="promotion-card-link"
+                      >
+                        <div className="promotion-image">
+                          <img
+                            src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
+                            alt={product.name}
+                            loading="lazy"
+                          />
+                          <span className="promotion-badge">Em promoção</span>
+                        </div>
+                        <div className="promotion-body">
+                          <h3>{product.name}</h3>
+                          {product.description && (
+                            <p className="service-description">{product.description}</p>
+                          )}
+                          <div className="promotion-prices">
+                            {variants.map((variant) => {
+                              const pricing = resolveProductPricing(
+                                product,
+                                variant?.selections ?? [],
+                              );
+                              if (!pricing?.promotionApplied) return null;
+                              const variantLabel = variant?.selections
+                                .map((selection) => {
+                                  const attribute = product.customizationAttributes?.find(
+                                    (item) => item.id === selection.attributeId,
+                                  );
+                                  const option = attribute?.options.find(
+                                    (item) => item.id === selection.optionId,
+                                  );
+                                  return `${attribute?.label ?? 'Opção'}: ${option?.label ?? 'Indisponível'}`;
+                                })
+                                .join(' / ');
+                              return (
+                                <div
+                                  className="promotion-price-row"
+                                  key={
+                                    variant?.selections
+                                      .map(
+                                        (selection) =>
+                                          `${selection.attributeId}:${selection.optionId}`,
+                                      )
+                                      .join('|') ?? 'product-price'
+                                  }
+                                >
+                                  {variantLabel && (
+                                    <span className="promotion-variant-label">{variantLabel}</span>
+                                  )}
+                                  <span className="promotion-price-values">
+                                    <s className="promotion-original-price">
+                                      {formatBrl(pricing.originalPriceCents)}
+                                    </s>
+                                    <strong className="promotion-current-price">
+                                      {formatBrl(pricing.effectivePriceCents)}
+                                    </strong>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <span className="store">
+                            {product.estimatedDeliveryEnabled
+                              ? 'Prazo estimado · Solicitar serviço'
+                              : `${product.durationMinutes} min · Escolher horário`}
+                          </span>
+                        </div>
+                      </a>
+                    </article>
+                  );
+                })}
+              </section>
+            </section>
+          )}
           <section
             className="catalog-section"
             aria-labelledby="catalog-heading"
@@ -209,7 +315,9 @@ export default function CompanyCatalogTemplate({
                             <p className="service-description">{product.description}</p>
                           )}
                           <span className="store">
-                            {product.durationMinutes} min · Escolher horário →
+                            {product.estimatedDeliveryEnabled
+                              ? 'Prazo estimado · Solicitar serviço →'
+                              : `${product.durationMinutes} min · Escolher horário →`}
                           </span>
                         </div>
                       </a>

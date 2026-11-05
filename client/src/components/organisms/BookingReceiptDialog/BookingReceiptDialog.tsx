@@ -1,7 +1,8 @@
 import type { JSX, MouseEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { BookingReceipt } from '../../../interfaces/booking.interface';
-import { formatTimeRange } from '../../../utils/date.util';
+import { PaymentUtil } from '../../../utils/payment.util';
+import { DateUtil } from '../../../utils/date.util';
 
 type BookingReceiptDialogProps = {
   receipt: BookingReceipt | null;
@@ -12,12 +13,6 @@ type BookingReceiptDialogProps = {
   onShare: () => Promise<void>;
   onClose: () => void;
 };
-
-const productDate = (value: string): string =>
-  new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'full',
-    timeZone: 'America/Sao_Paulo',
-  }).format(new Date(value));
 
 export default function BookingReceiptDialog({
   receipt,
@@ -70,11 +65,38 @@ export default function BookingReceiptDialog({
               </div>
               <div>
                 <dt>Data</dt>
-                <dd>{productDate(receipt.startsAt)}</dd>
+                <dd>
+                  {DateUtil.productDate(
+                    receipt.startsAt,
+                    receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
+                  )}
+                </dd>
               </div>
               <div>
                 <dt>Horário</dt>
-                <dd>{formatTimeRange(receipt)}</dd>
+                <dd>{DateUtil.formatTimeRange(receipt)}</dd>
+              </div>
+              <div>
+                <dt>Profissional</dt>
+                <dd>{receipt.professionalName}</dd>
+              </div>
+              {receipt.estimatedDelivery && (
+                <div>
+                  <dt>Previsão oficial de conclusão</dt>
+                  <dd>
+                    {DateUtil.civilDate(receipt.estimatedDelivery.estimatedDate)} (até{' '}
+                    {receipt.estimatedDelivery.days} dias corridos)
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt>Forma de pagamento informada</dt>
+                <dd>
+                  {PaymentUtil.paymentMethodLabel(receipt.paymentMethod)}
+                  {receipt.paymentMethod === 'credit' && receipt.installments
+                    ? ` em ${receipt.installments}x sem juros`
+                    : ''}
+                </dd>
               </div>
               <div>
                 <dt>Cliente</dt>
@@ -118,7 +140,8 @@ export default function BookingReceiptDialog({
               </p>
             )}
             <p className="receipt-note">
-              A empresa recebeu sua solicitação e poderá entrar em contato para confirmar.
+              A empresa recebeu sua solicitação e poderá entrar em contato para confirmar. A forma
+              de pagamento é informativa; nenhum pagamento foi processado ou recebido.
             </p>
             <button className="button booking-submit" type="button" onClick={onClose}>
               Entendi

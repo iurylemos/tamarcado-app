@@ -1,16 +1,22 @@
 import type { JSX } from 'react';
 import { motion } from 'framer-motion';
-import type { AvailableSlot } from '@shared/interfaces/availability.interface';
-import type { EligibleProfessional } from '../../../interfaces/professional.interface';
-import { formatTimeRange } from '../../../utils/date.util';
+import type {
+  AvailableProfessional,
+  AvailableSlot,
+} from '@shared/interfaces/availability.interface';
+import { DateUtil } from '../../../utils/date.util';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard';
 import ProfessionalSelector from '../ProfessionalSelector/ProfessionalSelector';
 
 type BookingAvailabilityProps = {
+  estimatedCheckout: boolean;
+  estimatedDeliveryDays?: number;
+  provisionalEstimatedDate?: string;
+  estimateUnavailableMessage?: string;
   date: string;
   minimumDate: string;
   onDateChange: (date: string) => void;
-  professionals: EligibleProfessional[];
+  professionals: AvailableProfessional[];
   selectedProfessionalId: string;
   onProfessionalChange: (professionalId: string) => void;
   availabilityLoading: boolean;
@@ -26,6 +32,10 @@ type BookingAvailabilityProps = {
 };
 
 export default function BookingAvailability({
+  estimatedCheckout,
+  estimatedDeliveryDays,
+  provisionalEstimatedDate,
+  estimateUnavailableMessage,
   date,
   minimumDate,
   onDateChange,
@@ -47,26 +57,56 @@ export default function BookingAvailability({
     <>
       <div className="section-heading">
         <div>
-          <p className="eyebrow">1. ESCOLHA A DATA E O HORÁRIO</p>
-          <h2>Quando você quer vir?</h2>
+          <p className="eyebrow">
+            {estimatedCheckout ? '1. PRAZO E PROFISSIONAL' : '1. ESCOLHA A DATA E O HORÁRIO'}
+          </p>
+          <h2>{estimatedCheckout ? 'Previsão e profissional' : 'Quando você quer vir?'}</h2>
         </div>
       </div>
 
-      <label className="field" htmlFor="booking-date">
-        Data do atendimento
-        <input
-          id="booking-date"
-          type="date"
-          value={date}
-          min={minimumDate}
-          onChange={(event) => onDateChange(event.target.value)}
-        />
-      </label>
+      {estimatedCheckout ? (
+        <div className="state-card state-card-compact flex-col">
+          {estimatedDeliveryDays !== undefined ? (
+            <p>
+              <b>Prazo estimado:</b> até {estimatedDeliveryDays} dias corridos.
+            </p>
+          ) : (
+            <p role="status">O prazo estimado não está disponível para esta opção.</p>
+          )}
+          {provisionalEstimatedDate ? (
+            <p>
+              <b>Previsão provisória:</b>{' '}
+              {new Intl.DateTimeFormat('pt-BR', {
+                dateStyle: 'long',
+                timeZone: 'UTC',
+              }).format(new Date(`${provisionalEstimatedDate}T12:00:00Z`))}
+            </p>
+          ) : estimateUnavailableMessage ? (
+            <p role="status">{estimateUnavailableMessage}</p>
+          ) : null}
+          <p className="muted">
+            A data é uma previsão, não uma confirmação de entrega ou conclusão.
+          </p>
+        </div>
+      ) : (
+        <label className="field" htmlFor="booking-date">
+          Data do atendimento
+          <input
+            id="booking-date"
+            type="date"
+            value={date}
+            min={minimumDate}
+            onChange={(event) => onDateChange(event.target.value)}
+          />
+        </label>
+      )}
 
       {availabilityLoading ? (
         <>
           <p className="skeleton-status" role="status">
-            Buscando horários disponíveis...
+            {estimatedCheckout
+              ? 'Verificando profissionais com horários nos próximos 31 dias...'
+              : 'Buscando horários disponíveis...'}
           </p>
           <div className="slot-grid" aria-label="Carregando horários disponíveis">
             {Array.from({ length: 4 }, (_, index) => (
@@ -82,13 +122,22 @@ export default function BookingAvailability({
         />
       )}
 
-      {!availabilityLoading && slots.length === 0 && professionals.length > 0 && (
+      {!availabilityLoading &&
+        !estimatedCheckout &&
+        slots.length === 0 &&
+        professionals.length > 0 && (
+          <p role="status" className="state-card state-card-compact">
+            Não há horários disponíveis para esta data.
+          </p>
+        )}
+
+      {!availabilityLoading && estimatedCheckout && professionals.length === 0 && (
         <p role="status" className="state-card state-card-compact">
-          Não há horários disponíveis para esta data.
+          Não há profissionais com horário reservável nos próximos 31 dias.
         </p>
       )}
 
-      {!availabilityLoading && slots.length === 0 && (
+      {!estimatedCheckout && !availabilityLoading && slots.length === 0 && (
         <div className="next-availability">
           {searchingNextDate && (
             <>
@@ -115,7 +164,7 @@ export default function BookingAvailability({
         </div>
       )}
 
-      {visibleSlots.length > 0 && (
+      {!estimatedCheckout && visibleSlots.length > 0 && (
         <fieldset className="slot-fieldset">
           <legend>Horários disponíveis</legend>
           <div className="slot-grid">
@@ -134,7 +183,7 @@ export default function BookingAvailability({
                   checked={selectedStartsAt === slot.startsAt}
                   onChange={() => onTimeChange(slot.startsAt)}
                 />
-                <span>{formatTimeRange(slot)}</span>
+                <span>{DateUtil.formatTimeRange(slot)}</span>
               </motion.label>
             ))}
           </div>

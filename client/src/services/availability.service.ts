@@ -30,3 +30,9 @@ export async function searchAvailability(
     },
   );
 }
+
+export async function searchAvailabilityForEstimation(
+  input: Omit<SearchAvailabilityInput, 'includeEligibleProfessionals'>,
+): Promise<SearchAvailabilityResult> {
+  return await searchAvailability({ ...input, includeEligibleProfessionals: true });
+}

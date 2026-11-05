@@ -101,6 +101,46 @@ describe('AppointmentsPage', () => {
     );
   });
 
+  it('shows recorded promotion, estimate, and payment snapshots without changing legacy appointments', async () => {
+    service.listAppointments.mockResolvedValueOnce({
+      appointments: [
+        appointments[0]!,
+        {
+          ...appointments[1]!,
+          id: 'appointment-with-snapshots',
+          productPriceCentsSnapshot: 9000,
+          productOriginalPriceCentsSnapshot: 12000,
+          promotionSnapshot: {
+            promotionApplied: true,
+            promotionalPriceCents: 9000,
+          },
+          estimatedDeliveryDaysSnapshot: 5,
+          estimatedDeliveryDateSnapshot: '2026-10-11',
+          estimatedDeliveryTimezoneSnapshot: 'America/Sao_Paulo',
+          paymentMethodSnapshot: 'credit',
+          installmentsSnapshot: 5,
+        },
+      ],
+      timezone: 'America/Sao_Paulo',
+    });
+
+    renderPage();
+
+    expect(await screen.findByText(/Promoção aplicada/)).toBeInTheDocument();
+    expect(screen.getByText(/preço original:/)).toHaveTextContent('120,00');
+    expect(screen.getByText(/Prazo estimado: até 5 dias corridos/)).toBeInTheDocument();
+    expect(screen.getByText(/Previsão registrada: 11 de outubro de 2026/)).toHaveTextContent(
+      'fuso America/Sao_Paulo',
+    );
+    expect(
+      screen.getByText(/Pagamento informado: Crédito em 5 parcelas · não processado/),
+    ).toBeInTheDocument();
+    const legacyAppointmentCard = screen.getByText('Cliente Um').closest('article');
+    expect(legacyAppointmentCard).not.toHaveTextContent(
+      /Promoção aplicada|Prazo estimado|Previsão registrada|Pagamento informado/,
+    );
+  });
+
   it('submits the selected date and restores the default view when cleared', async () => {
     renderPage();
     await screen.findByText('Cliente Um');

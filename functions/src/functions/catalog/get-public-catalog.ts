@@ -24,6 +24,7 @@ export const getPublicCatalog = onCall(callableOptionsPublic, async (request) =>
       segment: business.segment,
       description: business.description,
       logoUrl: business.logoUrl,
+      ...(business.timezone ? { timezone: business.timezone } : {}),
     },
     products: products.map(
       ({
@@ -36,6 +37,10 @@ export const getPublicCatalog = onCall(callableOptionsPublic, async (request) =>
         defaultImages,
         imageGalleries,
         priceCents,
+        promotionActive,
+        promotionalPriceCents,
+        estimatedDeliveryEnabled,
+        estimatedDeliveryDays,
         durationMinutes,
       }) => ({
         id,
@@ -47,6 +52,14 @@ export const getPublicCatalog = onCall(callableOptionsPublic, async (request) =>
         ...(defaultImages ? { defaultImages } : {}),
         ...(imageGalleries ? { imageGalleries } : {}),
         priceCents,
+        promotionActive,
+        ...(promotionActive && promotionalPriceCents !== undefined
+          ? { promotionalPriceCents }
+          : {}),
+        estimatedDeliveryEnabled,
+        ...(estimatedDeliveryEnabled && estimatedDeliveryDays !== undefined
+          ? { estimatedDeliveryDays }
+          : {}),
         durationMinutes,
       }),
     ),

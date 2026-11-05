@@ -1,4 +1,4 @@
-import { useState, type JSX, type SubmitEvent } from 'react';
+import { useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import type {
   ProductCustomizationAttribute,
   ProductCustomizationSelection,
@@ -6,6 +6,7 @@ import type {
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
 import type { ProductInputData, ProductRecord } from '../../../interfaces/product.interface';
+import type { GalleryDraft } from '../../../interfaces/gallery.interface';
 import {
   productCustomizationCombinationKey,
   productCustomizationCombinations,
@@ -21,6 +22,7 @@ import {
   uploadProductImage,
   validateProductImage,
 } from '../../../services/product-image.service';
+import { ImageUtil } from '../../../utils/image.util';
 
 type ProductEditorProps = {
   product?: ProductRecord;
@@ -28,19 +30,6 @@ type ProductEditorProps = {
   onClose: () => void;
   onSaved: () => Promise<void>;
 };
-
-type GalleryDraft = {
-  id?: string;
-  selections: ProductCustomizationSelection[];
-  images: ProductImage[];
-  files: File[];
-};
-
-const legacyImage = (imageUrl: string): ProductImage => ({
-  id: 'legacy-image',
-  storagePath: '',
-  downloadUrl: imageUrl,
-});
 
 export default function ProductEditor({
   product,
@@ -52,7 +41,7 @@ export default function ProductEditor({
   const [description, setDescription] = useState<string>(product?.description ?? '');
   const [imageUrl, setImageUrl] = useState<string>(product?.imageUrl ?? '');
   const [defaultImages, setDefaultImages] = useState<ProductImage[]>(
-    product?.defaultImages ?? (product ? [legacyImage(product.imageUrl)] : []),
+    product?.defaultImages ?? (product ? [ImageUtil.legacyImage(product.imageUrl)] : []),
   );
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -75,6 +64,32 @@ export default function ProductEditor({
       ]),
     ),
   );
+
+  const [variantPromotionalPriceDrafts, setVariantPromotionalPriceDrafts] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(
+      (product?.variantPrices ?? [])
+        .filter((variantPrice) => variantPrice.promotionalPriceCents !== undefined)
+        .map((variantPrice) => [
+          productCustomizationCombinationKey(variantPrice.selections),
+          (variantPrice.promotionalPriceCents! / 100).toFixed(2),
+        ]),
+    ),
+  );
+  const [variantEstimatedDeliveryDrafts, setVariantEstimatedDeliveryDrafts] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(
+      (product?.variantPrices ?? [])
+        .filter((variantPrice) => variantPrice.estimatedDeliveryDays !== undefined)
+        .map((variantPrice) => [
+          productCustomizationCombinationKey(variantPrice.selections),
+          String(variantPrice.estimatedDeliveryDays),
+        ]),
+    ),
+  );
+
   const [galleryDrafts, setGalleryDrafts] = useState<GalleryDraft[]>(
     product?.imageGalleries?.map((gallery) => ({
       id: gallery.id,
@@ -88,6 +103,7 @@ export default function ProductEditor({
   const [commissionType, setCommissionType] = useState<'percentage' | 'fixed'>(
     product?.commissionType ?? 'percentage',
   );
+
   const [commission, setCommission] = useState<string>(
     product
       ? product.commissionType === 'percentage'
@@ -95,13 +111,33 @@ export default function ProductEditor({
         : (product.commissionValue / 100).toFixed(2)
       : '35',
   );
+
   const [active, setActive] = useState<boolean>(product?.active ?? true);
+  const [promotionActive, setPromotionActive] = useState<boolean>(
+    product?.promotionActive ?? false,
+  );
+  const [promotionalPrice, setPromotionalPrice] = useState<string>(
+    product?.promotionalPriceCents === undefined
+      ? ''
+      : (product.promotionalPriceCents / 100).toFixed(2),
+  );
+  const [estimatedDeliveryEnabled, setEstimatedDeliveryEnabled] = useState<boolean>(
+    product?.estimatedDeliveryEnabled ?? false,
+  );
+  const [estimatedDeliveryDays, setEstimatedDeliveryDays] = useState<string>(
+    product?.estimatedDeliveryDays === undefined ? '' : String(product.estimatedDeliveryDays),
+  );
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const customizationCombinations = productCustomizationCombinations(customizationAttributes);
+
+  const customizationCombinations = useMemo(
+    () => productCustomizationCombinations(customizationAttributes),
+    [customizationAttributes],
+  );
 
   const addAttribute = (): void => {
     const firstOptionId = crypto.randomUUID();
+
     setCustomizationAttributes((current) => [
       ...current,
       {
@@ -145,48 +181,140 @@ export default function ProductEditor({
     setError('');
     const parsedPrice = Number(price.replace(',', '.'));
     const parsedCommission = Number(commission.replace(',', '.'));
+
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedCommission)) {
       setError('Informe valores numéricos válidos para preço e comissão.');
       setBusy(false);
       return;
     }
 
+    let promotionalPriceCents: number | undefined;
+    if (promotionalPrice.trim()) {
+      const amount = Number(promotionalPrice.replace(',', '.'));
+      const cents = Math.round(amount * 100);
+      if (!Number.isFinite(amount) || amount < 0 || !Number.isSafeInteger(cents)) {
+        setError('Informe um preço promocional válido em reais.');
+        setBusy(false);
+        return;
+      }
+      promotionalPriceCents = cents;
+    }
+
+    if (
+      promotionActive &&
+      customizationAttributes.length === 0 &&
+      (promotionalPriceCents === undefined ||
+        promotionalPriceCents >= Math.round(parsedPrice * 100))
+    ) {
+      setError('O preço promocional deve ser menor que o preço original.');
+      setBusy(false);
+      return;
+    }
+
+    const parsedEstimatedDeliveryDays = estimatedDeliveryDays.trim()
+      ? Number(estimatedDeliveryDays)
+      : undefined;
+    if (
+      parsedEstimatedDeliveryDays !== undefined &&
+      (!Number.isSafeInteger(parsedEstimatedDeliveryDays) || parsedEstimatedDeliveryDays < 1)
+    ) {
+      setError('Informe um prazo estimado inteiro maior que zero.');
+      setBusy(false);
+      return;
+    }
+
+    if (
+      estimatedDeliveryEnabled &&
+      customizationAttributes.length === 0 &&
+      parsedEstimatedDeliveryDays === undefined
+    ) {
+      setError('Informe um prazo estimado inteiro maior que zero.');
+      setBusy(false);
+      return;
+    }
+
     let variantPrices: ProductVariantPrice[] | null = null;
-    if (variantPricingEnabled) {
+    const materializePromotionVariants = promotionActive && customizationAttributes.length > 0;
+    const materializeEstimateVariants =
+      estimatedDeliveryEnabled && customizationAttributes.length > 0;
+
+    if (variantPricingEnabled || materializePromotionVariants || materializeEstimateVariants) {
       if (customizationAttributes.length === 0) {
         setError('Adicione pelo menos um atributo para cadastrar preços por combinação.');
         setBusy(false);
         return;
       }
+
       const parsedVariantPrices = customizationCombinations.map((selections) => {
-        const value = variantPriceDrafts[productCustomizationCombinationKey(selections)] ?? price;
+        const key = productCustomizationCombinationKey(selections);
+        const value = variantPricingEnabled ? (variantPriceDrafts[key] ?? price) : price;
         const amount = Number(value.replace(',', '.'));
+        const promotionalValue = variantPromotionalPriceDrafts[key] ?? '';
+        const promotionalAmount = Number(promotionalValue.replace(',', '.'));
+        const variantPromotionalPriceCents = promotionalValue.trim()
+          ? Math.round(promotionalAmount * 100)
+          : undefined;
+        const estimatedDeliveryValue = variantEstimatedDeliveryDrafts[key] ?? '';
+        const variantEstimatedDeliveryDays = estimatedDeliveryValue.trim()
+          ? Number(estimatedDeliveryValue)
+          : undefined;
         return {
           selections,
           priceCents: Math.round(amount * 100),
+          promotionalPriceCents: variantPromotionalPriceCents,
+          estimatedDeliveryDays: variantEstimatedDeliveryDays,
           valid:
             value.trim() !== '' &&
             Number.isFinite(amount) &&
             amount >= 0 &&
-            Number.isSafeInteger(Math.round(amount * 100)),
+            Number.isSafeInteger(Math.round(amount * 100)) &&
+            (variantPromotionalPriceCents === undefined ||
+              (Number.isFinite(promotionalAmount) &&
+                promotionalAmount >= 0 &&
+                Number.isSafeInteger(variantPromotionalPriceCents))) &&
+            (!promotionActive ||
+              (variantPromotionalPriceCents !== undefined &&
+                variantPromotionalPriceCents < Math.round(amount * 100))) &&
+            (variantEstimatedDeliveryDays === undefined ||
+              (Number.isSafeInteger(variantEstimatedDeliveryDays) &&
+                variantEstimatedDeliveryDays > 0)) &&
+            (!estimatedDeliveryEnabled || variantEstimatedDeliveryDays !== undefined),
         };
       });
+
       if (parsedVariantPrices.some((variantPrice) => !variantPrice.valid)) {
-        setError('Informe um preço válido para cada combinação de opções.');
+        const hasInvalidEstimatedDays = parsedVariantPrices.some(
+          ({ estimatedDeliveryDays: days }) =>
+            days !== undefined && (!Number.isSafeInteger(days) || days < 1),
+        );
+        setError(
+          promotionActive
+            ? 'Informe um preço promocional válido e menor que o preço original para cada combinação.'
+            : estimatedDeliveryEnabled || hasInvalidEstimatedDays
+              ? 'Informe um prazo estimado inteiro maior que zero para cada combinação.'
+              : 'Informe um preço válido para cada combinação de opções.',
+        );
         setBusy(false);
         return;
       }
-      variantPrices = parsedVariantPrices.map(({ selections, priceCents }) => ({
-        selections,
-        priceCents,
-      }));
+
+      variantPrices = parsedVariantPrices.map(
+        ({ selections, priceCents, promotionalPriceCents, estimatedDeliveryDays }) => ({
+          selections,
+          priceCents,
+          ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+          ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
+        }),
+      );
     }
 
     const canUseLegacyImage = !product?.defaultImages && imageUrl.trim().length > 0;
+
     const defaultImageCount =
       defaultImages.length +
       imageFiles.length +
       (defaultImages.length === 0 && imageFiles.length === 0 && canUseLegacyImage ? 1 : 0);
+
     if (defaultImageCount < 1 || defaultImageCount > 10) {
       setError('A galeria padrão deve ter de uma a dez imagens.');
       setBusy(false);
@@ -194,6 +322,7 @@ export default function ProductEditor({
     }
 
     const combinationKeys = new Set<string>();
+
     for (const gallery of galleryDrafts) {
       const selections = customizationAttributes.map((attribute) =>
         gallery.selections.find((selection) => selection.attributeId === attribute.id),
@@ -241,6 +370,7 @@ export default function ProductEditor({
     const uploadedGalleryImages: ProductImage[][] = [];
     const savedGalleryIndexes = new Set<number>();
     let metadataWriteStarted = false;
+
     try {
       if (
         (imageFiles.length > 0 || galleryDrafts.some((gallery) => gallery.files.length > 0)) &&
@@ -248,16 +378,20 @@ export default function ProductEditor({
       ) {
         throw new Error('Não foi possível identificar a empresa para enviar as imagens.');
       }
+
       const productId = product?.id ?? crypto.randomUUID();
 
       for (const file of imageFiles) {
         uploadedImages.push(await uploadProductImage(tenantId, productId, file, setUploadProgress));
       }
+
       for (const gallery of galleryDrafts) {
         const uploaded: ProductImage[] = [];
+
         for (const file of gallery.files) {
           uploaded.push(await uploadProductImage(tenantId, productId, file, setUploadProgress));
         }
+
         uploadedGalleryImages.push(uploaded);
       }
 
@@ -265,10 +399,11 @@ export default function ProductEditor({
         ...(defaultImages.length > 0
           ? defaultImages
           : imageFiles.length === 0 && canUseLegacyImage
-            ? [legacyImage(imageUrl)]
+            ? [ImageUtil.legacyImage(imageUrl)]
             : []),
         ...uploadedImages,
       ];
+
       if (
         finalImages.length < 1 ||
         finalImages.length > 10 ||
@@ -276,12 +411,19 @@ export default function ProductEditor({
       ) {
         throw new Error('A galeria padrão deve ter de uma a dez imagens válidas.');
       }
+
       const productInput: ProductInputData = {
         ...(product ? { id: product.id } : { id: productId }),
         name,
         description,
         imageUrl: finalImages[0]!.downloadUrl,
         priceCents: Math.round(parsedPrice * 100),
+        promotionActive,
+        ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+        estimatedDeliveryEnabled,
+        ...(parsedEstimatedDeliveryDays !== undefined && customizationAttributes.length === 0
+          ? { estimatedDeliveryDays: parsedEstimatedDeliveryDays }
+          : {}),
         variantPrices,
         durationMinutes: Number(duration),
         commissionType,
@@ -298,12 +440,14 @@ export default function ProductEditor({
         const selections = customizationAttributes.map((attribute) =>
           gallery.selections.find((selection) => selection.attributeId === attribute.id)!,
         );
+
         await saveProductGallery({
           productId: saved.id,
           ...(gallery.id ? { galleryId: gallery.id } : {}),
           selections,
           images,
         });
+
         savedGalleryIndexes.add(index);
       }
 
@@ -311,6 +455,7 @@ export default function ProductEditor({
         galleryDrafts.flatMap((gallery) => (gallery.id ? [gallery.id] : [])),
       );
       const cleanupPaths = new Set<string>();
+
       for (const gallery of product?.imageGalleries ?? []) {
         if (!galleryIdsToKeep.has(gallery.id)) {
           const deleted = await deleteProductGallery({
@@ -320,6 +465,7 @@ export default function ProductEditor({
           deleted.storagePaths.forEach((path) => cleanupPaths.add(path));
           continue;
         }
+
         const draftIndex = galleryDrafts.findIndex((draft) => draft.id === gallery.id);
         const draft = galleryDrafts[draftIndex]!;
         const retainedPaths = new Set([
@@ -332,14 +478,19 @@ export default function ProductEditor({
           }
         });
       }
+
       const retainedDefaultPaths = new Set(finalImages.map((image) => image.storagePath));
-      (product?.defaultImages ?? []).forEach((image) => {
-        if (image.storagePath && !retainedDefaultPaths.has(image.storagePath)) {
-          cleanupPaths.add(image.storagePath);
+
+      if (product && product.defaultImages) {
+        for (const currentImage of product.defaultImages) {
+          if (currentImage.storagePath && !retainedDefaultPaths.has(currentImage.storagePath)) {
+            cleanupPaths.add(currentImage.storagePath);
+          }
         }
-      });
+      }
 
       const cleanupErrors: string[] = [];
+
       for (const path of cleanupPaths) {
         try {
           await deleteProductImage(path);
@@ -347,13 +498,16 @@ export default function ProductEditor({
           cleanupErrors.push(`${path}: ${errorMessage(cleanupError)}`);
         }
       }
+
       await onSaved();
+
       if (cleanupErrors.length > 0) {
         setError(`Galeria salva, mas a limpeza falhou: ${cleanupErrors.join('; ')}`);
         return;
       }
+
       onClose();
-    } catch (saveError: unknown) {
+    } catch (error: unknown) {
       const cleanupErrors: string[] = [];
       const unpublishedImages = uploadedGalleryImages.flatMap((images, index) =>
         savedGalleryIndexes.has(index) ? [] : images,
@@ -369,7 +523,7 @@ export default function ProductEditor({
         }
       }
       setError(
-        `${metadataWriteStarted ? 'Os metadados podem ter sido parcialmente salvos. ' : ''}${errorMessage(saveError)}${cleanupErrors.length > 0 ? ` Falhas de limpeza: ${cleanupErrors.join('; ')}` : ''}`,
+        `${metadataWriteStarted ? 'Os metadados podem ter sido parcialmente salvos. ' : ''}${errorMessage(error)}${cleanupErrors.length > 0 ? ` Falhas de limpeza: ${cleanupErrors.join('; ')}` : ''}`,
       );
     } finally {
       setBusy(false);
@@ -546,6 +700,136 @@ export default function ProductEditor({
             <button type="button" className="button secondary" onClick={addAttribute}>
               Adicionar atributo
             </button>
+          </fieldset>
+          <fieldset className="form-stack">
+            <legend>Promoção</legend>
+            <label className="toggle-row">
+              <span>
+                <strong>Ativar promoção</strong>
+                <small>
+                  O preço promocional precisa ser menor que o preço original de cada combinação.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                aria-label="Ativar promoção"
+                checked={promotionActive}
+                onChange={(event) => setPromotionActive(event.target.checked)}
+              />
+            </label>
+            {customizationAttributes.length === 0 ? (
+              <label>
+                Preço promocional (R$)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={promotionalPrice}
+                  onChange={(event) => setPromotionalPrice(event.target.value)}
+                  required={promotionActive}
+                />
+              </label>
+            ) : (
+              <div className="form-stack">
+                {customizationCombinations.map((selections) => {
+                  const key = productCustomizationCombinationKey(selections);
+                  const combinationLabel = selections
+                    .map((selection) => {
+                      const attribute = customizationAttributes.find(
+                        (item) => item.id === selection.attributeId,
+                      );
+                      const option = attribute?.options.find(
+                        (item) => item.id === selection.optionId,
+                      );
+                      return `${attribute?.label || 'Atributo'}: ${option?.label || 'Opção'}`;
+                    })
+                    .join(' / ');
+                  return (
+                    <label className="form-grid" key={key}>
+                      Preço promocional da combinação {combinationLabel} (R$)
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={variantPromotionalPriceDrafts[key] ?? ''}
+                        onChange={(event) =>
+                          setVariantPromotionalPriceDrafts((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        required={promotionActive}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </fieldset>
+          <fieldset className="form-stack">
+            <legend>Prazo estimado</legend>
+            <label className="toggle-row">
+              <span>
+                <strong>Ativar prazo estimado</strong>
+                <small>
+                  Informe dias corridos. O prazo começa no dia seguinte à data local da compra.
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                aria-label="Ativar prazo estimado"
+                checked={estimatedDeliveryEnabled}
+                onChange={(event) => setEstimatedDeliveryEnabled(event.target.checked)}
+              />
+            </label>
+            {customizationAttributes.length === 0 ? (
+              <label>
+                Prazo estimado (dias corridos)
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={estimatedDeliveryDays}
+                  onChange={(event) => setEstimatedDeliveryDays(event.target.value)}
+                  required={estimatedDeliveryEnabled}
+                />
+              </label>
+            ) : (
+              <div className="form-stack">
+                {customizationCombinations.map((selections) => {
+                  const key = productCustomizationCombinationKey(selections);
+                  const combinationLabel = selections
+                    .map((selection) => {
+                      const attribute = customizationAttributes.find(
+                        (item) => item.id === selection.attributeId,
+                      );
+                      const option = attribute?.options.find(
+                        (item) => item.id === selection.optionId,
+                      );
+                      return `${attribute?.label || 'Atributo'}: ${option?.label || 'Opção'}`;
+                    })
+                    .join(' / ');
+                  return (
+                    <label className="form-grid" key={key}>
+                      Prazo estimado da combinação {combinationLabel} (dias)
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={variantEstimatedDeliveryDrafts[key] ?? ''}
+                        onChange={(event) =>
+                          setVariantEstimatedDeliveryDrafts((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        required={estimatedDeliveryEnabled}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </fieldset>
           <fieldset className="form-stack">
             <legend>Preços por combinação</legend>

@@ -26,7 +26,7 @@ import type {
   ProfessionalDocument,
   ProfessionalProductDocument,
 } from '../model/professional.model';
-import type { TenantDocument } from '../model/tenant.model';
+import type { PublicBusinessDocument, TenantDocument } from '../model/tenant.model';
 import { getCollaboratorEmails } from './collaborator-account.service';
 import { firestore, professionalProductId } from './firestore.service';
 
@@ -117,6 +117,10 @@ export interface ProductInput {
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   priceCents: number;
+  promotionActive?: boolean;
+  promotionalPriceCents?: number;
+  estimatedDeliveryEnabled?: boolean;
+  estimatedDeliveryDays?: number;
   durationMinutes: number;
   commissionType: CommissionType;
   commissionValue: number;
@@ -281,6 +285,26 @@ function validateVariantPrices(
         0,
         Number.MAX_SAFE_INTEGER,
       ),
+      ...(price.promotionalPriceCents !== undefined
+        ? {
+            promotionalPriceCents: requiredInteger(
+              price.promotionalPriceCents,
+              'Preço promocional da combinação em centavos',
+              0,
+              Number.MAX_SAFE_INTEGER,
+            ),
+          }
+        : {}),
+      ...(price.estimatedDeliveryDays !== undefined
+        ? {
+            estimatedDeliveryDays: requiredInteger(
+              price.estimatedDeliveryDays,
+              'Prazo estimado da combinação em dias corridos',
+              1,
+              Number.MAX_SAFE_INTEGER,
+            ),
+          }
+        : {}),
     };
   });
 }
@@ -291,6 +315,32 @@ export function validateProductInput(rawInput: unknown): ProductInput {
   const name = requiredText(input.name, 'Nome do serviço', 80);
   const description = optionalText(input.description, 'Descrição', 600);
   const customizationAttributes = validateCustomizationAttributes(input.customizationAttributes);
+  const promotionActive =
+    input.promotionActive === undefined
+      ? false
+      : requiredBoolean(input.promotionActive, 'Status da promoção');
+  const estimatedDeliveryEnabled =
+    input.estimatedDeliveryEnabled === undefined
+      ? false
+      : requiredBoolean(input.estimatedDeliveryEnabled, 'Status do prazo estimado');
+  const estimatedDeliveryDays =
+    input.estimatedDeliveryDays === undefined
+      ? undefined
+      : requiredInteger(
+          input.estimatedDeliveryDays,
+          'Prazo estimado em dias corridos',
+          1,
+          Number.MAX_SAFE_INTEGER,
+        );
+  const promotionalPriceCents =
+    input.promotionalPriceCents === undefined
+      ? undefined
+      : requiredInteger(
+          input.promotionalPriceCents,
+          'Preço promocional em centavos',
+          0,
+          Number.MAX_SAFE_INTEGER,
+        );
   const variantPrices = validateVariantPrices(input.variantPrices, customizationAttributes);
   const defaultImages = validateProductImages(input.defaultImages);
   const imageUrl = defaultImages
@@ -302,6 +352,46 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     0,
     Number.MAX_SAFE_INTEGER,
   );
+  if (promotionActive) {
+    if (customizationAttributes?.length) {
+      if (
+        !variantPrices?.length ||
+        variantPrices.some(
+          (variantPrice) =>
+            variantPrice.promotionalPriceCents === undefined ||
+            variantPrice.promotionalPriceCents >= variantPrice.priceCents,
+        )
+      ) {
+        throw new HttpsError(
+          'invalid-argument',
+          'Informe um preço promocional menor que o preço original para cada combinação.',
+        );
+      }
+    } else if (promotionalPriceCents === undefined || promotionalPriceCents >= priceCents) {
+      throw new HttpsError(
+        'invalid-argument',
+        'O preço promocional deve ser menor que o preço original.',
+      );
+    }
+  }
+  if (estimatedDeliveryEnabled) {
+    if (customizationAttributes?.length) {
+      if (
+        !variantPrices?.length ||
+        variantPrices.some((variantPrice) => variantPrice.estimatedDeliveryDays === undefined)
+      ) {
+        throw new HttpsError(
+          'invalid-argument',
+          'Informe um prazo estimado inteiro maior que zero para cada combinação.',
+        );
+      }
+    } else if (estimatedDeliveryDays === undefined) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Informe um prazo estimado inteiro maior que zero.',
+      );
+    }
+  }
   const durationMinutes = requiredInteger(
     input.durationMinutes,
     'Duração',
@@ -328,6 +418,10 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     ...(variantPrices !== undefined ? { variantPrices } : {}),
     ...(defaultImages !== undefined ? { defaultImages } : {}),
     priceCents,
+    ...(input.promotionActive !== undefined ? { promotionActive } : {}),
+    ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+    ...(input.estimatedDeliveryEnabled !== undefined ? { estimatedDeliveryEnabled } : {}),
+    ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
     durationMinutes,
     commissionType,
     commissionValue,
@@ -467,15 +561,21 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     variantPrices,
     defaultImages,
     priceCents,
+    promotionalPriceCents,
+    estimatedDeliveryEnabled,
+    estimatedDeliveryDays,
     durationMinutes,
     commissionType,
     commissionValue,
     active,
   } = validateProductInput(raw);
+  const promotionActive = raw.promotionActive === undefined ? false : raw.promotionActive === true;
+  const isEstimatedDeliveryEnabled = estimatedDeliveryEnabled === true;
   const reference = id
     ? firestore.collection(collections.products).doc(id)
     : firestore.collection(collections.products).doc();
   const projection = firestore.collection(collections.publicProducts).doc(reference.id);
+  const publicBusinessRef = firestore.collection(collections.publicBusinesses).doc(tenantId);
 
   await firestore.runTransaction(async (transaction) => {
     const [tenantSnapshot, currentSnapshot] = await Promise.all([
@@ -491,6 +591,52 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     if (defaultImages) validateImageOwnership(defaultImages, tenantId, reference.id);
     const primaryImageUrl =
       defaultImages?.[0]?.downloadUrl ?? current?.defaultImages?.[0]?.downloadUrl ?? imageUrl;
+    const storedVariantPrices =
+      variantPrices !== undefined ? variantPrices : current?.variantPrices;
+    const publicVariantPrices =
+      storedVariantPrices === null
+        ? null
+        : storedVariantPrices?.map((variantPrice) => {
+            const {
+              promotionalPriceCents: variantPromotionPrice,
+              estimatedDeliveryDays: variantEstimatedDeliveryDays,
+              ...originalPrice
+            } = variantPrice;
+            return {
+              ...originalPrice,
+              ...(promotionActive && variantPromotionPrice !== undefined
+                ? { promotionalPriceCents: variantPromotionPrice }
+                : {}),
+              ...(isEstimatedDeliveryEnabled && variantEstimatedDeliveryDays !== undefined
+                ? { estimatedDeliveryDays: variantEstimatedDeliveryDays }
+                : {}),
+            };
+          });
+    if (isEstimatedDeliveryEnabled) {
+      const publicBusinessSnapshot = await transaction.get(publicBusinessRef);
+      const publicBusiness = documentData<PublicBusinessDocument>(publicBusinessSnapshot);
+      if (!publicBusiness || publicBusiness.tenantId !== tenantId) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Não foi possível disponibilizar o fuso horário público desta empresa.',
+        );
+      }
+      if (typeof tenant.timezone !== 'string' || !tenant.timezone.trim()) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Configure um fuso horário IANA válido antes de ativar o prazo estimado.',
+        );
+      }
+      try {
+        new Intl.DateTimeFormat('pt-BR', { timeZone: tenant.timezone });
+      } catch {
+        throw new HttpsError(
+          'failed-precondition',
+          'Configure um fuso horário IANA válido antes de ativar o prazo estimado.',
+        );
+      }
+      transaction.set(publicBusinessRef, { timezone: tenant.timezone }, { merge: true });
+    }
 
     const product: ProductDocument = {
       tenantId,
@@ -509,6 +655,10 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
           ? { defaultImages: current.defaultImages }
           : {}),
       priceCents,
+      promotionActive,
+      ...(promotionalPriceCents !== undefined ? { promotionalPriceCents } : {}),
+      estimatedDeliveryEnabled: isEstimatedDeliveryEnabled,
+      ...(estimatedDeliveryDays !== undefined ? { estimatedDeliveryDays } : {}),
       durationMinutes,
       commissionType,
       commissionValue,
@@ -518,6 +668,9 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
       reference,
       {
         ...product,
+        ...(estimatedDeliveryDays === undefined
+          ? { estimatedDeliveryDays: FieldValue.delete() }
+          : {}),
         ...(!current ? { createdAt: FieldValue.serverTimestamp() } : {}),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -536,17 +689,23 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
           : current?.customizationAttributes
             ? { customizationAttributes: current.customizationAttributes }
             : {}),
-        ...(variantPrices !== undefined
-          ? { variantPrices }
-          : current?.variantPrices !== undefined
-            ? { variantPrices: current.variantPrices }
-            : {}),
         ...(defaultImages !== undefined
           ? { defaultImages }
           : current?.defaultImages
             ? { defaultImages: current.defaultImages }
             : {}),
         priceCents,
+        promotionActive,
+        ...(promotionActive &&
+        !customizationAttributes?.length &&
+        promotionalPriceCents !== undefined
+          ? { promotionalPriceCents }
+          : { promotionalPriceCents: FieldValue.delete() }),
+        estimatedDeliveryEnabled: isEstimatedDeliveryEnabled,
+        ...(isEstimatedDeliveryEnabled && estimatedDeliveryDays !== undefined
+          ? { estimatedDeliveryDays }
+          : { estimatedDeliveryDays: FieldValue.delete() }),
+        ...(publicVariantPrices !== undefined ? { variantPrices: publicVariantPrices } : {}),
         durationMinutes,
         active,
         published: true,

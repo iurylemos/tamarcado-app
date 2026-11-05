@@ -106,6 +106,86 @@ describe('ProductsPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('creates a product with an active promotion and its original price', async () => {
+    saveProductMock.mockResolvedValueOnce({ id: 'new-service' });
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), { target: { value: 'Massagem' } });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/massagem.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '90' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar promoção' }));
+    fireEvent.change(screen.getByLabelText('Preço promocional (R$)'), {
+      target: { value: '70' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    await waitFor(() =>
+      expect(saveProductMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          priceCents: 9000,
+          promotionActive: true,
+          promotionalPriceCents: 7000,
+        }),
+      ),
+    );
+  });
+
+  it('rejects a promotional price that is not lower than the original', async () => {
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), { target: { value: 'Massagem' } });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/massagem.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '90' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar promoção' }));
+    fireEvent.change(screen.getByLabelText('Preço promocional (R$)'), {
+      target: { value: '90' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'O preço promocional deve ser menor que o preço original.',
+    );
+    expect(saveProductMock).not.toHaveBeenCalled();
+  });
+
+  it('deactivates an existing promotion without discarding its saved price', async () => {
+    const promotedProduct: ProductRecord = {
+      ...products[0]!,
+      promotionActive: true,
+      promotionalPriceCents: 8000,
+    };
+    saveProductMock.mockResolvedValueOnce({ id: promotedProduct.id });
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[promotedProduct]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Corte e finalização' }));
+    expect(screen.getByRole('checkbox', { name: 'Ativar promoção' })).toBeChecked();
+    expect(screen.getByLabelText('Preço promocional (R$)')).toHaveValue(80);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar promoção' }));
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    await waitFor(() =>
+      expect(saveProductMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          promotionActive: false,
+          promotionalPriceCents: 8000,
+        }),
+      ),
+    );
+  });
+
   it('configures dynamic attributes, options, and a default option', async () => {
     saveProductMock.mockResolvedValueOnce({ id: 'new-service' });
     render(
@@ -152,6 +232,54 @@ describe('ProductsPage', () => {
           }),
         ],
       }),
+    );
+  });
+
+  it('materializes base-priced variants when enabling variant promotions', async () => {
+    saveProductMock.mockResolvedValueOnce({ id: 'new-service' });
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), {
+      target: { value: 'Produto personalizado' },
+    });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/produto.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar atributo' }));
+    fireEvent.change(screen.getByLabelText('Nome do atributo'), { target: { value: 'Cor' } });
+    const options = screen.getAllByLabelText('Opção');
+    fireEvent.change(options[0], { target: { value: 'Castanho' } });
+    fireEvent.change(options[1], { target: { value: 'Loiro' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar promoção' }));
+    fireEvent.change(screen.getByLabelText('Preço promocional da combinação Cor: Castanho (R$)'), {
+      target: { value: '80' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço promocional da combinação Cor: Loiro (R$)'), {
+      target: { value: '85' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    await waitFor(() =>
+      expect(saveProductMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          promotionActive: true,
+          variantPrices: [
+            {
+              selections: [{ attributeId: expect.any(String), optionId: expect.any(String) }],
+              priceCents: 10000,
+              promotionalPriceCents: 8000,
+            },
+            {
+              selections: [{ attributeId: expect.any(String), optionId: expect.any(String) }],
+              priceCents: 10000,
+              promotionalPriceCents: 8500,
+            },
+          ],
+        }),
+      ),
     );
   });
 
@@ -305,5 +433,140 @@ describe('ProductsPage', () => {
         expect.objectContaining({ description: 'Descrição atualizada pelo backoffice.' }),
       ),
     );
+  });
+
+  it('configures a positive estimated delivery period for a product without variants', async () => {
+    saveProductMock.mockResolvedValueOnce({ id: 'estimated-service' });
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), {
+      target: { value: 'Serviço com prazo' },
+    });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/prazo.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '90' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar prazo estimado' }));
+    fireEvent.change(screen.getByLabelText('Prazo estimado (dias corridos)'), {
+      target: { value: '15' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    await waitFor(() =>
+      expect(saveProductMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 15,
+        }),
+      ),
+    );
+  });
+
+  it.each(['', '0', '-1', '1.5'])(
+    'rejects invalid estimated delivery period %s for a simple product',
+    async (days) => {
+      render(
+        <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+      );
+      fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+      fireEvent.change(screen.getByLabelText('Nome do serviço'), {
+        target: { value: 'Serviço com prazo' },
+      });
+      fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+        target: { value: 'https://images.example.test/prazo.jpg' },
+      });
+      fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '90' } });
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar prazo estimado' }));
+      if (days) {
+        fireEvent.change(screen.getByLabelText('Prazo estimado (dias corridos)'), {
+          target: { value: days },
+        });
+      }
+      fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Informe um prazo estimado inteiro maior que zero.',
+      );
+      expect(saveProductMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('stores estimated delivery days for every customization combination', async () => {
+    saveProductMock.mockResolvedValueOnce({ id: 'variant-service' });
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), {
+      target: { value: 'Produto personalizado' },
+    });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/variacao.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar atributo' }));
+    fireEvent.change(screen.getByLabelText('Nome do atributo'), { target: { value: 'Cor' } });
+    const options = screen.getAllByLabelText('Opção');
+    fireEvent.change(options[0], { target: { value: 'Castanho' } });
+    fireEvent.change(options[1], { target: { value: 'Loiro' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar prazo estimado' }));
+    fireEvent.change(screen.getByLabelText('Prazo estimado da combinação Cor: Castanho (dias)'), {
+      target: { value: '7' },
+    });
+    fireEvent.change(screen.getByLabelText('Prazo estimado da combinação Cor: Loiro (dias)'), {
+      target: { value: '15' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    await waitFor(() =>
+      expect(saveProductMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          estimatedDeliveryEnabled: true,
+          variantPrices: [
+            {
+              selections: [{ attributeId: expect.any(String), optionId: expect.any(String) }],
+              priceCents: 10000,
+              estimatedDeliveryDays: 7,
+            },
+            {
+              selections: [{ attributeId: expect.any(String), optionId: expect.any(String) }],
+              priceCents: 10000,
+              estimatedDeliveryDays: 15,
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('rejects an incomplete estimated delivery configuration for variants', async () => {
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), {
+      target: { value: 'Produto personalizado' },
+    });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/variacao.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar atributo' }));
+    fireEvent.change(screen.getByLabelText('Nome do atributo'), { target: { value: 'Cor' } });
+    const options = screen.getAllByLabelText('Opção');
+    fireEvent.change(options[0], { target: { value: 'Castanho' } });
+    fireEvent.change(options[1], { target: { value: 'Loiro' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar prazo estimado' }));
+    fireEvent.change(screen.getByLabelText('Prazo estimado da combinação Cor: Castanho (dias)'), {
+      target: { value: '7' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Informe um prazo estimado inteiro maior que zero para cada combinação.',
+    );
+    expect(saveProductMock).not.toHaveBeenCalled();
   });
 });

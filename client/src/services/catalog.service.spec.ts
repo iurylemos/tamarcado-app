@@ -16,7 +16,10 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../config/firebase.config', () => ({ db: {} }));
 
 describe('getCompanyCatalog', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getDocsFromServer).mockReset();
+  });
 
   it('lists products without fetching galleries', async () => {
     vi.mocked(getDocsFromServer)
@@ -25,12 +28,25 @@ describe('getCompanyCatalog', () => {
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
-    await getCompanyCatalog('studio-aurora', { pageSize: 10 });
+    const catalog = await getCompanyCatalog('studio-aurora', { pageSize: 10 });
 
-    expect(getDocsFromServer).toHaveBeenCalledTimes(2);
+    expect(getDocsFromServer).toHaveBeenCalledTimes(3);
     expect(getDocsFromServer).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ source: 'public_products' }),
+    );
+    expect(catalog?.promotions).toEqual([]);
+    expect(getDocsFromServer).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        source: 'public_products',
+        constraints: expect.arrayContaining([
+          { field: 'businessSlug', value: 'studio-aurora' },
+          { field: 'active', value: true },
+          { field: 'published', value: true },
+          { field: 'promotionActive', value: true },
+        ]),
+      }),
     );
   });
 
@@ -134,6 +150,169 @@ describe('getCompanyCatalog', () => {
         ]),
       }),
     );
+  });
+
+  it('returns valid active offers for the matching tenant without changing catalog pagination', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'tenant-aurora',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Studio Aurora',
+              slug: 'studio-aurora',
+              segment: 'beauty',
+            }),
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'regular-service',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Serviço regular',
+              imageUrl: '/regular.jpg',
+              priceCents: 5000,
+              durationMinutes: 30,
+            }),
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'valid-offer',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Oferta válida',
+              imageUrl: '/offer.jpg',
+              priceCents: 12000,
+              promotionalPriceCents: 9000,
+              promotionActive: true,
+              active: true,
+              published: true,
+              durationMinutes: 60,
+            }),
+          },
+          {
+            id: 'invalid-price',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Oferta inválida',
+              imageUrl: '/invalid.jpg',
+              priceCents: 12000,
+              promotionalPriceCents: 12000,
+              promotionActive: true,
+              active: true,
+              published: true,
+              durationMinutes: 60,
+            }),
+          },
+          {
+            id: 'another-tenant',
+            data: () => ({
+              tenantId: 'tenant-neighbor',
+              name: 'Oferta de outra empresa',
+              imageUrl: '/neighbor.jpg',
+              priceCents: 12000,
+              promotionalPriceCents: 9000,
+              promotionActive: true,
+              active: true,
+              published: true,
+              durationMinutes: 60,
+            }),
+          },
+          {
+            id: 'inactive-offer',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Oferta inativa',
+              imageUrl: '/inactive.jpg',
+              priceCents: 12000,
+              promotionalPriceCents: 9000,
+              promotionActive: false,
+              active: true,
+              published: true,
+              durationMinutes: 60,
+            }),
+          },
+        ],
+      } as never);
+
+    const catalog = await getCompanyCatalog('studio-aurora', { pageSize: 10 });
+
+    expect(catalog?.products.map((product) => product.id)).toEqual(['regular-service']);
+    expect(catalog?.promotions.map((product) => product.id)).toEqual(['valid-offer']);
+    expect(catalog?.promotions[0]).toMatchObject({
+      priceCents: 12000,
+      promotionalPriceCents: 9000,
+      promotionActive: true,
+    });
+  });
+
+  it('reads the public business timezone and valid estimated-delivery product fields', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'tenant-aurora',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Studio Aurora',
+              slug: 'studio-aurora',
+              segment: 'beauty',
+              timezone: 'America/Sao_Paulo',
+            }),
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'estimated-service',
+            data: () => ({
+              tenantId: 'tenant-aurora',
+              name: 'Serviço com prazo',
+              imageUrl: '/prazo.jpg',
+              priceCents: 12000,
+              durationMinutes: 60,
+              customizationAttributes: [
+                {
+                  id: 'service',
+                  label: 'Serviço',
+                  options: [{ id: 'standard', label: 'Padrão' }],
+                  defaultOptionId: 'standard',
+                },
+              ],
+              estimatedDeliveryEnabled: true,
+              variantPrices: [
+                {
+                  selections: [{ attributeId: 'service', optionId: 'standard' }],
+                  priceCents: 12000,
+                  estimatedDeliveryDays: 15,
+                },
+              ],
+            }),
+          },
+        ],
+      } as never);
+
+    const catalog = await getCompanyCatalog('studio-aurora');
+
+    expect(catalog?.business.timezone).toBe('America/Sao_Paulo');
+    expect(catalog?.products[0]).toMatchObject({
+      estimatedDeliveryEnabled: true,
+      variantPrices: [
+        {
+          selections: [{ attributeId: 'service', optionId: 'standard' }],
+          priceCents: 12000,
+          estimatedDeliveryDays: 15,
+        },
+      ],
+    });
   });
 
   it('does not return catalog data when no published business matches the slug', async () => {
