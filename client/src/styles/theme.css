@@ -37,6 +37,66 @@ body {
   }
 }
 
+/* ---------- Page transitions & navigation feedback ---------- */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: var(--ease-out);
+}
+html[data-navigating] body {
+  cursor: progress;
+}
+html[data-navigating] main {
+  opacity: 0.6;
+  transition: opacity 200ms ease;
+}
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 100;
+  height: 3px;
+  overflow: hidden;
+  background: rgb(12 36 60 / 0.12);
+  pointer-events: none;
+}
+.nav-progress__bar {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-brand), var(--color-promo));
+  animation: nav-progress-slide 1s ease-in-out infinite;
+}
+.nav-progress__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@keyframes nav-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress__bar {
+    width: 100%;
+    animation: none;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
+
 /* ---------- Page shell & background ---------- */
 .page {
   width: min(100% - var(--gutter) * 2, 64rem);
@@ -286,6 +346,10 @@ body {
 .promotions-description {
   font-size: 0.82rem;
 }
+.promotions-section {
+  min-width: 0;
+  max-width: 100%;
+}
 .promotion-grid {
   display: flex;
   gap: 0.75rem;
@@ -300,11 +364,49 @@ body {
 .promotion-grid::-webkit-scrollbar {
   display: none;
 }
+@media (min-width: 640px) {
+  .promotion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    margin-inline: 0;
+    padding-inline: 0.25rem;
+    overflow: visible;
+  }
+  .promotion-card:only-child .promotion-card-link {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    align-items: stretch;
+  }
+  .promotion-card:only-child .promotion-prices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    column-gap: 1.5rem;
+  }
+  .promotion-card:only-child .promotion-image {
+    height: 100%;
+    min-height: 14rem;
+    aspect-ratio: auto;
+  }
+  .promotion-card:only-child .promotion-image::after {
+    background: linear-gradient(to right, rgb(255 255 255 / 0) 55%, #fff 100%);
+  }
+  .promotion-card:only-child .promotion-body {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    margin-top: 0;
+    padding: 1.25rem 1.5rem 1.25rem 0.5rem;
+  }
+}
 .promotion-card {
+  flex: 0 0 86%;
+  min-width: 0;
   scroll-snap-align: start;
   border: 0;
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
+}
+.promotion-card:only-child {
+  flex-basis: 100%;
 }
 @media (hover: hover) and (pointer: fine) {
   .promotion-card:hover {
@@ -587,18 +689,21 @@ body {
   box-shadow: var(--shadow-card);
 }
 
-/* Summary: gallery bleeds to the card edges and fades into the surface */
+/* Summary: gallery bleeds to the card edges (no negative margins, Safari-safe) */
 .booking-summary {
   --pad: 1rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0.3rem;
   overflow: hidden;
-  padding: var(--pad);
+  padding: 0 0 var(--pad);
 }
 .booking-summary > * {
-  grid-column: 1 / -1;
   min-width: 0;
+  box-sizing: border-box;
+}
+.booking-summary > :not(.product-image-gallery) {
+  padding-inline: var(--pad);
 }
 .booking-summary-icon {
   display: none;
@@ -624,13 +729,19 @@ body {
 .product-image-gallery {
   order: -1;
   gap: 0.5rem;
-  margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 0.35rem;
+  min-width: 0;
+  margin: 0 0 0.35rem;
+  overflow: hidden;
 }
 .product-image-gallery__main {
+  display: block;
   width: 100%;
-  max-height: 22rem;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
   aspect-ratio: 4 / 3;
   border-radius: 0;
+  object-fit: cover;
   mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
 }
 .product-image-gallery__empty {
@@ -782,10 +893,15 @@ body {
   outline-color: var(--color-brand);
 }
 .booking-summary-variant-price {
+  display: grid;
+  gap: 0.1rem;
   border-radius: 0.7rem;
   padding: 0.45rem 0.65rem;
   background: rgb(255 255 255 / 0.8);
   font-size: 0.84rem;
+}
+.booking-summary-variant-price > span:last-child {
+  justify-content: flex-start;
 }
 .booking-summary-variant-price strong {
   color: var(--color-brand);
@@ -944,8 +1060,6 @@ body {
   }
   .booking-summary {
     --pad: 0.9rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
   }
   .booking-panel {
     padding: 1rem;
