@@ -12,7 +12,7 @@ import {
   findPublicProductRecord,
   type PublicBusinessRecord,
 } from '../../services/public-catalog.service';
-import { renderPage } from 'vike/server';
+import { loadStorefrontRenderer } from './storefront-renderer';
 import type { PublicProductRecord } from '../../interfaces/product.interface';
 
 type PublicStorefrontData = {
@@ -156,32 +156,22 @@ export const renderStorefront = onRequest(
     }
 
     try {
-      const host = request.get('host') ?? request.hostname;
-      const origin = `${request.protocol}://${host}`;
-
-      const pageContext = await renderPage({
-        urlOriginal: request.originalUrl || request.url || request.path,
-        headersOriginal: request.headers,
-        origin,
+      const renderer = await loadStorefrontRenderer();
+      const { html, statusCode: renderedStatusCode } = renderer.renderHtml({
+        url: request.originalUrl || request.url || request.path,
         ...(initialCatalogStatus ? { initialCatalogStatus, initialBusiness, initialProduct } : {}),
       });
 
-      if (!pageContext.httpResponse) {
-        throw new Error('Vike did not provide an HTTP response for the requested route.');
-      }
-
-      for (const [name, value] of pageContext.httpResponse.headers) {
-        response.set(name, value);
-      }
+      const finalStatusCode = statusCode ?? renderedStatusCode;
 
       response
+        .set('Content-Type', 'text/html; charset=utf-8')
         .set(
           'Cache-Control',
-          statusCode && statusCode >= 400 ? 'no-store' : 'public, max-age=60, s-maxage=300',
+          finalStatusCode >= 400 ? 'no-store' : 'public, max-age=60, s-maxage=300',
         )
-        .status(statusCode ?? pageContext.httpResponse.statusCode);
-
-      pageContext.httpResponse.pipe(response);
+        .status(finalStatusCode)
+        .send(html);
     } catch (error: unknown) {
       logUnexpectedFailure(
         { functionName: 'renderStorefront', operation: 'storefront_render', stage: 'render' },

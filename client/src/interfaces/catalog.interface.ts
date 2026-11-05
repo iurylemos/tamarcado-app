@@ -1,4 +1,4 @@
-import type { CompanySummary, PublicProductSummary } from './company.interface';
+import type { CompanySummary, PublicProductSummary } from './company.interface.js';
 
 export type PublicCatalogStatus = 'ready' | 'not-found' | 'unavailable' | 'error';
 

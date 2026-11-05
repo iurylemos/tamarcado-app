@@ -1,17 +1,33 @@
+import { rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import vike from 'vike/plugin';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import type { ViteUserConfig as UserConfig } from 'vitest/config';
 import { verifySentryArtifactsPlugin } from '../shared/plugins/verify-sentry-artifacts.plugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(({ mode }): UserConfig => {
+// Firebase Hosting serves static files before rewrites, so the HTML shell must not be named index.html.
+function storefrontTemplatePlugin(): Plugin {
+  let outDir = '';
+
+  return {
+    name: 'storefront-template',
+    apply: 'build',
+    configResolved(resolved) {
+      outDir = path.resolve(resolved.root, resolved.build.outDir);
+    },
+    async writeBundle() {
+      await rename(path.join(outDir, 'index.html'), path.join(outDir, 'storefront-template.html'));
+    },
+  };
+}
+
+export default defineConfig(({ mode, isSsrBuild }): UserConfig => {
   const env = loadEnv(mode, root, '');
 
   const isProduction = mode === 'production';
@@ -42,34 +58,40 @@ export default defineConfig(({ mode }): UserConfig => {
   const config: UserConfig = {
     plugins: [
       react(),
-      vike(),
       tailwindcss(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['pwa-icon.svg'],
-        manifest: false,
-        workbox: {
-          navigateFallback: null,
-          runtimeCaching: [],
-        },
-        devOptions: { enabled: false },
-      }),
-      sentryVitePlugin({
-        authToken: sentryAuthToken,
-        org,
-        project,
-        telemetry: false,
-        disable: !sentryEnabled || skipSentryUpload,
-        release: { name: sentryRelease },
-        sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
-        bundleSizeOptimizations: {
-          excludeDebugStatements: true,
-          excludeReplayIframe: true,
-          excludeReplayShadowDom: true,
-          excludeReplayWorker: true,
-          excludeTracing: true,
-        },
-      }),
+      ...(isSsrBuild
+        ? []
+        : [
+            storefrontTemplatePlugin(),
+            VitePWA({
+              registerType: 'autoUpdate',
+              injectRegister: false,
+              includeAssets: ['pwa-icon.svg'],
+              manifest: false,
+              workbox: {
+                globPatterns: ['**/*.{js,css,svg}'],
+                navigateFallback: null,
+                runtimeCaching: [],
+              },
+              devOptions: { enabled: false },
+            }),
+            sentryVitePlugin({
+              authToken: sentryAuthToken,
+              org,
+              project,
+              telemetry: false,
+              disable: !sentryEnabled || skipSentryUpload,
+              release: { name: sentryRelease },
+              sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+              bundleSizeOptimizations: {
+                excludeDebugStatements: true,
+                excludeReplayIframe: true,
+                excludeReplayShadowDom: true,
+                excludeReplayWorker: true,
+                excludeTracing: true,
+              },
+            }),
+          ]),
       verifySentryArtifactsPlugin({
         app: 'client',
         outDir: path.join(root, 'dist'),
@@ -82,7 +104,24 @@ export default defineConfig(({ mode }): UserConfig => {
         '@shared': path.resolve(root, '../shared/domain'),
       },
     },
-    build: { sourcemap: sentryEnabled ? 'hidden' : false },
+    // Bundle the Firebase browser ESM builds so a single SDK instance serves SSR in the Function.
+    ...(isSsrBuild
+      ? {
+          ssr: {
+            noExternal: [/^firebase(\/|$)/, /^@firebase\//, 'idb', 're2js'],
+            resolve: { conditions: ['browser', 'module', 'import'], externalConditions: ['node'] },
+          },
+        }
+      : {}),
+    build: isSsrBuild
+      ? {
+          outDir: 'dist/server',
+          copyPublicDir: false,
+          rollupOptions: {
+            output: { entryFileNames: '[name].mjs', chunkFileNames: 'chunks/[name]-[hash].mjs' },
+          },
+        }
+      : { outDir: 'dist/client', sourcemap: sentryEnabled ? 'hidden' : false },
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],

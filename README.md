@@ -60,9 +60,9 @@ Business owners can ask for an analysis of their own results in the backoffice. 
 
 This feature is still being built. A request-and-report flow works in the code, but history browsing and approval of proposed actions are not finished, and it needs external provider keys (OpenRouter for the language model and Tavily for research). See the [AI specification](./specs/011-ai-agents-and-business-intelligence/spec.md).
 
-### Faster Public Pages with SSR (Vike)
+### Faster Public Pages with SSR
 
-The customer application uses **Vike** to build each business page on the server before it reaches the browser (server-side rendering). In practice:
+The customer application uses **React with Vite** (a server bundle rendered by the Cloud Function) to build each business page on the server before it reaches the browser (server-side rendering). In practice:
 
 - The catalog appears quickly, even before the page's scripts finish loading.
 - Shared links show a proper title, description, and image, because each page carries its own metadata.
@@ -76,7 +76,7 @@ Tá Marcado is organized as an npm monorepo with three independent web applicati
 
 | Workspace        | Responsibility                                                      |
 | ---------------- | ------------------------------------------------------------------- |
-| `client/`        | Public business catalogs and appointment booking (React + Vike SSR) |
+| `client/`        | Public business catalogs and appointment booking (React + Vite SSR) |
 | `collaborator/`  | Appointment management and collaborator workflows                   |
 | `backoffice/`    | Business administration, reports, and AI analysis                   |
 | `functions/`     | Trusted server-side business logic, SSR, WhatsApp, and AI           |
@@ -89,7 +89,7 @@ Tá Marcado is organized as an npm monorepo with three independent web applicati
 | React                    | 19.x                    | Web user interfaces                               |
 | TypeScript               | 6.x                     | Static typing across applications and backend     |
 | Vite                     | 8.x                     | Frontend development and builds                   |
-| Vike                     | Customer app            | Server-side rendering of public business pages    |
+| Vite SSR                 | Customer app            | Server-side rendering of public business pages    |
 | Tailwind CSS             | 4.x                     | UI styling                                        |
 | Node.js                  | 24                      | Cloud Functions runtime                           |
 | Firebase Cloud Functions | 2nd generation          | Server-side operations                            |
@@ -266,9 +266,9 @@ O dono do negócio pode pedir, no backoffice, uma análise dos próprios resulta
 
 Essa funcionalidade ainda está em construção. Existe um fluxo de pedido e relatório no código, mas o histórico de análises e a aprovação de ações propostas ainda não foram concluídos, e são necessárias chaves de provedores externos (OpenRouter para o modelo de linguagem e Tavily para a pesquisa). Veja a [especificação de IA](./specs/011-ai-agents-and-business-intelligence/spec.md).
 
-### Páginas Públicas Mais Rápidas com SSR (Vike)
+### Páginas Públicas Mais Rápidas com SSR
 
-A aplicação do cliente usa o **Vike** para montar a página de cada negócio no servidor antes de ela chegar ao navegador (renderização no servidor, ou SSR). Na prática:
+A aplicação do cliente usa **React com Vite** (um bundle de servidor executado pela Cloud Function) para montar a página de cada negócio no servidor antes de ela chegar ao navegador (renderização no servidor, ou SSR). Na prática:
 
 - O catálogo aparece rapidamente, mesmo antes de os scripts da página terminarem de carregar.
 - Links compartilhados mostram título, descrição e imagem adequados, pois cada página carrega seus próprios metadados.
@@ -282,7 +282,7 @@ O Tá Marcado utiliza um monorepo npm com três aplicações web independentes e
 
 | Workspace        | Responsabilidade                                             |
 | ---------------- | ------------------------------------------------------------ |
-| `client/`        | Catálogos públicos e agendamentos (React + Vike SSR)         |
+| `client/`        | Catálogos públicos e agendamentos (React + Vite SSR)         |
 | `collaborator/`  | Gestão de agenda e operações dos colaboradores               |
 | `backoffice/`    | Administração da empresa, relatórios e análise com IA        |
 | `functions/`     | Regras de negócio confiáveis no servidor, SSR, WhatsApp e IA |
@@ -295,7 +295,7 @@ O Tá Marcado utiliza um monorepo npm com três aplicações web independentes e
 | React                    | 19.x                     | Interfaces web                                 |
 | TypeScript               | 6.x                      | Tipagem estática nas aplicações e no backend   |
 | Vite                     | 8.x                      | Desenvolvimento e build do frontend            |
-| Vike                     | Aplicação do cliente     | Renderização no servidor das páginas públicas  |
+| Vite SSR                 | Aplicação do cliente     | Renderização no servidor das páginas públicas  |
 | Tailwind CSS             | 4.x                      | Estilização das interfaces                     |
 | Node.js                  | 24                       | Runtime das Cloud Functions                    |
 | Firebase Cloud Functions | 2ª geração               | Operações no servidor                          |
