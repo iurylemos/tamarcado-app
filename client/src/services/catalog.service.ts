@@ -5,6 +5,7 @@ import type {
 } from '../interfaces/company.interface';
 import type {
   ProductCustomizationSelection,
+  ProductImageGallery,
   ProductImage,
   ProductVariantPrice,
 } from '@shared/interfaces/product.interface';
@@ -55,16 +56,7 @@ function summarizeProduct(
         )
       : validEstimatedDeliveryDays(data.estimatedDeliveryDays));
 
-  const publicGalleries = galleries.docs.map((snapshot) => {
-    const data = snapshot.data();
-    return {
-      id: snapshot.id,
-      productId: data.productId as string,
-      combinationKey: data.combinationKey as string,
-      selections: data.selections as ProductCustomizationSelection[],
-      images: data.images as ProductImage[],
-    };
-  });
+  const publicGalleries = galleries.docs.map(summarizeProductGallery);
 
   const variantPrices = Array.isArray(data.variantPrices)
     ? (data.variantPrices as ProductVariantPrice[]).map((variantPrice) => {
@@ -113,6 +105,44 @@ function summarizeProduct(
       : {}),
     durationMinutes: data.durationMinutes as number,
   };
+}
+
+function summarizeProductGallery(
+  snapshot: QueryDocumentSnapshot<DocumentData, DocumentData>,
+): ProductImageGallery {
+  const data = snapshot.data();
+  return {
+    id: snapshot.id,
+    productId: data.productId as string,
+    combinationKey: data.combinationKey as string,
+    selections: data.selections as ProductCustomizationSelection[],
+    images: data.images as ProductImage[],
+  };
+}
+
+export async function getProductImageGalleries(
+  slug: string,
+  productId: string,
+): Promise<ProductImageGallery[]> {
+  if (!isValidBusinessSlug(slug) || !productId) return [];
+
+  const galleries = await getDocsFromServer(
+    query(
+      collection(db, 'public_product_galleries'),
+      where('businessSlug', '==', slug),
+      where('productId', '==', productId),
+      where('published', '==', true),
+    ),
+  );
+
+  return galleries.docs
+    .filter(
+      (snapshot) =>
+        snapshot.data().businessSlug === slug &&
+        snapshot.data().productId === productId &&
+        snapshot.data().published === true,
+    )
+    .map(summarizeProductGallery);
 }
 
 export async function getCompanyCatalog(

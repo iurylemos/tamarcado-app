@@ -11,7 +11,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build:functions": "npm run build --workspace functions",
-    "build:hosting": "npm run build --workspaces client,collaborator,backoffice",
+    "build:hosting": "npm run build --workspace=client --workspace=collaborator --workspace=backoffice",
     "dev:client": "npm run dev --workspace client",
     "dev:collaborator": "npm run dev --workspace collaborator",
     "dev:backoffice": "npm run dev --workspace backoffice",

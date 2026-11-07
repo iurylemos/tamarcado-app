@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, type JSX } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { formatBrl } from '../../../../../shared/domain/money.js';
 import {
   hasValidActivePromotion,
   resolveProductPricing,
 } from '../../../../../shared/domain/product-price.js';
+import { bookingPath } from '../../../app/routes.js';
 import type {
   CompanyCatalog,
   PublicProductSummary,
 } from '../../../interfaces/company.interface.js';
+import { resolvePageMeta, updatePageMeta } from '../../../app/page-meta.js';
 import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service.js';
 import Skeleton from '../../atoms/Skeleton/Skeleton.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
@@ -32,6 +35,7 @@ export default function CompanyCatalogTemplate({
   onLoadMore,
 }: Readonly<CompanyCatalogTemplateProps>): JSX.Element {
   const isLoading = useMemo<boolean>(() => status === 'loading', [status]);
+  const isBusinessLoading = isLoading && catalog === null;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const promotionalProducts = promotions ?? catalog?.promotions ?? [];
   const businessSlug = catalog?.business.slug;
@@ -68,33 +72,29 @@ export default function CompanyCatalogTemplate({
       new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }),
     );
     const originalHref = manifestLink.getAttribute('href');
-    const originalTitle = document.title;
-    const metadata = [
-      ['meta[name="apple-mobile-web-app-title"]', catalog.business.name],
-      ['meta[name="description"]', `Agende serviços com ${catalog.business.name}.`],
-      ['meta[property="og:title"]', `${catalog.business.name} | Tá Marcado`],
-      ['meta[property="og:description"]', `Conheça os serviços de ${catalog.business.name}.`],
-    ] as const;
-    const originalMetadata = metadata.map(([selector]) => {
-      const element = document.querySelector<HTMLMetaElement>(selector);
-      return { element, content: element?.getAttribute('content') ?? null };
-    });
-    document.title = `${catalog.business.name} | Tá Marcado`;
-    metadata.forEach(([selector, content]) => {
-      document.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', content);
-    });
+    const appleTitle = document.querySelector<HTMLMetaElement>(
+      'meta[name="apple-mobile-web-app-title"]',
+    );
+    const originalAppleTitle = appleTitle?.getAttribute('content') ?? null;
+    const restorePageMeta = updatePageMeta(
+      resolvePageMeta({
+        name: 'catalog',
+        slug: catalog.business.slug,
+        business: catalog.business,
+        status: 'ready',
+      }),
+    );
+    appleTitle?.setAttribute('content', catalog.business.name);
     manifestLink.href = manifestUrl;
 
     return () => {
       if (addedManifestLink) manifestLink.remove();
       else if (originalHref === null) manifestLink.removeAttribute('href');
       else manifestLink.setAttribute('href', originalHref);
-      document.title = originalTitle;
-      originalMetadata.forEach(({ element, content }) => {
-        if (!element) return;
-        if (content === null) element.removeAttribute('content');
-        else element.setAttribute('content', content);
-      });
+      restorePageMeta();
+      if (appleTitle && originalAppleTitle === null) appleTitle.removeAttribute('content');
+      else if (appleTitle && originalAppleTitle !== null)
+        appleTitle.setAttribute('content', originalAppleTitle);
       URL.revokeObjectURL(manifestUrl);
     };
   }, [catalog, status]);
@@ -132,7 +132,7 @@ export default function CompanyCatalogTemplate({
           )}
           <header className="company-hero">
             <div className="company-identity" aria-busy={isLoading}>
-              {isLoading ? (
+              {isBusinessLoading ? (
                 <span className="company-logo catalog-loading-logo" aria-hidden="true" />
               ) : catalog?.business.logoUrl ? (
                 <img
@@ -147,12 +147,12 @@ export default function CompanyCatalogTemplate({
               )}
               <div>
                 <p className="eyebrow">CATÁLOGO DA EMPRESA</p>
-                {isLoading ? (
+                {isBusinessLoading ? (
                   <Skeleton className="catalog-loading-title" />
                 ) : (
                   catalog && <h1>{catalog.business.name}</h1>
                 )}
-                {isLoading ? (
+                {isBusinessLoading ? (
                   <Skeleton className="catalog-loading-description" />
                 ) : (
                   catalog?.business.description && <p>{catalog.business.description}</p>
@@ -185,8 +185,8 @@ export default function CompanyCatalogTemplate({
                       key={product.id}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <a
-                        href={`/empresa/${encodeURIComponent(businessSlug)}/agendar/${encodeURIComponent(product.id)}`}
+                      <Link
+                        to={bookingPath(businessSlug, product.id)}
                         className="promotion-card-link"
                       >
                         <div className="promotion-image">
@@ -253,7 +253,7 @@ export default function CompanyCatalogTemplate({
                               : `${product.durationMinutes} min · Escolher horário`}
                           </span>
                         </div>
-                      </a>
+                      </Link>
                     </motion.article>
                   );
                 })}
@@ -306,31 +306,32 @@ export default function CompanyCatalogTemplate({
                       className="rise-in"
                       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
                     >
-                      <motion.a
-                        className="product-card catalog-service-card"
-                        whileTap={{ scale: 0.97 }}
-                        href={`/empresa/${encodeURIComponent(catalog.business.slug)}/agendar/${encodeURIComponent(product.id)}`}
-                      >
-                        <div className="media">
-                          <img
-                            src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
-                            alt={product.name}
-                            loading="lazy"
-                          />
-                          <span className="price">{formatBrl(product.priceCents)}</span>
-                        </div>
-                        <div className="body">
-                          <h3>{product.name}</h3>
-                          {product.description && (
-                            <p className="service-description">{product.description}</p>
-                          )}
-                          <span className="store">
-                            {product.estimatedDeliveryEnabled
-                              ? 'Prazo estimado · Solicitar serviço →'
-                              : `${product.durationMinutes} min · Escolher horário →`}
-                          </span>
-                        </div>
-                      </motion.a>
+                      <motion.div whileTap={{ scale: 0.97 }}>
+                        <Link
+                          className="product-card catalog-service-card"
+                          to={bookingPath(catalog.business.slug, product.id)}
+                        >
+                          <div className="media">
+                            <img
+                              src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
+                              alt={product.name}
+                              loading="lazy"
+                            />
+                            <span className="price">{formatBrl(product.priceCents)}</span>
+                          </div>
+                          <div className="body">
+                            <h3>{product.name}</h3>
+                            {product.description && (
+                              <p className="service-description">{product.description}</p>
+                            )}
+                            <span className="store">
+                              {product.estimatedDeliveryEnabled
+                                ? 'Prazo estimado · Solicitar serviço →'
+                                : `${product.durationMinutes} min · Escolher horário →`}
+                            </span>
+                          </div>
+                        </Link>
+                      </motion.div>
                     </div>
                   ))}
                   {hasMore && (

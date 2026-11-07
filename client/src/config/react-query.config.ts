@@ -1,5 +1,6 @@
 export class ReactQueryConfig {
   public static readonly companyCatalogKey: string = 'company-catalog';
+  public static readonly productGalleriesKey: string = 'product-galleries';
   public static readonly availabilityKey: string = 'availability';
   public static readonly productKey: string = 'product';
   public static readonly availabilitySearchKey: string = 'availability-search';
@@ -19,6 +20,10 @@ export class ReactQueryConfig {
     return productId
       ? [this.companyCatalogKey, slug, this.productKey, productId]
       : [this.companyCatalogKey, slug];
+  }
+
+  public static productGalleriesQueryKey(slug: string, productId: string): string[] {
+    return [this.productGalleriesKey, slug, productId];
   }
 
   public static availabilityQueryKey(

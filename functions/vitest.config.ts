@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -8,7 +9,7 @@ export default defineConfig({
     testTimeout: 20_000,
     exclude: ['**/node_modules/**', '**/lib/**', '**/dist/**', '**/*.js'],
     alias: {
-      '@shared': '../shared',
+      '@shared': path.resolve(__dirname, '../shared/domain'),
     },
   },
 });

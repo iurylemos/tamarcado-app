@@ -1,4 +1,4 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { collections } from '../../config/collections';
 import {
   ActiveUtilAnalysisError,
@@ -26,28 +26,26 @@ import { reportSchema, reportSourcesSchema, type AnalysisReport } from '../schem
 import { computeDeadline, isPastDeadline } from './limits.service';
 import { CheckpointUtil } from '../utils/checkpoint.util';
 
-function executions() {
-  return firestore.collection(collections.aiAnalysisExecutions);
-}
-
 // Idempotency key is scoped to tenant and actor; the stored key is only a hash.
 export async function createQueuedExecution(
   input: CreateExecutionInput,
   now: Date = new Date(),
 ): Promise<CreatedExecution> {
-  const idempotencyKeyHash = CheckpointUtil.sha256(
-    CheckpointUtil.canonicalJson({
-      tenantId: input.tenantId,
-      uid: input.requesterUid,
-      key: input.idempotencyKey,
-    }),
-  );
+  const idempotencyKeyCanonical = CheckpointUtil.canonicalJson({
+    tenantId: input.tenantId,
+    uid: input.requesterUid,
+    key: input.idempotencyKey,
+  });
+
+  const idempotencyKeyHash = CheckpointUtil.sha256(idempotencyKeyCanonical);
 
   const requestHash = CheckpointUtil.sha256(CheckpointUtil.canonicalJson(input.request));
 
-  return await firestore.runTransaction(async (transaction) => {
+  return await firestore.runTransaction(async (transaction: Transaction) => {
+    const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+
     const existing = await transaction.get(
-      executions().where('idempotencyKeyHash', '==', idempotencyKeyHash).limit(1),
+      analysisCollection.where('idempotencyKeyHash', '==', idempotencyKeyHash).limit(1),
     );
 
     const found = existing.docs[0];
@@ -69,13 +67,13 @@ export async function createQueuedExecution(
 
     const [queued, running] = await Promise.all([
       transaction.get(
-        executions()
+        analysisCollection
           .where('tenantId', '==', input.tenantId)
           .where('status', '==', 'queued')
           .limit(10),
       ),
       transaction.get(
-        executions()
+        analysisCollection
           .where('tenantId', '==', input.tenantId)
           .where('status', '==', 'running')
           .limit(10),
@@ -91,7 +89,7 @@ export async function createQueuedExecution(
       throw new ActiveUtilAnalysisError();
     }
 
-    const ref = executions().doc();
+    const ref = analysisCollection.doc();
 
     const createdAt = Timestamp.fromDate(now);
 
@@ -123,7 +121,10 @@ export async function claimExecution(
   owner: string,
   now: Date = new Date(),
 ): Promise<ClaimResult> {
-  const ref = executions().doc(executionId);
+  const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+
+  const ref = analysisCollection.doc(executionId);
+
   return await firestore.runTransaction(async (transaction): Promise<ClaimResult> => {
     const snapshot = await transaction.get(ref);
 
@@ -182,10 +183,12 @@ export async function beginStage(
   inputHash: string,
   now: Date = new Date(),
 ): Promise<CheckpointBeginStageResult> {
-  const ref = executions().doc(holder.executionId);
+  const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+  const analysisCollectionRef = analysisCollection.doc(holder.executionId);
+
   return await firestore.runTransaction(
-    async (transaction): Promise<CheckpointBeginStageResult> => {
-      const snapshot = await transaction.get(ref);
+    async (transaction: Transaction): Promise<CheckpointBeginStageResult> => {
+      const snapshot = await transaction.get(analysisCollectionRef);
 
       if (!snapshot.exists) return { state: 'fenced' };
 
@@ -197,7 +200,7 @@ export async function beginStage(
 
       if (isPastDeadline(execution.deadlineAt, now)) {
         transaction.update(
-          ref,
+          analysisCollectionRef,
           CheckpointUtil.terminalUpdate('timed_out', 'deadline_exceeded', execution, now),
         );
 
@@ -220,7 +223,7 @@ export async function beginStage(
         return { state: 'attempt_limit' };
       }
 
-      transaction.update(ref, {
+      transaction.update(analysisCollectionRef, {
         activeStage: stage,
         [`stages.${stage}.status`]: 'running',
         [`stages.${stage}.attemptCount`]: attemptCount + 1,
@@ -242,28 +245,32 @@ export async function saveStageCheckpoint(
   now: Date = new Date(),
 ): Promise<'saved' | 'fenced'> {
   const output = validateStageOutput(stage, rawOutput);
-  const ref = executions().doc(holder.executionId);
-  return await firestore.runTransaction(async (transaction): Promise<'saved' | 'fenced'> => {
-    const snapshot = await transaction.get(ref);
 
-    if (!snapshot.exists) return 'fenced';
+  const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+  const analysisCollectionRef = analysisCollection.doc(holder.executionId);
+  return await firestore.runTransaction(
+    async (transaction: Transaction): Promise<'saved' | 'fenced'> => {
+      const snapshot = await transaction.get(analysisCollectionRef);
 
-    const execution = snapshot.data() as AnalysisExecutionDocument;
+      if (!snapshot.exists) return 'fenced';
 
-    if (!CheckpointUtil.holdsLease(execution, holder.owner, holder.fencingToken, now))
-      return 'fenced';
+      const execution = snapshot.data() as AnalysisExecutionDocument;
 
-    transaction.update(ref, {
-      [`stages.${stage}.status`]: 'succeeded',
-      [`stages.${stage}.inputHash`]: inputHash,
-      [`stages.${stage}.output`]: output,
-      [`stages.${stage}.completedAt`]: Timestamp.fromDate(now),
-      ...(stage === 'metrics' ? { metrics: output } : {}),
-      ...(stage === 'research' ? { researchSources: output } : {}),
-      lease: CheckpointUtil.leaseFor(holder.owner, holder.fencingToken, now),
-    });
-    return 'saved';
-  });
+      if (!CheckpointUtil.holdsLease(execution, holder.owner, holder.fencingToken, now))
+        return 'fenced';
+
+      transaction.update(analysisCollectionRef, {
+        [`stages.${stage}.status`]: 'succeeded',
+        [`stages.${stage}.inputHash`]: inputHash,
+        [`stages.${stage}.output`]: output,
+        [`stages.${stage}.completedAt`]: Timestamp.fromDate(now),
+        ...(stage === 'metrics' ? { metrics: output } : {}),
+        ...(stage === 'research' ? { researchSources: output } : {}),
+        lease: CheckpointUtil.leaseFor(holder.owner, holder.fencingToken, now),
+      });
+      return 'saved';
+    },
+  );
 }
 
 function validateStageOutput(stage: AnalysisStage, output: unknown): unknown {
@@ -294,9 +301,12 @@ export async function completeAnalysis(
   now: Date = new Date(),
 ): Promise<'completed' | 'fenced' | 'deadline'> {
   const report: AnalysisReport = reportSchema.parse(rawReport);
-  const ref = executions().doc(holder.executionId);
-  return await firestore.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(ref);
+
+  const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+  const analysisCollectionRef = analysisCollection.doc(holder.executionId);
+
+  return await firestore.runTransaction(async (transaction: Transaction) => {
+    const snapshot = await transaction.get(analysisCollectionRef);
 
     if (!snapshot.exists) return 'fenced';
 
@@ -307,13 +317,13 @@ export async function completeAnalysis(
 
     if (isPastDeadline(execution.deadlineAt, now)) {
       transaction.update(
-        ref,
+        analysisCollectionRef,
         CheckpointUtil.terminalUpdate('timed_out', 'deadline_exceeded', execution, now),
       );
       return 'deadline';
     }
 
-    transaction.update(ref, {
+    transaction.update(analysisCollectionRef, {
       status: 'succeeded',
       completedAt: Timestamp.fromDate(now),
       report,
@@ -335,24 +345,27 @@ export async function releaseLease(
   holder: CheckpointLeaseHolder,
   now: Date = new Date(),
 ): Promise<'released' | 'fenced'> {
-  const ref = executions().doc(holder.executionId);
-  return await firestore.runTransaction(async (transaction): Promise<'released' | 'fenced'> => {
-    const snapshot = await transaction.get(ref);
+  const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+  const analysisCollectionRef = analysisCollection.doc(holder.executionId);
+  return await firestore.runTransaction(
+    async (transaction: Transaction): Promise<'released' | 'fenced'> => {
+      const snapshot = await transaction.get(analysisCollectionRef);
 
-    if (!snapshot.exists) {
-      return 'fenced';
-    }
+      if (!snapshot.exists) {
+        return 'fenced';
+      }
 
-    const execution = snapshot.data() as AnalysisExecutionDocument;
+      const execution = snapshot.data() as AnalysisExecutionDocument;
 
-    if (!CheckpointUtil.holdsLease(execution, holder.owner, holder.fencingToken, now)) {
-      return 'fenced';
-    }
+      if (!CheckpointUtil.holdsLease(execution, holder.owner, holder.fencingToken, now)) {
+        return 'fenced';
+      }
 
-    transaction.update(ref, { lease: FieldValue.delete() });
+      transaction.update(analysisCollectionRef, { lease: FieldValue.delete() });
 
-    return 'released';
-  });
+      return 'released';
+    },
+  );
 }
 
 export async function recordFailure(
@@ -362,29 +375,35 @@ export async function recordFailure(
   options: { status?: 'failed' | 'timed_out'; retryable?: boolean } = {},
   now: Date = new Date(),
 ): Promise<'recorded' | 'fenced'> {
-  const ref = executions().doc(holder.executionId);
+  const analysisCollection = firestore.collection(collections.aiAnalysisExecutions);
+  const analysisCollectionRef = analysisCollection.doc(holder.executionId);
 
-  return await firestore.runTransaction(async (transaction): Promise<'recorded' | 'fenced'> => {
-    const snapshot = await transaction.get(ref);
+  return await firestore.runTransaction(
+    async (transaction: Transaction): Promise<'recorded' | 'fenced'> => {
+      const snapshot = await transaction.get(analysisCollectionRef);
 
-    if (!snapshot.exists) return 'fenced';
+      if (!snapshot.exists) {
+        return 'fenced';
+      }
 
-    const execution = snapshot.data() as AnalysisExecutionDocument;
+      const execution = snapshot.data() as AnalysisExecutionDocument;
 
-    if (!CheckpointUtil.holdsLease(execution, holder.owner, holder.fencingToken, now))
-      return 'fenced';
+      if (!CheckpointUtil.holdsLease(execution, holder.owner, holder.fencingToken, now)) {
+        return 'fenced';
+      }
 
-    const status = options.status ?? 'failed';
+      const status = options.status ?? 'failed';
 
-    transaction.update(ref, {
-      status,
-      completedAt: Timestamp.fromDate(now),
-      lease: FieldValue.delete(),
-      [`stages.${stage}.status`]: status === 'timed_out' ? 'timed_out' : 'failed',
-      [`stages.${stage}.errorCode`]: code,
-      failure: { code, stage, retryable: options.retryable ?? false },
-    });
+      transaction.update(analysisCollectionRef, {
+        status,
+        completedAt: Timestamp.fromDate(now),
+        lease: FieldValue.delete(),
+        [`stages.${stage}.status`]: status === 'timed_out' ? 'timed_out' : 'failed',
+        [`stages.${stage}.errorCode`]: code,
+        failure: { code, stage, retryable: options.retryable ?? false },
+      });
 
-    return 'recorded';
-  });
+      return 'recorded';
+    },
+  );
 }

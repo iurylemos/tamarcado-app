@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { MotionConfig } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import BookingHero from '../../atoms/BookingHero';
@@ -7,6 +8,7 @@ import BookingServiceSummary from '../BookingServiceSummary/BookingServiceSummar
 import BookingAvailability from '../BookingAvailability/BookingAvailability';
 import BookingCustomerDetails from '../BookingCustomerDetails/BookingCustomerDetails';
 import BookingReceiptDialog from '../BookingReceiptDialog/BookingReceiptDialog';
+import { companyCatalogPath } from '../../../app/routes';
 
 type BookingReadyProps = Extract<BookingTemplateProps, { status: 'ready' }>;
 
@@ -51,9 +53,13 @@ export default function BookingReady({
     <MotionConfig reducedMotion="user">
       <MarketBackground />
       <main className="page stack market-page booking-page">
-        <a aria-label="Voltar ao catálogo" className="market-back-link" href={`/empresa/${slug}`}>
+        <Link
+          aria-label="Voltar ao catálogo"
+          className="market-back-link"
+          to={companyCatalogPath(slug)}
+        >
           ← Voltar ao catálogo
-        </a>
+        </Link>
 
         <BookingHero />
 

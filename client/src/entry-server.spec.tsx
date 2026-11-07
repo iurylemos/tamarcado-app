@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 // @vitest-environment node
 
 import { readFileSync } from 'node:fs';
@@ -50,13 +52,19 @@ describe('storefront SSR', () => {
     expect(html).toContain(
       '<title>Studio &lt;Aurora&gt; &amp; &quot;Cia&quot; | Tá Marcado</title>',
     );
+    expect(html).toContain(
+      '<link rel="canonical" href="https://tamarcado-dad82.web.app/empresa/studio-aurora"',
+    );
+    expect(html).toContain(
+      'property="og:url" content="https://tamarcado-dad82.web.app/empresa/studio-aurora"',
+    );
     expect(html).toContain('property="og:image" content="https://cdn.test/logo.png?a=1&amp;b=2"');
     expect(html).toContain('id="__STOREFRONT_STATE__" type="application/json"');
     expect(html).not.toContain('<Aurora>');
     expect(html).toContain('\\u003cAurora>');
   });
 
-  it('keeps concurrent tenant renders isolated', () => {
+  it('renders distinct canonical metadata for two tenant slugs', () => {
     const studio = renderRoute(
       '/empresa/studio-aurora',
       createBusiness('Studio Aurora', 'studio-aurora'),
@@ -68,8 +76,12 @@ describe('storefront SSR', () => {
 
     expect(studio).toContain('Studio Aurora');
     expect(studio).not.toContain('Barbearia Lunar');
+    expect(studio).toContain('/empresa/studio-aurora');
+    expect(studio).not.toContain('/empresa/barbearia-lunar');
     expect(barbershop).toContain('Barbearia Lunar');
     expect(barbershop).not.toContain('Studio Aurora');
+    expect(barbershop).toContain('/empresa/barbearia-lunar');
+    expect(barbershop).not.toContain('/empresa/studio-aurora');
   });
 
   it('answers 404 only for unknown public routes', () => {
