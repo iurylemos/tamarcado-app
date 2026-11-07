@@ -42,6 +42,8 @@ async function bootstrap(): Promise<void> {
       pathname={pathname}
       queryClient={createQueryClient()}
       page={createPageElement(page, components)}
+      routerMode="browser"
+      loadPageComponents={loadPageComponents}
     />
   );
 

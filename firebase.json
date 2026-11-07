@@ -20,12 +20,8 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
         {
-          "source": "/",
-          "function": { "functionId": "renderStorefront", "region": "southamerica-east1" }
-        },
-        {
-          "source": "/empresa/**",
-          "function": { "functionId": "renderStorefront", "region": "southamerica-east1" }
+          "source": "/empresa/**/agendar/**",
+          "destination": "/booking-shell.html"
         }
       ],
       "headers": [

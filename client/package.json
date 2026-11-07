@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --ssr src/entry-server.tsx",
+    "build": "tsc --noEmit && vite build && vite build --ssr src/entry-server.tsx && node scripts/generate-storefront.mts",
     "test": "vitest run",
     "preview": "vite preview --host 127.0.0.1"
   },
@@ -23,7 +23,7 @@
   "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.4",
+    "react-router-dom": "^7.18.5",
     "vite-plugin-pwa": "^2.0.0"
   }
 }

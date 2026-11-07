@@ -1,9 +1,11 @@
 import type { JSX } from 'react';
+import { Link } from 'react-router-dom';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
 import MarketBackground from '../../atoms/MarketBackground';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
 import BookingHero from '../../atoms/BookingHero';
 import BookingReady from '../../organisms/BookingReady';
+import { companyCatalogPath } from '../../../app/routes';
 
 export default function BookingTemplate(props: Readonly<BookingTemplateProps>): JSX.Element {
   if (props.status === 'loading') {
@@ -11,9 +13,9 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
       <>
         <MarketBackground />
         <main className="page stack market-page booking-page">
-          <a className="market-back-link" href={`/empresa/${props.slug}`}>
+          <Link className="market-back-link" to={companyCatalogPath(props.slug)}>
             ← Voltar ao catálogo
-          </a>
+          </Link>
 
           <BookingHero />
 
@@ -61,9 +63,9 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
           <p role="alert" className="error state-card">
             {props.error}
           </p>
-          <a className="market-back-link" href={`/empresa/${props.slug}`}>
+          <Link className="market-back-link" to={companyCatalogPath(props.slug)}>
             Voltar ao catálogo
-          </a>
+          </Link>
         </main>
       </>
     );
@@ -75,7 +77,7 @@ export default function BookingTemplate(props: Readonly<BookingTemplateProps>): 
         <MarketBackground />
         <main className="page market-page state-card">
           <p role="status">Serviço não encontrado.</p>
-          <a href={`/empresa/${props.slug}`}>Voltar ao catálogo</a>
+          <Link to={companyCatalogPath(props.slug)}>Voltar ao catálogo</Link>
         </main>
       </>
     );

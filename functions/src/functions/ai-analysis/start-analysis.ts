@@ -24,14 +24,19 @@ export async function startAnalysis(
   now: Date = new Date(),
 ): Promise<StartAnalysisResult> {
   const parsed = startAnalysisInputSchema.safeParse(rawInput);
+
   if (!parsed.success) {
     throw new HttpsError('invalid-argument', 'Informe um objetivo e um período válidos.');
   }
+
   const input = parsed.data;
 
-  const tenant = (
-    await firestore.collection(collections.tenants).doc(actor.tenantId).get()
-  ).data() as TenantDocument | undefined;
+  const tenantsCollection = await firestore
+    .collection(collections.tenants)
+    .doc(actor.tenantId)
+    .get();
+
+  const tenant = tenantsCollection.data() as TenantDocument | undefined;
 
   if (!tenant?.timezone) {
     throw new HttpsError('failed-precondition', 'O fuso horário da empresa não está configurado.');
@@ -52,6 +57,7 @@ export async function startAnalysis(
       },
       now,
     );
+
     return {
       executionId,
       status: 'queued',

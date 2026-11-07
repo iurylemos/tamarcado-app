@@ -4,6 +4,16 @@ export type AppRoute =
   | { name: 'booking'; slug: string; productId: string }
   | { name: 'not-found' };
 
+export const homePath = '/';
+
+export function companyCatalogPath(slug: string): string {
+  return `/empresa/${encodeURIComponent(slug)}`;
+}
+
+export function bookingPath(slug: string, productId: string): string {
+  return `${companyCatalogPath(slug)}/agendar/${encodeURIComponent(productId)}`;
+}
+
 function decodeSegment(segment: string): string | null {
   try {
     return decodeURIComponent(segment);

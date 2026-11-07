@@ -47,6 +47,7 @@ export function render({ url, ...initial }: StorefrontRenderInput): StorefrontRe
         pathname={pathname}
         queryClient={queryClient}
         page={createPageElement(page, pageComponents)}
+        routerMode="static"
       />,
     );
 

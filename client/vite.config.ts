@@ -5,8 +5,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { defineConfig, loadEnv, type Plugin } from 'vite';
-import type { ViteUserConfig as UserConfig } from 'vitest/config';
+import { defineConfig, loadEnv, type Plugin, type ResolvedConfig } from 'vite';
+import type { ViteUserConfig } from 'vitest/config';
 import { verifySentryArtifactsPlugin } from '../shared/plugins/verify-sentry-artifacts.plugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -18,16 +18,16 @@ function storefrontTemplatePlugin(): Plugin {
   return {
     name: 'storefront-template',
     apply: 'build',
-    configResolved(resolved) {
+    configResolved(resolved: ResolvedConfig): void {
       outDir = path.resolve(resolved.root, resolved.build.outDir);
     },
-    async writeBundle() {
+    async writeBundle(): Promise<void> {
       await rename(path.join(outDir, 'index.html'), path.join(outDir, 'storefront-template.html'));
     },
   };
 }
 
-export default defineConfig(({ mode, isSsrBuild }): UserConfig => {
+export default defineConfig(({ mode, isSsrBuild }): ViteUserConfig => {
   const env = loadEnv(mode, root, '');
 
   const isProduction = mode === 'production';
@@ -55,7 +55,7 @@ export default defineConfig(({ mode, isSsrBuild }): UserConfig => {
 
   const project = process.env.SENTRY_PROJECT_CLIENT || env.SENTRY_PROJECT_CLIENT || 'client';
 
-  const config: UserConfig = {
+  const config: ViteUserConfig = {
     plugins: [
       react(),
       tailwindcss(),
@@ -125,7 +125,13 @@ export default defineConfig(({ mode, isSsrBuild }): UserConfig => {
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.spec.ts', 'src/**/*.spec.tsx', 'src/**/*.test.tsx'],
+      include: [
+        'src/**/*.spec.ts',
+        'src/**/*.spec.tsx',
+        'src/**/*.test.tsx',
+        'scripts/**/*.spec.ts',
+        'scripts/**/*.spec.tsx',
+      ],
       restoreMocks: true,
     },
   };

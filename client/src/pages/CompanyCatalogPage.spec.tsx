@@ -1,4 +1,5 @@
 import { cleanup, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
@@ -26,10 +27,18 @@ describe('CompanyCatalogPage', () => {
     });
   });
 
+  function renderCatalogPage(slug: string): ReturnType<typeof renderWithQueryClient> {
+    return renderWithQueryClient(
+      <MemoryRouter>
+        <CompanyCatalogPage slug={slug} />
+      </MemoryRouter>,
+    );
+  }
+
   it('shows service card skeletons while the catalog request is pending', () => {
     vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
 
-    const { container } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    const { container } = renderCatalogPage('studio-aurora');
 
     expect(screen.getByRole('status')).toHaveTextContent('Carregando catálogo');
     expect(screen.getByRole('status')).toHaveClass('skeleton-status');
@@ -49,7 +58,7 @@ describe('CompanyCatalogPage', () => {
   it('shows the catalog error without leaving loading skeletons', async () => {
     vi.mocked(getCompanyCatalog).mockRejectedValue(new Error('network error'));
 
-    const { container } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    const { container } = renderCatalogPage('studio-aurora');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Não foi possível carregar este catálogo.',
@@ -62,7 +71,7 @@ describe('CompanyCatalogPage', () => {
       Object.assign(new Error('service unavailable'), { code: 'unavailable' }),
     );
 
-    renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    renderCatalogPage('studio-aurora');
 
     expect(
       await screen.findByText('Este catálogo está temporariamente indisponível. Tente novamente.'),
@@ -72,7 +81,7 @@ describe('CompanyCatalogPage', () => {
   it('shows an explicit not-found state when no published catalog matches the slug', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue(null);
 
-    renderWithQueryClient(<CompanyCatalogPage slug="slug-inexistente" />);
+    renderCatalogPage('slug-inexistente');
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
   });
@@ -80,7 +89,7 @@ describe('CompanyCatalogPage', () => {
   it('rejects a malformed slug without rendering another business catalog', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue(null);
 
-    renderWithQueryClient(<CompanyCatalogPage slug="Slug/malformado" />);
+    renderCatalogPage('Slug/malformado');
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
     expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado', {
@@ -100,7 +109,7 @@ describe('CompanyCatalogPage', () => {
       products: [],
     });
 
-    const { container } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    const { container } = renderCatalogPage('studio-aurora');
 
     expect(
       await screen.findByText('Esta empresa ainda não publicou serviços.'),
@@ -131,7 +140,7 @@ describe('CompanyCatalogPage', () => {
     openGraphTitle.setAttribute('content', 'Tá Marcado | Catálogos de negócios');
     document.head.append(openGraphTitle);
 
-    const { unmount } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    const { unmount } = renderCatalogPage('studio-aurora');
 
     expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
     expect(document.querySelector('.skeleton-card')).not.toBeInTheDocument();
@@ -215,7 +224,7 @@ describe('CompanyCatalogPage', () => {
       ],
     });
 
-    renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    renderCatalogPage('studio-aurora');
 
     const offers = await screen.findByRole('region', { name: 'Ofertas' });
     const regularCatalog = screen.getByRole('region', { name: 'Serviços' });
@@ -254,7 +263,7 @@ describe('CompanyCatalogPage', () => {
       products: [],
     });
 
-    renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    renderCatalogPage('studio-aurora');
 
     expect(
       await screen.findByRole('complementary', { name: 'Instalar catálogo de Studio Aurora' }),
@@ -273,7 +282,7 @@ describe('CompanyCatalogPage', () => {
     });
 
     const originalTitle = document.title;
-    const { unmount } = renderWithQueryClient(<CompanyCatalogPage slug="studio-aurora" />);
+    const { unmount } = renderCatalogPage('studio-aurora');
 
     expect(
       await screen.findByText('Esta empresa ainda não publicou serviços.'),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type {
   AvailableProfessional,
   AvailableSlot,
@@ -23,7 +23,7 @@ import {
   searchAvailabilityForEstimation,
 } from '../services/availability.service';
 import { createAppointment } from '../services/appointment.service';
-import { getCompanyCatalog } from '../services/catalog.service';
+import { getCompanyCatalog, getProductImageGalleries } from '../services/catalog.service';
 import {
   eligibleProfessionals,
   eligibleProfessionalsWithinHorizon,
@@ -32,6 +32,7 @@ import { estimateDateFromInstant, isValidIanaTimezone } from '@shared/timezone';
 import { DateUtil } from '../utils/date.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import { ReactQueryConfig } from '../config/react-query.config';
+import { resolvePageMeta, updatePageMeta } from '../app/page-meta';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 
@@ -42,6 +43,48 @@ type BookingPageProps = {
   initialProduct?: PublicProductSummary | null;
   initialStatus?: PublicCatalogStatus;
 };
+
+function getBookingCatalog(
+  queryClient: QueryClient,
+  slug: string,
+  productId: string,
+  refresh = false,
+): Promise<CompanyCatalog | null> {
+  const detailKey = ReactQueryConfig.companyCatalogQueryKey(slug, productId);
+
+  return queryClient.fetchQuery({
+    queryKey: detailKey,
+    staleTime: refresh ? 0 : ReactQueryConfig.queryStaleTime,
+    queryFn: async () => {
+      if (refresh) return getCompanyCatalog(slug, { productId });
+
+      const cachedCatalog = queryClient.getQueryData<CompanyCatalog>(
+        ReactQueryConfig.companyCatalogQueryKey(slug),
+      );
+      const cachedProduct =
+        cachedCatalog?.business.slug === slug
+          ? cachedCatalog.products.find((item) => item.id === productId)
+          : undefined;
+
+      if (!cachedCatalog || !cachedProduct) {
+        return getCompanyCatalog(slug, { productId });
+      }
+
+      const imageGalleries = await queryClient.fetchQuery({
+        queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
+        queryFn: () => getProductImageGalleries(slug, productId),
+        staleTime: ReactQueryConfig.queryStaleTime,
+      });
+      const catalog = {
+        ...cachedCatalog,
+        products: cachedCatalog.products.map((product) =>
+          product.id === productId ? { ...product, imageGalleries } : product,
+        ),
+      };
+      return catalog;
+    },
+  });
+}
 
 export default function BookingPage({
   slug,
@@ -94,6 +137,25 @@ export default function BookingPage({
         : undefined,
     [catalog, slug, productId],
   );
+
+  useEffect(() => {
+    const status = loading
+      ? undefined
+      : product && catalog
+        ? 'ready'
+        : initialStatus ?? (error ? 'error' : 'not-found');
+
+    return updatePageMeta(
+      resolvePageMeta({
+        name: 'booking',
+        slug,
+        productId,
+        business: catalog?.business,
+        product,
+        status,
+      }),
+    );
+  }, [catalog, error, initialStatus, loading, product, productId, slug]);
 
   const customizationSelections = useMemo<ProductCustomizationSelection[]>(() => {
     if (!product) return [];
@@ -227,11 +289,7 @@ export default function BookingPage({
 
   const loadAvailability = useCallback(
     async (current: boolean): Promise<void> => {
-      const currentCatalog = await queryClient.query({
-        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug, productId),
-        queryFn: () => getCompanyCatalog(slug, { productId }),
-        staleTime: 0,
-      });
+      const currentCatalog = await getBookingCatalog(queryClient, slug, productId);
 
       if (!current) return;
 
@@ -311,12 +369,7 @@ export default function BookingPage({
 
     let current = true;
 
-    queryClient
-      .query({
-        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug, productId),
-        queryFn: () => getCompanyCatalog(slug, { productId }),
-        staleTime: 0,
-      })
+    getBookingCatalog(queryClient, slug, productId)
       .then((result) => {
         if (current) setCatalog(result);
       })
@@ -458,11 +511,7 @@ export default function BookingPage({
         return;
       }
 
-      const currentCatalog = await queryClient.query({
-        queryKey: ReactQueryConfig.companyCatalogQueryKey(slug, productId),
-        queryFn: () => getCompanyCatalog(slug, { productId }),
-        staleTime: 0,
-      });
+      const currentCatalog = await getBookingCatalog(queryClient, slug, productId, true);
 
       const currentProduct =
         currentCatalog?.business.slug === slug
