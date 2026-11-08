@@ -35,6 +35,7 @@ import { ReactQueryConfig } from '../config/react-query.config';
 import { resolvePageMeta, updatePageMeta } from '../app/page-meta';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
+import BusinessTheme from '../app/BusinessTheme';
 
 type BookingPageProps = {
   slug: string;
@@ -143,7 +144,7 @@ export default function BookingPage({
       ? undefined
       : product && catalog
         ? 'ready'
-        : initialStatus ?? (error ? 'error' : 'not-found');
+        : (initialStatus ?? (error ? 'error' : 'not-found'));
 
     return updatePageMeta(
       resolvePageMeta({
@@ -650,12 +651,7 @@ export default function BookingPage({
     }
 
     if (loading) {
-      return (
-        <BookingTemplate
-          status="loading"
-          slug={slug}
-        />
-      );
+      return <BookingTemplate status="loading" slug={slug} />;
     }
 
     if (error) return <BookingTemplate status="error" slug={slug} error={error} />;
@@ -666,71 +662,73 @@ export default function BookingPage({
   if (!product) return <BookingTemplate status="not-found" slug={slug} />;
 
   return (
-    <BookingTemplate
-      status="ready"
-      slug={slug}
-      catalog={catalog}
-      product={product}
-      customizationSelections={customizationSelections}
-      onCustomizationChange={(attributeId, optionId) => {
-        const attributes = product.customizationAttributes ?? [];
-        setCustomizationSelectionState((current) => {
-          const currentSelections = current?.productId === product.id ? current.selections : [];
+    <BusinessTheme slug={slug} business={catalog.business}>
+      <BookingTemplate
+        status="ready"
+        slug={slug}
+        catalog={catalog}
+        product={product}
+        customizationSelections={customizationSelections}
+        onCustomizationChange={(attributeId, optionId) => {
+          const attributes = product.customizationAttributes ?? [];
+          setCustomizationSelectionState((current) => {
+            const currentSelections = current?.productId === product.id ? current.selections : [];
 
-          return {
-            productId: product.id,
-            selections: attributes.map((attribute) => {
-              const currentOptionId = currentSelections.find(
-                (selection) => selection.attributeId === attribute.id,
-              )?.optionId;
+            return {
+              productId: product.id,
+              selections: attributes.map((attribute) => {
+                const currentOptionId = currentSelections.find(
+                  (selection) => selection.attributeId === attribute.id,
+                )?.optionId;
 
-              return {
-                attributeId: attribute.id,
-                optionId:
-                  attribute.id === attributeId
-                    ? optionId
-                    : currentOptionId &&
-                        attribute.options.some((option) => option.id === currentOptionId)
-                      ? currentOptionId
-                      : attribute.defaultOptionId,
-              };
-            }),
-          };
-        });
-      }}
-      effectiveImages={effectiveImages}
-      selectedImageId={effectiveSelectedImageId}
-      onImageSelect={setSelectedImageId}
-      estimatedCheckout={estimatedCheckout}
-      estimatedDeliveryDays={estimatedDeliveryDays}
-      provisionalEstimatedDate={provisionalEstimatedDate}
-      estimateUnavailableMessage={estimateUnavailableMessage}
-      date={date}
-      minimumDate={DateUtil.getNextBookableDate(new Date(Date.now() - 86_400_000))}
-      onDateChange={selectDate}
-      professionals={professionals}
-      selectedProfessionalId={selectedProfessionalId}
-      onProfessionalChange={(professionalId) => {
-        setSelectedProfessionalId(professionalId);
-        setSelectedStartsAt('');
-      }}
-      availabilityLoading={availabilityLoading}
-      slots={slots}
-      visibleSlots={visibleSlots}
-      selectedStartsAt={selectedStartsAt}
-      onTimeChange={setSelectedStartsAt}
-      searchingNextDate={searchingNextDate}
-      nextDateSearchComplete={nextDateSearchComplete}
-      nextDateSearchError={nextDateSearchError}
-      error={error}
-      busy={busy}
-      canSubmit={canSubmit}
-      receipt={receipt}
-      shareError={shareError}
-      appointmentShareText={appointmentShareText}
-      onSubmit={submitBooking}
-      onShare={shareAppointment}
-      onCloseReceipt={() => setReceipt(null)}
-    />
+                return {
+                  attributeId: attribute.id,
+                  optionId:
+                    attribute.id === attributeId
+                      ? optionId
+                      : currentOptionId &&
+                          attribute.options.some((option) => option.id === currentOptionId)
+                        ? currentOptionId
+                        : attribute.defaultOptionId,
+                };
+              }),
+            };
+          });
+        }}
+        effectiveImages={effectiveImages}
+        selectedImageId={effectiveSelectedImageId}
+        onImageSelect={setSelectedImageId}
+        estimatedCheckout={estimatedCheckout}
+        estimatedDeliveryDays={estimatedDeliveryDays}
+        provisionalEstimatedDate={provisionalEstimatedDate}
+        estimateUnavailableMessage={estimateUnavailableMessage}
+        date={date}
+        minimumDate={DateUtil.getNextBookableDate(new Date(Date.now() - 86_400_000))}
+        onDateChange={selectDate}
+        professionals={professionals}
+        selectedProfessionalId={selectedProfessionalId}
+        onProfessionalChange={(professionalId) => {
+          setSelectedProfessionalId(professionalId);
+          setSelectedStartsAt('');
+        }}
+        availabilityLoading={availabilityLoading}
+        slots={slots}
+        visibleSlots={visibleSlots}
+        selectedStartsAt={selectedStartsAt}
+        onTimeChange={setSelectedStartsAt}
+        searchingNextDate={searchingNextDate}
+        nextDateSearchComplete={nextDateSearchComplete}
+        nextDateSearchError={nextDateSearchError}
+        error={error}
+        busy={busy}
+        canSubmit={canSubmit}
+        receipt={receipt}
+        shareError={shareError}
+        appointmentShareText={appointmentShareText}
+        onSubmit={submitBooking}
+        onShare={shareAppointment}
+        onCloseReceipt={() => setReceipt(null)}
+      />
+    </BusinessTheme>
   );
 }

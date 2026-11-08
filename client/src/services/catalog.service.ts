@@ -26,6 +26,7 @@ import {
   type QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '../config/firebase.config';
+import { ColorUtil } from '../utils/color.util';
 
 export type CompanyCatalogOptions = {
   productId?: string;
@@ -222,6 +223,7 @@ export async function getCompanyCatalog(
     segment: rawBusiness.segment,
     description: rawBusiness.description as string | undefined,
     logoUrl: rawBusiness.logoUrl as string | undefined,
+    ...ColorUtil.readPublicBusinessColors(rawBusiness),
     ...(typeof rawBusiness.timezone === 'string' ? { timezone: rawBusiness.timezone } : {}),
   };
 

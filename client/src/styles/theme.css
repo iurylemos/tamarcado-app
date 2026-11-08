@@ -37,6 +37,91 @@ body {
   }
 }
 
+/* Tenant-specific overrides are scoped to the currently rendered business. */
+[data-custom-primary] .button:not(:disabled),
+[data-custom-primary] .pwa-install-prompt button:not(.pwa-install-dismiss),
+[data-custom-primary] .company-hero,
+[data-custom-primary] .booking-hero,
+[data-custom-primary] .slot-option.is-selected {
+  color: var(--color-brand-on);
+}
+[data-custom-primary] .button:hover {
+  filter: none;
+}
+[data-custom-primary] .button:not(:disabled),
+[data-custom-primary] .slot-option,
+[data-custom-primary] .slot-option.is-selected,
+[data-custom-primary] .booking-summary-option,
+[data-custom-primary] .booking-summary-option input,
+[data-custom-primary] .booking-panel .field input,
+[data-custom-primary] .booking-panel .field select,
+[data-custom-primary] .booking-form .field input,
+[data-custom-primary] .receipt-share-link,
+[data-custom-primary] .product-image-gallery__controls button,
+[data-custom-primary] .product-image-gallery__thumbnails button {
+  border: 1px solid var(--color-brand-control);
+}
+[data-custom-primary] .company-hero::before,
+[data-custom-primary] .company-hero::after,
+[data-custom-primary] .booking-hero::before {
+  display: none;
+}
+[data-custom-primary] .company-hero .eyebrow,
+[data-custom-primary] .company-identity p:last-child,
+[data-custom-primary] .company-logo-placeholder,
+[data-custom-primary] .company-hero-note,
+[data-custom-primary] .booking-hero .eyebrow,
+[data-custom-primary] .booking-hero p:last-child {
+  color: var(--color-brand-on);
+}
+[data-custom-primary] .company-hero-note,
+[data-custom-primary] .company-logo-placeholder,
+[data-custom-primary] .booking-hero-mark {
+  background: transparent;
+}
+[data-custom-primary] .eyebrow,
+[data-custom-primary] .promotion-current-price,
+[data-custom-primary] .booking-summary > .muted,
+[data-custom-primary] .booking-summary-details span:first-child,
+[data-custom-primary] .booking-summary-details span:first-child .promotion-current-price,
+[data-custom-primary] .booking-summary-details span:first-child strong,
+[data-custom-primary] .booking-summary-choices-card > .eyebrow,
+[data-custom-primary] .booking-summary-variant-price strong,
+[data-custom-primary] .receipt-check,
+[data-custom-primary] .market-back-link:hover {
+  color: var(--color-brand-deep);
+}
+[data-custom-primary] .company-hero .eyebrow,
+[data-custom-primary] .booking-hero .eyebrow {
+  color: var(--color-brand-on);
+}
+[data-custom-primary] :focus-visible,
+[data-custom-primary] .promotion-card-link:focus-visible,
+[data-custom-primary] .booking-summary-option input:focus-visible,
+[data-custom-primary] .slot-option:focus-within {
+  outline-color: var(--color-brand-control);
+}
+[data-custom-primary] .booking-summary-option:has(input:checked),
+[data-custom-primary] .product-image-gallery__thumbnails button[aria-pressed='true'] {
+  border-color: var(--color-brand-control);
+}
+[data-custom-primary] .booking-summary-option input:checked {
+  border-color: var(--color-brand-control);
+  background: var(--color-brand-control);
+}
+[data-custom-primary] .whatsapp-consent input {
+  accent-color: var(--color-brand-control);
+}
+[data-custom-primary] .booking-panel .field input:focus,
+[data-custom-primary] .booking-panel .field select:focus,
+[data-custom-primary] .booking-form .field input:focus {
+  border-color: var(--color-brand-control);
+  box-shadow: 0 0 0 3px var(--color-brand-control);
+}
+[data-custom-secondary] .promotion-badge {
+  background: var(--color-promo);
+  color: var(--color-promo-on);
+}
 /* ---------- Page transitions & navigation feedback ---------- */
 @view-transition {
   navigation: auto;
@@ -555,6 +640,20 @@ html[data-navigating] main {
   color: #fcd978;
   font-size: 0.72rem;
   font-weight: 600;
+}
+[data-custom-primary] .catalog-service-card::after {
+  background: linear-gradient(
+    to top,
+    var(--color-brand-ink) 0%,
+    color-mix(in srgb, var(--color-brand-ink) 62%, transparent) 34%,
+    color-mix(in srgb, var(--color-brand-ink) 8%, transparent) 66%,
+    color-mix(in srgb, var(--color-brand-ink) 18%, transparent) 100%
+  );
+}
+[data-custom-primary] .catalog-service-card .store,
+[data-custom-secondary] .catalog-service-card .store {
+  background: var(--color-brand-ink);
+  color: var(--color-card-label);
 }
 @media (min-width: 640px) {
   .catalog-service-card h3 {

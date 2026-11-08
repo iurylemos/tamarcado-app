@@ -21,6 +21,47 @@ describe('getCompanyCatalog', () => {
     vi.mocked(getDocsFromServer).mockReset();
   });
 
+  it('uses the existing business read for validated public colors', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'one',
+            data: () => ({
+              tenantId: 'private',
+              name: 'One',
+              slug: 'one',
+              segment: 'beauty',
+              primaryColor: '123ABC',
+              secondaryColor: '#fedcba',
+            }),
+          },
+        ],
+      } as never)
+      .mockResolvedValue({ docs: [] } as never);
+
+    const catalog = await getCompanyCatalog('one');
+    expect(catalog?.business).toMatchObject({
+      primaryColor: '#123abc',
+      secondaryColor: '#fedcba',
+    });
+    expect(getDocsFromServer).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports an invalid persisted public color rather than silently using the default', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'one',
+            data: () => ({ tenantId: 'private', primaryColor: 'red' }),
+          },
+        ],
+      } as never)
+      .mockResolvedValue({ docs: [] } as never);
+    await expect(getCompanyCatalog('one')).rejects.toThrow(/primaryColor/);
+  });
+
   it('lists products without fetching galleries', async () => {
     vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({

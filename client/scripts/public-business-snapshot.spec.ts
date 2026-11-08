@@ -101,4 +101,73 @@ describe('readPublicBusinessSnapshot', () => {
       'Published public business records contain duplicate slugs.',
     );
   });
+
+  it('normalizes each public color independently without additional reads', async () => {
+    vi.mocked(getDocsFromServer).mockResolvedValue({
+      docs: [
+        {
+          id: 'one',
+          data: () => ({
+            name: 'One',
+            slug: 'one',
+            segment: 'beauty',
+            tenantId: 'private',
+            primaryColor: 'AABBCC',
+            secondaryColor: '#123456',
+          }),
+        },
+        {
+          id: 'two',
+          data: () => ({
+            name: 'Two',
+            slug: 'two',
+            segment: 'health',
+            tenantId: 'private',
+            secondaryColor: 'FEDCBA',
+          }),
+        },
+        {
+          id: 'three',
+          data: () => ({ name: 'Three', slug: 'three', segment: 'other', tenantId: 'private' }),
+        },
+      ],
+    } as never);
+
+    expect(await readPublicBusinessSnapshot({} as Firestore)).toEqual([
+      {
+        id: 'one',
+        name: 'One',
+        slug: 'one',
+        segment: 'beauty',
+        primaryColor: '#aabbcc',
+        secondaryColor: '#123456',
+      },
+      { id: 'two', name: 'Two', slug: 'two', segment: 'health', secondaryColor: '#fedcba' },
+      { id: 'three', name: 'Three', slug: 'three', segment: 'other' },
+    ]);
+    expect(getDocsFromServer).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['primaryColor', 'red'],
+    ['primaryColor', null],
+    ['secondaryColor', '#123'],
+    ['secondaryColor', 123456],
+  ])('rejects malformed persisted %s values', async (field, value) => {
+    vi.mocked(getDocsFromServer).mockResolvedValue({
+      docs: [
+        {
+          id: 'invalid',
+          data: () => ({
+            name: 'Invalid',
+            slug: 'invalid',
+            segment: 'beauty',
+            tenantId: 'private',
+            [field]: value,
+          }),
+        },
+      ],
+    } as never);
+    await expect(readPublicBusinessSnapshot({} as Firestore)).rejects.toThrow(/color/i);
+  });
 });

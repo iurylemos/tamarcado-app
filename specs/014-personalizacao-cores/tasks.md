@@ -73,14 +73,14 @@ SSR e navegação entre slugs.
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Testar inclusão somente das cores válidas na projeção pública, compatibilidade quando campos estiverem ausentes e erro explícito para valores persistidos malformados em `client/scripts/public-business-snapshot.spec.ts`.
-- [ ] T011 [P] [US2] Testar HTML SSR de duas empresas, fallback de campos ausentes, contraste e troca de tenant sem vazamento de tema em `client/src/entry-server.spec.tsx` e `client/src/app/StorefrontNavigation.spec.tsx`.
+- [X] T010 [P] [US2] Testar inclusão somente das cores válidas na projeção pública, compatibilidade quando campos estiverem ausentes e erro explícito para valores persistidos malformados em `client/scripts/public-business-snapshot.spec.ts`.
+- [X] T011 [P] [US2] Testar HTML SSR de duas empresas, fallback de campos ausentes, contraste e troca de tenant sem vazamento de tema em `client/src/entry-server.spec.tsx` e `client/src/app/StorefrontNavigation.spec.tsx`.
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Estender `readPublicBusinessSnapshot` em `client/scripts/public-business-snapshot.ts` para validar e normalizar as cores com `shared/domain/color.ts`, projetar somente esses campos públicos e falhar explicitamente diante de valor persistido malformado.
-- [ ] T013 [US2] Aplicar tema por empresa nas páginas públicas usando os dados da rota atual e propriedades CSS customizadas em `client/src/app/StorefrontApp.tsx`, `client/src/app/page-renderer.tsx` e `client/src/styles/theme.css`; manter os tokens padrão quando os campos estiverem ausentes e garantir contraste de texto/controles conforme `specs/014-personalizacao-cores/spec.md`.
-- [ ] T014 [US2] Executar os testes de `client/scripts/public-business-snapshot.spec.ts`, `client/src/entry-server.spec.tsx` e `client/src/app/StorefrontNavigation.spec.tsx`; corrigir falhas de projeção, SSR, fallback ou isolamento.
+- [X] T012 [US2] Estender `readPublicBusinessSnapshot` em `client/scripts/public-business-snapshot.ts` para validar e normalizar as cores com `shared/domain/color.ts`, projetar somente esses campos públicos e falhar explicitamente diante de valor persistido malformado.
+- [X] T013 [US2] Aplicar tema por empresa nas páginas públicas usando os dados da rota atual e propriedades CSS customizadas em `client/src/app/BusinessTheme.tsx`, `client/src/pages/CompanyCatalogPage.tsx`, `client/src/pages/BookingPage.tsx` e `client/src/styles/theme.css`; manter os tokens padrão quando os campos estiverem ausentes e garantir contraste de texto/controles conforme `specs/014-personalizacao-cores/spec.md`. O escopo nas páginas permite acompanhar os dados carregados durante a navegação sem consultas adicionais.
+- [X] T014 [US2] Executar os testes de `client/scripts/public-business-snapshot.spec.ts`, `client/src/entry-server.spec.tsx` e `client/src/app/StorefrontNavigation.spec.tsx`; corrigir falhas de projeção, SSR, fallback ou isolamento.
 
 **Checkpoint**: Catálogo e páginas públicas usam somente o tema do slug atual,
 empresas antigas preservam o padrão e nenhuma leitura adicional é necessária.
