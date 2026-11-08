@@ -13,6 +13,7 @@ import {
   productCustomizationCombinationKey,
   productCustomizationCombinations,
 } from '../../../shared/domain/product-variant-price';
+import { normalizeHexColor } from '../../../shared/domain/color';
 import { normalizeBrazilianPhone } from '../../../shared/domain/phone';
 import { collections } from '../config/collections';
 import type { BlockedPeriodDocument, WorkingHoursDocument } from '../model/availability.model';
@@ -438,6 +439,8 @@ export interface BackofficeWorkspace {
     | 'description'
     | 'phoneE164'
     | 'logoUrl'
+    | 'primaryColor'
+    | 'secondaryColor'
     | 'emailDomain'
     | 'timezone'
     | 'bookingIntervalMinutes'
@@ -511,6 +514,8 @@ export async function getBackofficeWorkspace(tenantId: string): Promise<Backoffi
       ...(company.description ? { description: company.description } : {}),
       ...(company.phoneE164 ? { phoneE164: company.phoneE164 } : {}),
       ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
+      ...(company.primaryColor ? { primaryColor: company.primaryColor } : {}),
+      ...(company.secondaryColor ? { secondaryColor: company.secondaryColor } : {}),
       ...(company.emailDomain ? { emailDomain: company.emailDomain } : {}),
     },
     collaboratorEmails,
@@ -1178,6 +1183,22 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     );
   }
   const active = requiredBoolean(input.active, 'Status');
+  const hasPrimaryColor = Object.prototype.hasOwnProperty.call(input, 'primaryColor');
+  const hasSecondaryColor = Object.prototype.hasOwnProperty.call(input, 'secondaryColor');
+  const primaryColor = hasPrimaryColor ? normalizeHexColor(input.primaryColor) : undefined;
+  const secondaryColor = hasSecondaryColor ? normalizeHexColor(input.secondaryColor) : undefined;
+  if (hasPrimaryColor && !primaryColor) {
+    throw new HttpsError(
+      'invalid-argument',
+      'A cor primária deve ser um hexadecimal RGB válido com seis dígitos.',
+    );
+  }
+  if (hasSecondaryColor && !secondaryColor) {
+    throw new HttpsError(
+      'invalid-argument',
+      'A cor secundária deve ser um hexadecimal RGB válido com seis dígitos.',
+    );
+  }
   const tenantRef = firestore.collection(collections.tenants).doc(tenantId);
   const publicRef = firestore.collection(collections.publicBusinesses).doc(tenantId);
   const tenantData: Record<string, unknown> = {
@@ -1191,6 +1212,8 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
     timezone,
     bookingIntervalMinutes,
     active,
+    ...(primaryColor ? { primaryColor } : {}),
+    ...(secondaryColor ? { secondaryColor } : {}),
     updatedAt: FieldValue.serverTimestamp(),
   };
   await firestore.runTransaction(async (transaction) => {
@@ -1211,6 +1234,8 @@ export async function saveTenantSettings(tenantId: string, rawInput: unknown): P
         segment,
         description: description ?? FieldValue.delete(),
         logoUrl: logoUrl ?? FieldValue.delete(),
+        ...(primaryColor ? { primaryColor } : {}),
+        ...(secondaryColor ? { secondaryColor } : {}),
         published: active,
       },
       { merge: true },

@@ -8,6 +8,8 @@ export interface TenantDocument {
   description?: string;
   phoneE164?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   emailDomain?: string;
   timezone: string;
   bookingIntervalMinutes: number;
@@ -23,6 +25,8 @@ export interface PublicBusinessDocument {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   timezone?: string;
   published: boolean;
 }

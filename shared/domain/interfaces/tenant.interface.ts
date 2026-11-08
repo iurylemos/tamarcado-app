@@ -7,6 +7,8 @@ export interface PublicBusiness {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   timezone?: string;
 }
 
@@ -18,6 +20,8 @@ export interface Tenant {
   description?: string;
   phoneE164?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   timezone: string;
   bookingIntervalMinutes: number;
   active: boolean;

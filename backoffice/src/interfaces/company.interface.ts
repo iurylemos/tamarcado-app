@@ -5,6 +5,8 @@ export type InputCompany = {
   description: string;
   phone: string;
   logoUrl: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   emailDomain: string;
   timezone: string;
   bookingIntervalMinutes: number;

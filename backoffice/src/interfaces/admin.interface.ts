@@ -9,6 +9,8 @@ export interface CompanyRecord {
   description?: string;
   phoneE164?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   emailDomain?: string;
   timezone: string;
   bookingIntervalMinutes: number;
