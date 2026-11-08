@@ -1,4 +1,5 @@
 import type { PageData } from './page-data';
+import { SiteUtil } from '../utils/site.util';
 
 export type PageMeta = {
   title: string;
@@ -7,12 +8,9 @@ export type PageMeta = {
   imageUrl?: string;
 };
 
-const brand = 'Tá Marcado';
-const fallbackSiteUrl = 'https://tamarcado-dad82.web.app';
-
 function getPublicSiteUrl(): URL {
   const configuredUrl = import.meta.env.VITE_PUBLIC_SITE_URL?.trim();
-  if (!configuredUrl) return new URL(fallbackSiteUrl);
+  if (!configuredUrl) return new URL(SiteUtil.fallbackUrl);
 
   let url: URL;
   try {
@@ -46,7 +44,7 @@ function safeImageUrl(value: string | undefined): string | undefined {
 export function resolvePageMeta(page: PageData): PageMeta {
   if (page.name === 'home') {
     return {
-      title: `${brand} | Catálogos e agendamentos`,
+      title: `${SiteUtil.brand} | Catálogos e agendamentos`,
       description: 'Acesse o catálogo público do seu negócio e agende serviços online.',
       canonicalUrl: canonicalUrl('/'),
     };
@@ -58,7 +56,7 @@ export function resolvePageMeta(page: PageData): PageMeta {
 
     if (status === undefined) {
       return {
-        title: `Carregando catálogo | ${brand}`,
+        title: `Carregando catálogo | ${SiteUtil.brand}`,
         description: 'Confira os catálogos públicos disponíveis no Tá Marcado.',
         canonicalUrl: canonical,
       };
@@ -67,15 +65,15 @@ export function resolvePageMeta(page: PageData): PageMeta {
     if (status === 'ready' && business) {
       const imageUrl = safeImageUrl(business.logoUrl);
       return {
-          title: `${business.name} | ${brand}`,
-          description: business.description || `Conheça os serviços de ${business.name}.`,
-          canonicalUrl: canonical,
-          ...(imageUrl ? { imageUrl } : {}),
+        title: `${business.name} | ${SiteUtil.brand}`,
+        description: business.description || `Conheça os serviços de ${business.name}.`,
+        canonicalUrl: canonical,
+        ...(imageUrl ? { imageUrl } : {}),
       };
     }
 
     return {
-      title: `Catálogo não encontrado | ${brand}`,
+      title: `Catálogo não encontrado | ${SiteUtil.brand}`,
       description: 'Confira os catálogos públicos disponíveis no Tá Marcado.',
       canonicalUrl: canonical,
     };
@@ -89,7 +87,7 @@ export function resolvePageMeta(page: PageData): PageMeta {
 
     if (status === undefined) {
       return {
-        title: `Carregando agendamento | ${brand}`,
+        title: `Carregando agendamento | ${SiteUtil.brand}`,
         description: 'Carregando os dados do agendamento.',
         canonicalUrl: canonical,
       };
@@ -98,22 +96,22 @@ export function resolvePageMeta(page: PageData): PageMeta {
     if (product && business) {
       const imageUrl = safeImageUrl(business.logoUrl);
       return {
-          title: `Agende ${product.name} | ${business.name} | ${brand}`,
-          description: `Agende ${product.name} em ${business.name} pelo ${brand}.`,
-          canonicalUrl: canonical,
-          ...(imageUrl ? { imageUrl } : {}),
+        title: `Agende ${product.name} | ${business.name} | ${SiteUtil.brand}`,
+        description: `Agende ${product.name} em ${business.name} pelo ${SiteUtil.brand}.`,
+        canonicalUrl: canonical,
+        ...(imageUrl ? { imageUrl } : {}),
       };
     }
 
     return {
-      title: `Agendamento não encontrado | ${brand}`,
+      title: `Agendamento não encontrado | ${SiteUtil.brand}`,
       description: 'O serviço solicitado não está disponível neste catálogo.',
       canonicalUrl: canonical,
     };
   }
 
   return {
-    title: `Página não encontrada | ${brand}`,
+    title: `Página não encontrada | ${SiteUtil.brand}`,
     description: 'Esta página não existe.',
   };
 }

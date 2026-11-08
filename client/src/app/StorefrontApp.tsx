@@ -20,7 +20,7 @@ type StorefrontAppProps =
     });
 
 export default function StorefrontApp(props: Readonly<StorefrontAppProps>): JSX.Element {
-  const app = (
+  const app: JSX.Element = (
     <QueryClientProvider client={props.queryClient}>
       <Layout>
         {props.routerMode === 'static' ? (
@@ -40,7 +40,5 @@ export default function StorefrontApp(props: Readonly<StorefrontAppProps>): JSX.
     return <StaticRouter location={props.pathname}>{app}</StaticRouter>;
   }
 
-  return (
-    <BrowserRouter>{app}</BrowserRouter>
-  );
+  return <BrowserRouter>{app}</BrowserRouter>;
 }

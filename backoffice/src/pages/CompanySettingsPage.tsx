@@ -1,22 +1,14 @@
-import { useEffect, useState, type JSX, type SubmitEvent } from 'react';
+import { useEffect, useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import { normalizeHexColor } from '@shared/color';
 import { formatBrazilianPhone } from '@shared/phone';
 import type { CompanyRecord } from '../interfaces/admin.interface';
 import { errorMessage, saveCompany } from '../services/admin.service';
 import { ColorUtil } from '../utils/color.util';
+import { CompanyUtil } from '../utils/company.util';
 
 type CompanySettingsPageProps = {
   company: CompanyRecord;
   onSaved: () => Promise<void>;
-};
-
-const segmentLabels: Record<string, string> = {
-  beauty: 'Beleza e bem-estar',
-  health: 'Saúde',
-  fitness: 'Atividade física',
-  automotive: 'Automotivo',
-  home: 'Casa e decoração',
-  other: 'Outro',
 };
 
 export default function CompanySettingsPage({
@@ -50,8 +42,14 @@ export default function CompanySettingsPage({
     setSecondaryColor(company.secondaryColor ?? ColorUtil.defaultSecondaryColor);
   }, [company.id, company.primaryColor, company.secondaryColor]);
 
-  const normalizedPrimaryColor = normalizeHexColor(primaryColor);
-  const normalizedSecondaryColor = normalizeHexColor(secondaryColor);
+  const normalizedPrimaryColor = useMemo<string | null>(
+    () => normalizeHexColor(primaryColor),
+    [primaryColor],
+  );
+  const normalizedSecondaryColor = useMemo<string | null>(
+    () => normalizeHexColor(secondaryColor),
+    [secondaryColor],
+  );
 
   const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -141,7 +139,7 @@ export default function CompanySettingsPage({
               value={segment}
               onChange={(event) => setSegment(event.target.value as CompanyRecord['segment'])}
             >
-              {Object.entries(segmentLabels).map(([key, label]) => (
+              {Object.entries(CompanyUtil.segmentLabels).map(([key, label]) => (
                 <option value={key} key={key}>
                   {label}
                 </option>
@@ -350,7 +348,7 @@ export default function CompanySettingsPage({
           <section className="public-preview">
             <span className="preview-label">PRÉVIA DO ENDEREÇO</span>
             <strong>tamarcado.com/{slug || 'sua-empresa'}</strong>
-            <p>{segmentLabels[segment] ?? segment}</p>
+            <p>{CompanyUtil.segmentLabels[segment] ?? segment}</p>
           </section>
         </aside>
         <div className="settings-actions">

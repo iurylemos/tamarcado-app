@@ -4,8 +4,8 @@ import type { CompanyCatalog, CompanySummary } from '../interfaces/company.inter
 import type { CatalogCursor, PublicCatalogStatus } from '../interfaces/catalog.interface';
 import { ReactQueryConfig } from '../config/react-query.config';
 import { getCompanyCatalog } from '../services/catalog.service';
-import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 import { CatalogUtil } from '../utils/catalog.util';
+import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 import BusinessTheme from '../app/BusinessTheme';
 
 type CompanyCatalogPageProps = {
@@ -29,8 +29,12 @@ export default function CompanyCatalogPage({
     fetchNextPage,
   } = useInfiniteQuery({
     queryKey: [...ReactQueryConfig.companyCatalogQueryKey(slug), 'pages'],
-    queryFn: ({ pageParam }) =>
-      getCompanyCatalog(slug, { pageSize: CatalogUtil.defaultLimitPageSize, after: pageParam }),
+    queryFn: async ({ pageParam }): Promise<CompanyCatalog | null> => {
+      return await getCompanyCatalog(slug, {
+        pageSize: CatalogUtil.defaultLimitPageSize,
+        after: pageParam,
+      });
+    },
     initialPageParam: undefined as CatalogCursor | undefined,
     getNextPageParam: (lastPage: CompanyCatalog | null): CatalogCursor | null => {
       if (!lastPage) return null;

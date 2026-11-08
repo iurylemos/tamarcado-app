@@ -17,20 +17,22 @@ export default function BusinessTheme({
   if (colors.primaryColor) {
     const primary = colors.primaryColor;
     const onBrand = ColorUtil.foreground(primary);
-    const contrastDirection = onBrand === '#ffffff' ? '#000000' : '#ffffff';
+    const contrastDirection =
+      onBrand === ColorUtil.defaultColorWhite
+        ? ColorUtil.defaultColorBlack
+        : ColorUtil.defaultColorWhite;
     const hover = ColorUtil.mix(primary, contrastDirection, 0.12);
-    const soft = ColorUtil.mix(primary, '#ffffff', 0.92);
+    const soft = ColorUtil.mix(primary, ColorUtil.defaultColorWhite, 0.92);
     const deep = ColorUtil.darkenForContrast(primary, soft, 7);
     style['--color-brand'] = primary;
     style['--color-brand-hover'] = hover;
     style['--color-brand-deep'] = deep;
     style['--color-brand-ink'] = ColorUtil.darkenForContrast(primary, soft, 9);
     style['--color-brand-soft'] = soft;
-    style['--color-brand-line'] = ColorUtil.mix(primary, '#ffffff', 0.8);
+    style['--color-brand-line'] = ColorUtil.mix(primary, ColorUtil.defaultColorWhite, 0.8);
     style['--color-brand-control'] = ColorUtil.darkenForContrast(primary, '#f3f6f9', 3);
     style['--color-brand-on'] = onBrand;
-    style['--gradient-brand'] =
-      `linear-gradient(135deg, ${hover} 0%, ${primary} 55%, ${hover} 100%)`;
+    style['--gradient-brand'] = ColorUtil.getGradientColor(hover, primary);
   }
 
   if (colors.secondaryColor) {

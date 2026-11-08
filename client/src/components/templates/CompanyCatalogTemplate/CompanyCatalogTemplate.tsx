@@ -179,6 +179,7 @@ export default function CompanyCatalogTemplate({
                   const variants = product.variantPrices?.length
                     ? product.variantPrices
                     : [undefined];
+
                   return (
                     <motion.article
                       className="promotion-card"
