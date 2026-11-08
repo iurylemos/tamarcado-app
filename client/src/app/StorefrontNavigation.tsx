@@ -4,6 +4,7 @@ import type { PageComponents } from '../interfaces/page.interface';
 import { resolvePageData } from './page-data';
 import { matchRoute } from './routes';
 import { createPageElement } from './page-renderer';
+import FallbackLoading from '../components/atoms/FallbackLoading';
 
 type ActivePage = {
   pathname: string;
@@ -56,7 +57,7 @@ export default function StorefrontNavigation({
   if (loadError !== undefined) throw loadError;
 
   if (pathname !== activePage.pathname) {
-    return <p role="status">Carregando página...</p>;
+    return <FallbackLoading message="Carregando página..." />;
   }
 
   return activePage.element;

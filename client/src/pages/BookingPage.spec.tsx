@@ -72,7 +72,6 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-
   });
 
   it('reuses the catalog product already loaded and fetches only its missing galleries', async () => {
@@ -308,12 +307,48 @@ describe('BookingPage professional selection', () => {
     );
     expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Preparando seu agendamento' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Preparando seu agendamento' })).toBeInTheDocument();
     expect(screen.getByText('Carregando informações do serviço...')).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--booking')).toHaveLength(0);
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
+  });
+
+  it('applies the cached business theme while booking catalog details are loading', () => {
+    vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey('studio-aurora'), {
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+        primaryColor: '#123456',
+        secondaryColor: '#abcdef',
+      },
+      products: [],
+    });
+
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+          <Routes>
+            <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(container.querySelector('[data-custom-primary]')).toHaveStyle('--color-brand: #123456');
+    expect(container.querySelector('[data-custom-secondary]')).toHaveStyle(
+      '--color-promo: #abcdef',
+    );
+    expect(screen.getByRole('heading', { name: 'Preparando seu agendamento' })).toBeInTheDocument();
+    expect(getCompanyCatalog).toHaveBeenCalledExactlyOnceWith('studio-aurora', {
+      productId: 'service-corte',
+    });
+    queryClient.clear();
   });
 
   it('offers an actionable catalog link when business validation fails', async () => {

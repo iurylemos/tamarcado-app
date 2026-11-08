@@ -45,48 +45,6 @@ type BookingPageProps = {
   initialStatus?: PublicCatalogStatus;
 };
 
-function getBookingCatalog(
-  queryClient: QueryClient,
-  slug: string,
-  productId: string,
-  refresh = false,
-): Promise<CompanyCatalog | null> {
-  const detailKey = ReactQueryConfig.companyCatalogQueryKey(slug, productId);
-
-  return queryClient.fetchQuery({
-    queryKey: detailKey,
-    staleTime: refresh ? 0 : ReactQueryConfig.queryStaleTime,
-    queryFn: async () => {
-      if (refresh) return getCompanyCatalog(slug, { productId });
-
-      const cachedCatalog = queryClient.getQueryData<CompanyCatalog>(
-        ReactQueryConfig.companyCatalogQueryKey(slug),
-      );
-      const cachedProduct =
-        cachedCatalog?.business.slug === slug
-          ? cachedCatalog.products.find((item) => item.id === productId)
-          : undefined;
-
-      if (!cachedCatalog || !cachedProduct) {
-        return getCompanyCatalog(slug, { productId });
-      }
-
-      const imageGalleries = await queryClient.fetchQuery({
-        queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
-        queryFn: () => getProductImageGalleries(slug, productId),
-        staleTime: ReactQueryConfig.queryStaleTime,
-      });
-      const catalog = {
-        ...cachedCatalog,
-        products: cachedCatalog.products.map((product) =>
-          product.id === productId ? { ...product, imageGalleries } : product,
-        ),
-      };
-      return catalog;
-    },
-  });
-}
-
 export default function BookingPage({
   slug,
   productId,
@@ -137,6 +95,24 @@ export default function BookingPage({
         ? catalog.products.find((item) => item.id === productId)
         : undefined,
     [catalog, slug, productId],
+  );
+  const cachedBusiness = useMemo<CompanySummary | undefined>(
+    () =>
+      queryClient.getQueryData<CompanyCatalog>(ReactQueryConfig.companyCatalogQueryKey(slug))
+        ?.business,
+    [queryClient, slug],
+  );
+
+  const themeBusiness = useMemo<CompanySummary | null>(
+    () =>
+      catalog?.business.slug === slug
+        ? catalog.business
+        : initialBusiness?.slug === slug
+          ? initialBusiness
+          : cachedBusiness?.slug === slug
+            ? cachedBusiness
+            : null,
+    [catalog, initialBusiness, cachedBusiness, slug],
   );
 
   useEffect(() => {
@@ -196,6 +172,7 @@ export default function BookingPage({
             ),
         )
       : undefined;
+
     const days = hasAttributes ? variant?.estimatedDeliveryDays : product.estimatedDeliveryDays;
 
     return Number.isSafeInteger(days) && Number(days) > 0 ? Number(days) : undefined;
@@ -288,6 +265,54 @@ export default function BookingPage({
     setDate(selectedDate);
   }, []);
 
+  const getBookingCatalog = useCallback(
+    (
+      currentQueryClient: QueryClient,
+      slug: string,
+      productId: string,
+      refresh = false,
+    ): Promise<CompanyCatalog | null> => {
+      const detailKey = ReactQueryConfig.companyCatalogQueryKey(slug, productId);
+
+      return currentQueryClient.query({
+        queryKey: detailKey,
+        staleTime: refresh ? 0 : ReactQueryConfig.queryStaleTime,
+        queryFn: async () => {
+          if (refresh) return await getCompanyCatalog(slug, { productId });
+
+          const cachedCatalog = currentQueryClient.getQueryData<CompanyCatalog>(
+            ReactQueryConfig.companyCatalogQueryKey(slug),
+          );
+
+          const cachedProduct =
+            cachedCatalog?.business.slug === slug
+              ? cachedCatalog.products.find((item) => item.id === productId)
+              : undefined;
+
+          if (!cachedCatalog || !cachedProduct) {
+            return await getCompanyCatalog(slug, { productId });
+          }
+
+          const imageGalleries = await currentQueryClient.query({
+            queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
+            queryFn: () => getProductImageGalleries(slug, productId),
+            staleTime: ReactQueryConfig.queryStaleTime,
+          });
+
+          const catalog: CompanyCatalog = {
+            ...cachedCatalog,
+            products: cachedCatalog.products.map((product) =>
+              product.id === productId ? { ...product, imageGalleries } : product,
+            ),
+          };
+
+          return catalog;
+        },
+      });
+    },
+    [],
+  );
+
   const loadAvailability = useCallback(
     async (current: boolean): Promise<void> => {
       const currentCatalog = await getBookingCatalog(queryClient, slug, productId);
@@ -352,7 +377,7 @@ export default function BookingPage({
         }
       }
     },
-    [date, productId, queryClient, slug],
+    [date, getBookingCatalog, productId, queryClient, slug],
   );
 
   useEffect(() => {
@@ -384,7 +409,7 @@ export default function BookingPage({
     return () => {
       current = false;
     };
-  }, [initialStatus, seededCatalog, productId, queryClient, slug]);
+  }, [initialStatus, seededCatalog, productId, queryClient, slug, getBookingCatalog]);
 
   useEffect(() => {
     selectedDateRef.current = date;
@@ -646,23 +671,35 @@ export default function BookingPage({
   );
 
   if (!catalog) {
+    let content: JSX.Element;
+
     if (initialStatus === 'not-found') {
-      return <BookingTemplate status="not-found" slug={slug} />;
+      content = <BookingTemplate status="not-found" slug={slug} />;
+    } else if (loading) {
+      content = <BookingTemplate status="loading" slug={slug} />;
+    } else if (error) {
+      content = <BookingTemplate status="error" slug={slug} error={error} />;
+    } else {
+      content = <CompanyCatalogPage slug={slug} />;
     }
 
-    if (loading) {
-      return <BookingTemplate status="loading" slug={slug} />;
-    }
-
-    if (error) return <BookingTemplate status="error" slug={slug} error={error} />;
-
-    return <CompanyCatalogPage slug={slug} />;
+    return (
+      <BusinessTheme slug={slug} business={themeBusiness}>
+        {content}
+      </BusinessTheme>
+    );
   }
 
-  if (!product) return <BookingTemplate status="not-found" slug={slug} />;
+  if (!product) {
+    return (
+      <BusinessTheme slug={slug} business={themeBusiness}>
+        <BookingTemplate status="not-found" slug={slug} />
+      </BusinessTheme>
+    );
+  }
 
   return (
-    <BusinessTheme slug={slug} business={catalog.business}>
+    <BusinessTheme slug={slug} business={themeBusiness}>
       <BookingTemplate
         status="ready"
         slug={slug}

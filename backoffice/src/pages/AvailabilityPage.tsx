@@ -1,4 +1,4 @@
-import { useState, type JSX, type SubmitEvent } from 'react';
+import { useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import type {
   ProfessionalRecord,
   WorkingHoursRecord,
@@ -33,17 +33,22 @@ export default function AvailabilityPage({
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const selectedProfessional = professionals.find(
-    (professional) => professional.id === professionalId,
+  const selectedProfessional = useMemo(
+    () => professionals.find((professional) => professional.id === professionalId),
+    [professionals, professionalId],
   );
 
-  const selectedHours = workingHours
-    .filter((hours) => hours.professionalId === professionalId)
-    .sort(
-      (first, second) =>
-        first.dayOfWeek - second.dayOfWeek ||
-        first.startLocalTime.localeCompare(second.startLocalTime),
-    );
+  const selectedHours = useMemo(
+    () =>
+      workingHours
+        .filter((hours) => hours.professionalId === professionalId)
+        .sort(
+          (first, second) =>
+            first.dayOfWeek - second.dayOfWeek ||
+            first.startLocalTime.localeCompare(second.startLocalTime),
+        ),
+    [workingHours, professionalId],
+  );
 
   const startEdit = (hours: WorkingHoursRecord): void => {
     setEditing(hours);

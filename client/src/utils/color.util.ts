@@ -11,6 +11,10 @@ export class ColorUtil {
   public static readonly defaultColorBlack: string = '#000000';
   public static readonly defaultColorWhite: string = '#ffffff';
 
+  public static getGradientColor(hover: string, primary: string): string {
+    return `linear-gradient(135deg, ${hover} 0%, ${primary} 55%, ${hover} 100%)`;
+  }
+
   public static readPublicBusinessColors(data: ColorData): ColorData {
     const colors: ColorData = {};
 
