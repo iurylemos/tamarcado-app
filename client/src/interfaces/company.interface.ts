@@ -13,6 +13,8 @@ export interface CompanySummary {
   segment: BusinessSegment;
   description?: string;
   logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   timezone?: string;
 }
 

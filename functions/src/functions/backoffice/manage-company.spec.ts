@@ -3,6 +3,7 @@ import { collections } from '../../config/collections';
 import { firestore } from '../../services/firestore.service';
 import {
   deleteBlockedPeriod,
+  getBackofficeWorkspace,
   saveBlockedPeriod,
   saveProduct,
   saveProfessional,
@@ -41,6 +42,27 @@ async function prepareTenantFixtures() {
   const batch = firestore.batch();
   for (const [collection, id] of testIds) {
     batch.delete(firestore.collection(collection).doc(id));
+  }
+  for (const tenantId of ['us1-test-tenant-a', 'us1-test-tenant-b']) {
+    batch.set(firestore.collection(collections.tenants).doc(tenantId), {
+      name: tenantId === 'us1-test-tenant-a' ? 'Empresa A' : 'Empresa B',
+      slug: tenantId === 'us1-test-tenant-a' ? 'us1-empresa-a' : 'us1-empresa-b',
+      segment: 'beauty',
+      timezone: 'America/Sao_Paulo',
+      bookingIntervalMinutes: 15,
+      active: true,
+      primaryColor: tenantId === 'us1-test-tenant-a' ? '#112233' : '#445566',
+      secondaryColor: tenantId === 'us1-test-tenant-a' ? '#223344' : '#556677',
+    });
+    batch.set(firestore.collection(collections.publicBusinesses).doc(tenantId), {
+      tenantId,
+      name: tenantId === 'us1-test-tenant-a' ? 'Empresa A' : 'Empresa B',
+      slug: tenantId === 'us1-test-tenant-a' ? 'us1-empresa-a' : 'us1-empresa-b',
+      segment: 'beauty',
+      published: true,
+      primaryColor: tenantId === 'us1-test-tenant-a' ? '#112233' : '#445566',
+      secondaryColor: tenantId === 'us1-test-tenant-a' ? '#223344' : '#556677',
+    });
   }
   batch.set(firestore.collection(collections.products).doc('us3-test-product'), {
     tenantId: 'tenant-aurora',
@@ -85,6 +107,10 @@ async function cleanTestDocuments() {
     [collections.professionalProducts, 'tenant-aurora__us3-test-professional__service-corte'],
     [collections.workingHours, 'us3-test-hours'],
     [collections.blockedPeriods, 'us3-test-block'],
+    [collections.tenants, 'us1-test-tenant-a'],
+    [collections.tenants, 'us1-test-tenant-b'],
+    [collections.publicBusinesses, 'us1-test-tenant-a'],
+    [collections.publicBusinesses, 'us1-test-tenant-b'],
   ];
   for (const [collection, id] of testIds) {
     batch.delete(firestore.collection(collection).doc(id));
@@ -288,5 +314,107 @@ emulatorOnly('US3 tenant administration on the Firestore emulator', () => {
     expect(
       (await firestore.collection(collections.publicBusinesses).doc('tenant-aurora').get()).data(),
     ).toMatchObject({ name: 'Aurora Demonstração', slug: 'aurora-us3-demo', published: true });
+  });
+
+  it('normalizes colors, returns them to the active workspace, and isolates writes by tenant', async () => {
+    await saveTenantSettings('us1-test-tenant-a', {
+      name: 'Empresa A personalizada',
+      slug: 'us1-empresa-a',
+      segment: 'beauty',
+      timezone: 'America/Sao_Paulo',
+      bookingIntervalMinutes: 15,
+      active: true,
+      primaryColor: 'AABBCC',
+      secondaryColor: '#DDEEFF',
+    });
+
+    expect(
+      (await firestore.collection(collections.tenants).doc('us1-test-tenant-a').get()).data(),
+    ).toMatchObject({ primaryColor: '#aabbcc', secondaryColor: '#ddeeff' });
+    expect(
+      (
+        await firestore.collection(collections.publicBusinesses).doc('us1-test-tenant-a').get()
+      ).data(),
+    ).toMatchObject({ primaryColor: '#aabbcc', secondaryColor: '#ddeeff' });
+    expect((await getBackofficeWorkspace('us1-test-tenant-a')).company).toMatchObject({
+      primaryColor: '#aabbcc',
+      secondaryColor: '#ddeeff',
+    });
+    expect(
+      (await firestore.collection(collections.tenants).doc('us1-test-tenant-b').get()).data(),
+    ).toMatchObject({ primaryColor: '#445566', secondaryColor: '#556677' });
+    expect(
+      (
+        await firestore.collection(collections.publicBusinesses).doc('us1-test-tenant-b').get()
+      ).data(),
+    ).toMatchObject({ primaryColor: '#445566', secondaryColor: '#556677' });
+  });
+
+  it.each([
+    ['primaryColor', '#12zz00'],
+    ['secondaryColor', '#12345'],
+  ] as const)(
+    'rejects invalid %s values without changing previously saved colors',
+    async (field, value) => {
+      await expect(
+        saveTenantSettings('us1-test-tenant-a', {
+          name: 'Empresa A',
+          slug: 'us1-empresa-a',
+          segment: 'beauty',
+          timezone: 'America/Sao_Paulo',
+          bookingIntervalMinutes: 15,
+          active: true,
+          [field]: value,
+        }),
+      ).rejects.toMatchObject({ code: 'invalid-argument' });
+
+      expect(
+        (await firestore.collection(collections.tenants).doc('us1-test-tenant-a').get()).data(),
+      ).toMatchObject({ primaryColor: '#112233', secondaryColor: '#223344' });
+      expect(
+        (
+          await firestore.collection(collections.publicBusinesses).doc('us1-test-tenant-a').get()
+        ).data(),
+      ).toMatchObject({ primaryColor: '#112233', secondaryColor: '#223344' });
+    },
+  );
+
+  it('preserves stored colors when legacy settings payloads omit them', async () => {
+    await saveTenantSettings('us1-test-tenant-a', {
+      name: 'Empresa A com uma cor atualizada',
+      slug: 'us1-empresa-a',
+      segment: 'beauty',
+      timezone: 'America/Sao_Paulo',
+      bookingIntervalMinutes: 15,
+      active: true,
+      primaryColor: 'AABBCC',
+    });
+
+    expect(
+      (await firestore.collection(collections.tenants).doc('us1-test-tenant-a').get()).data(),
+    ).toMatchObject({ primaryColor: '#aabbcc', secondaryColor: '#223344' });
+    expect(
+      (
+        await firestore.collection(collections.publicBusinesses).doc('us1-test-tenant-a').get()
+      ).data(),
+    ).toMatchObject({ primaryColor: '#aabbcc', secondaryColor: '#223344' });
+
+    await saveTenantSettings('us1-test-tenant-a', {
+      name: 'Empresa A atualizada',
+      slug: 'us1-empresa-a',
+      segment: 'beauty',
+      timezone: 'America/Sao_Paulo',
+      bookingIntervalMinutes: 20,
+      active: true,
+    });
+
+    expect(
+      (await firestore.collection(collections.tenants).doc('us1-test-tenant-a').get()).data(),
+    ).toMatchObject({ primaryColor: '#aabbcc', secondaryColor: '#223344' });
+    expect(
+      (
+        await firestore.collection(collections.publicBusinesses).doc('us1-test-tenant-a').get()
+      ).data(),
+    ).toMatchObject({ primaryColor: '#aabbcc', secondaryColor: '#223344' });
   });
 });

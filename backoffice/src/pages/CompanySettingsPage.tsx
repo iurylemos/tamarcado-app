@@ -1,7 +1,9 @@
-import { useState, type JSX, type SubmitEvent } from 'react';
+import { useEffect, useState, type JSX, type SubmitEvent } from 'react';
+import { normalizeHexColor } from '@shared/color';
 import { formatBrazilianPhone } from '@shared/phone';
 import type { CompanyRecord } from '../interfaces/admin.interface';
 import { errorMessage, saveCompany } from '../services/admin.service';
+import { ColorUtil } from '../utils/color.util';
 
 type CompanySettingsPageProps = {
   company: CompanyRecord;
@@ -27,6 +29,12 @@ export default function CompanySettingsPage({
   const [description, setDescription] = useState<string>(company.description ?? '');
   const [phone, setPhone] = useState<string>(formatBrazilianPhone(company.phoneE164 ?? ''));
   const [logoUrl, setLogoUrl] = useState<string>(company.logoUrl ?? '');
+  const [primaryColor, setPrimaryColor] = useState<string>(
+    company.primaryColor ?? ColorUtil.defaultPrimaryColor,
+  );
+  const [secondaryColor, setSecondaryColor] = useState<string>(
+    company.secondaryColor ?? ColorUtil.defaultSecondaryColor,
+  );
   const [emailDomain, setEmailDomain] = useState<string>(company.emailDomain ?? '');
   const [timezone, setTimezone] = useState<string>(company.timezone);
   const [bookingIntervalMinutes, setBookingIntervalMinutes] = useState(
@@ -37,8 +45,21 @@ export default function CompanySettingsPage({
   const [error, setError] = useState<string>('');
   const [saved, setSaved] = useState<boolean>(false);
 
+  useEffect(() => {
+    setPrimaryColor(company.primaryColor ?? ColorUtil.defaultPrimaryColor);
+    setSecondaryColor(company.secondaryColor ?? ColorUtil.defaultSecondaryColor);
+  }, [company.id, company.primaryColor, company.secondaryColor]);
+
+  const normalizedPrimaryColor = normalizeHexColor(primaryColor);
+  const normalizedSecondaryColor = normalizeHexColor(secondaryColor);
+
   const submit = async (event: SubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+    if (!normalizedPrimaryColor || !normalizedSecondaryColor) {
+      setError(ColorUtil.invalidColorMessage);
+      setSaved(false);
+      return;
+    }
 
     setBusy(true);
     setError('');
@@ -52,6 +73,8 @@ export default function CompanySettingsPage({
         description,
         phone,
         logoUrl,
+        primaryColor: normalizedPrimaryColor,
+        secondaryColor: normalizedSecondaryColor,
         emailDomain,
         timezone,
         bookingIntervalMinutes: Number(bookingIntervalMinutes),
@@ -173,6 +196,114 @@ export default function CompanySettingsPage({
               <span>Prévia do logo</span>
             </div>
           )}
+          <section className="company-colors" aria-labelledby="company-colors-heading">
+            <header className="section-heading">
+              <div>
+                <h2 id="company-colors-heading">Identidade visual</h2>
+                <p className="muted">Escolha as cores da sua empresa.</p>
+              </div>
+            </header>
+            <div className="company-color-controls">
+              <div className="company-color-control">
+                <div className="company-color-inputs">
+                  <label>
+                    Seletor de cor primária
+                    <input
+                      type="color"
+                      aria-label="Seletor de cor primária"
+                      value={normalizedPrimaryColor ?? ColorUtil.defaultPrimaryColor}
+                      onChange={(event) => {
+                        setPrimaryColor(event.target.value);
+                        setError('');
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Cor primária em hexadecimal
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      maxLength={7}
+                      aria-invalid={!normalizedPrimaryColor}
+                      aria-describedby={normalizedPrimaryColor ? undefined : 'primary-color-error'}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setPrimaryColor(normalizeHexColor(value) ?? value);
+                        setError('');
+                      }}
+                    />
+                  </label>
+                </div>
+                {!normalizedPrimaryColor && (
+                  <small id="primary-color-error" className="color-validation-error">
+                    {ColorUtil.invalidColorMessage}
+                  </small>
+                )}
+              </div>
+              <div className="company-color-control">
+                <div className="company-color-inputs">
+                  <label>
+                    Seletor de cor secundária
+                    <input
+                      type="color"
+                      aria-label="Seletor de cor secundária"
+                      value={normalizedSecondaryColor ?? ColorUtil.defaultSecondaryColor}
+                      onChange={(event) => {
+                        setSecondaryColor(event.target.value);
+                        setError('');
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Cor secundária em hexadecimal
+                    <input
+                      type="text"
+                      value={secondaryColor}
+                      maxLength={7}
+                      aria-invalid={!normalizedSecondaryColor}
+                      aria-describedby={
+                        normalizedSecondaryColor ? undefined : 'secondary-color-error'
+                      }
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setSecondaryColor(normalizeHexColor(value) ?? value);
+                        setError('');
+                      }}
+                    />
+                  </label>
+                </div>
+                {!normalizedSecondaryColor && (
+                  <small id="secondary-color-error" className="color-validation-error">
+                    {ColorUtil.invalidColorMessage}
+                  </small>
+                )}
+              </div>
+            </div>
+            <div className="company-color-preview" aria-label="Prévia da identidade visual">
+              <div>
+                <span>Primária</span>
+                <span
+                  className="company-color-swatch"
+                  role="img"
+                  aria-label="Prévia da cor primária"
+                  style={{
+                    backgroundColor: normalizedPrimaryColor ?? ColorUtil.defaultPrimaryColor,
+                  }}
+                />
+              </div>
+              <div>
+                <span>Secundária</span>
+                <span
+                  className="company-color-swatch"
+                  role="img"
+                  aria-label="Prévia da cor secundária"
+                  style={{
+                    backgroundColor: normalizedSecondaryColor ?? ColorUtil.defaultSecondaryColor,
+                  }}
+                />
+              </div>
+            </div>
+          </section>
         </section>
         <aside className="settings-side">
           <section className="content-card">

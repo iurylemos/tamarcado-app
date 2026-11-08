@@ -92,6 +92,13 @@ coordenam esse código com a interface. Cada frontend também mantém seus próp
 tokens de design e estilos globais, evitando dependência visual entre
 aplicações.
 
+As cores públicas opcionais da empresa são validadas na leitura do snapshot e
+do catálogo. O tema é aplicado apenas à página do slug correspondente, inclusive
+no HTML renderizado no servidor, e aproveita a leitura de catálogo existente
+durante a navegação. Cada cor ausente mantém seu token padrão; um valor
+persistido inválido é reportado como erro. Alterações no snapshot estático
+exigem o ciclo existente de build e publicação do cliente.
+
 Os comandos de desenvolvimento e build de cada workspace são definidos no
 `package.json` da raiz e nos manifests de cada aplicação.
 

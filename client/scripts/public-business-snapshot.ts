@@ -1,12 +1,7 @@
-import {
-  collection,
-  getDocsFromServer,
-  query,
-  where,
-  type Firestore,
-} from 'firebase/firestore';
+import { collection, getDocsFromServer, query, where, type Firestore } from 'firebase/firestore';
 import type { BusinessSegment } from '../../shared/domain/interfaces/tenant.interface.ts';
 import type { CompanySummary } from '../src/interfaces/company.interface.ts';
+import { ColorUtil } from '../src/utils/color.util.ts';
 
 const businessSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const businessSegments = new Set<BusinessSegment>([
@@ -67,6 +62,7 @@ export async function readPublicBusinessSnapshot(db: Firestore): Promise<Company
       name: data.name.trim(),
       slug,
       segment: data.segment as BusinessSegment,
+      ...ColorUtil.readPublicBusinessColors(data),
       ...(typeof data.description === 'string' && data.description.trim()
         ? { description: data.description.trim() }
         : {}),

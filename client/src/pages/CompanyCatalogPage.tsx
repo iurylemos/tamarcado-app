@@ -6,6 +6,7 @@ import { ReactQueryConfig } from '../config/react-query.config';
 import { getCompanyCatalog } from '../services/catalog.service';
 import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 import { CatalogUtil } from '../utils/catalog.util';
+import BusinessTheme from '../app/BusinessTheme';
 
 type CompanyCatalogPageProps = {
   slug: string;
@@ -27,27 +28,27 @@ export default function CompanyCatalogPage({
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-      queryKey: [...ReactQueryConfig.companyCatalogQueryKey(slug), 'pages'],
-      queryFn: ({ pageParam }) =>
-        getCompanyCatalog(slug, { pageSize: CatalogUtil.defaultLimitPageSize, after: pageParam }),
-      initialPageParam: undefined as CatalogCursor | undefined,
-      getNextPageParam: (lastPage: CompanyCatalog | null): CatalogCursor | null => {
-        if (!lastPage) return null;
+    queryKey: [...ReactQueryConfig.companyCatalogQueryKey(slug), 'pages'],
+    queryFn: ({ pageParam }) =>
+      getCompanyCatalog(slug, { pageSize: CatalogUtil.defaultLimitPageSize, after: pageParam }),
+    initialPageParam: undefined as CatalogCursor | undefined,
+    getNextPageParam: (lastPage: CompanyCatalog | null): CatalogCursor | null => {
+      if (!lastPage) return null;
 
-        const last = lastPage.products.at(-1);
+      const last = lastPage.products.at(-1);
 
-        return lastPage.hasMore && last ? { id: last.id, name: last.name } : null;
-      },
-      enabled: Boolean(slug),
-      staleTime: ReactQueryConfig.queryStaleTime,
-      initialData: initialBusiness
-        ? {
-            pages: [{ business: initialBusiness, products: [], hasMore: true }],
-            pageParams: [undefined],
-          }
-        : undefined,
-      initialDataUpdatedAt: 0,
-    });
+      return lastPage.hasMore && last ? { id: last.id, name: last.name } : null;
+    },
+    enabled: Boolean(slug),
+    staleTime: ReactQueryConfig.queryStaleTime,
+    initialData: initialBusiness
+      ? {
+          pages: [{ business: initialBusiness, products: [], hasMore: true }],
+          pageParams: [undefined],
+        }
+      : undefined,
+    initialDataUpdatedAt: 0,
+  });
 
   const catalog = useMemo<CompanyCatalog | null>(() => {
     const pages = data?.pages ?? [];
@@ -88,15 +89,17 @@ export default function CompanyCatalogPage({
   }, [catalog, queryClient, slug]);
 
   return (
-    <CompanyCatalogTemplate
-      catalog={catalog}
-      promotions={catalog?.promotions ?? []}
-      status={status}
-      hasMore={Boolean(hasNextPage)}
-      loadingMore={isFetchingNextPage}
-      onLoadMore={() => {
-        void fetchNextPage();
-      }}
-    />
+    <BusinessTheme slug={slug} business={catalog?.business ?? initialBusiness}>
+      <CompanyCatalogTemplate
+        catalog={catalog}
+        promotions={catalog?.promotions ?? []}
+        status={status}
+        hasMore={Boolean(hasNextPage)}
+        loadingMore={isFetchingNextPage}
+        onLoadMore={() => {
+          void fetchNextPage();
+        }}
+      />
+    </BusinessTheme>
   );
 }

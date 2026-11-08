@@ -19,6 +19,15 @@ export default defineConfig({
     projects: [
       {
         extends: true,
+        root: path.resolve(root, 'shared/domain'),
+        test: {
+          name: 'shared',
+          environment: 'node',
+          include: ['**/*.spec.ts'],
+        },
+      },
+      {
+        extends: true,
         root: path.resolve(root, 'client'),
         test: {
           name: 'client',
