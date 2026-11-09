@@ -2,6 +2,7 @@ import { useState, type SubmitEvent, type JSX } from 'react';
 import { formatBrazilianPhone, isValidBrazilianPhone } from '@shared/phone';
 import type { PaymentMethod } from '@shared/interfaces/appointment.interface';
 import type { BookingFormValues } from '../../../interfaces/booking.interface';
+import { PaymentUtil } from '../../../utils/payment.util';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
 
 type BookingFormProps = {
@@ -104,29 +105,30 @@ export default function BookingForm({
         />{' '}
         Aceito receber mensagens deste estabelecimento pelo WhatsApp sobre este agendamento.
       </label>
-      <label className="field" htmlFor="payment-method">
-        Forma de pagamento
-        <select
-          id="payment-method"
-          value={paymentMethod}
-          onChange={(event) => {
-            const value = event.target.value;
-            if (value === 'debit' || value === 'credit' || value === 'cash' || value === 'pix') {
-              setPaymentMethod(value);
-            } else {
-              setPaymentMethod('');
-            }
-            setValidationError('');
-          }}
-          required
-        >
-          <option value="">Selecione uma forma de pagamento</option>
-          <option value="debit">Débito</option>
-          <option value="credit">Crédito</option>
-          <option value="cash">Dinheiro</option>
-          <option value="pix">Pix</option>
-        </select>
-      </label>
+      <fieldset className="slot-fieldset">
+        <legend>Forma de pagamento</legend>
+        <div className="slot-grid" role="radiogroup" aria-label="Forma de pagamento">
+          {PaymentUtil.options.map((option) => (
+            <label
+              key={option.value}
+              className={`slot-option${paymentMethod === option.value ? ' is-selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="payment-method"
+                value={option.value}
+                checked={paymentMethod === option.value}
+                onChange={() => {
+                  setPaymentMethod(option.value);
+                  setValidationError('');
+                }}
+                required
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       {paymentMethod === 'credit' && (
         <label className="field" htmlFor="payment-installments">
           Parcelas sem juros

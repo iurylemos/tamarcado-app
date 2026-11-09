@@ -48,6 +48,7 @@ export function render({ url, ...initial }: StorefrontRenderInput): StorefrontRe
         queryClient={queryClient}
         page={createPageElement(page, pageComponents)}
         routerMode="static"
+        loadPageComponents={() => Promise.resolve({})}
       />,
     );
 

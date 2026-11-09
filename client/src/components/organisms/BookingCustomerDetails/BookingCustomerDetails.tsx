@@ -17,8 +17,8 @@ export default function BookingCustomerDetails({
   onSubmit,
 }: Readonly<BookingCustomerDetailsProps>): JSX.Element {
   const contactRef = useRef<HTMLDivElement>(null);
-  const wasReady = useRef(false);
-  const shouldScrollToContact = useRef(false);
+  const wasReady = useRef<boolean>(false);
+  const shouldScrollToContact = useRef<boolean>(false);
 
   useEffect(() => {
     const justBecameReady = canSubmit && !wasReady.current;
@@ -32,10 +32,13 @@ export default function BookingCustomerDetails({
     if (!shouldScrollToContact.current) return;
 
     shouldScrollToContact.current = false;
+
     const contactElement = contactRef.current;
-    if (typeof contactElement?.scrollIntoView !== 'function') return;
+
+    if (!contactElement || typeof contactElement.scrollIntoView !== 'function') return;
 
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
     contactElement.scrollIntoView({
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
       block: 'center',

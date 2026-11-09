@@ -119,14 +119,16 @@ describe('StorefrontNavigation', () => {
     const user = userEvent.setup();
 
     render(
-      <BrowserRouter>
-        <StorefrontNavigation
-          initialPathname={initialPathname}
-          initialPage={<CatalogStart />}
-          loadPageComponents={loadPageComponents}
-        />
-        <LocationOutput />
-      </BrowserRouter>,
+      <QueryClientProvider client={createQueryClient()}>
+        <BrowserRouter>
+          <StorefrontNavigation
+            initialPathname={initialPathname}
+            initialPage={<CatalogStart />}
+            loadPageComponents={loadPageComponents}
+          />
+          <LocationOutput />
+        </BrowserRouter>
+      </QueryClientProvider>,
     );
 
     await user.click(screen.getByRole('link', { name: 'Book a service' }));

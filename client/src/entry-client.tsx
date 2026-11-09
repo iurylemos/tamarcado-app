@@ -1,4 +1,5 @@
-﻿import { createRoot, hydrateRoot } from 'react-dom/client';
+﻿import type { JSX } from 'react';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import StorefrontApp, { createPageElement } from './app/StorefrontApp';
 import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
@@ -37,7 +38,7 @@ async function bootstrap(): Promise<void> {
   const page = resolvePageData(matchRoute(pathname), readInitialData());
   const components = await loadPageComponents(page.name);
 
-  const app = (
+  const app: JSX.Element = (
     <StorefrontApp
       pathname={pathname}
       queryClient={createQueryClient()}

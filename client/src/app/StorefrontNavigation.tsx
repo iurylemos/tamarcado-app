@@ -1,5 +1,8 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useState, useCallback, type JSX } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import type { CompanyCatalog, CompanySummary } from '../interfaces/company.interface';
+import { ReactQueryConfig } from '../config/react-query.config';
 import type { PageComponents } from '../interfaces/page.interface';
 import { resolvePageData } from './page-data';
 import { matchRoute } from './routes';
@@ -23,6 +26,29 @@ export default function StorefrontNavigation({
   loadPageComponents,
 }: Readonly<StorefrontNavigationProps>): JSX.Element {
   const { pathname } = useLocation();
+  const queryClient = useQueryClient();
+
+  const cachedBusiness = useCallback(
+    (target: string): CompanySummary | null => {
+      const route = matchRoute(target);
+
+      if (route.name !== 'catalog' && route.name !== 'booking') return null;
+
+      const catalog =
+        queryClient.getQueryData<CompanyCatalog>(
+          ReactQueryConfig.companyCatalogQueryKey(
+            route.slug,
+            route.name === 'booking' ? route.productId : undefined,
+          ),
+        ) ??
+        queryClient.getQueryData<CompanyCatalog>(
+          ReactQueryConfig.companyCatalogQueryKey(route.slug),
+        );
+
+      return catalog?.business.slug === route.slug ? catalog.business : null;
+    },
+    [queryClient],
+  );
 
   const [activePage, setActivePage] = useState<ActivePage>({
     pathname: initialPathname,
@@ -57,7 +83,7 @@ export default function StorefrontNavigation({
   if (loadError !== undefined) throw loadError;
 
   if (pathname !== activePage.pathname) {
-    return <FallbackLoading message="Carregando página..." />;
+    return <FallbackLoading message="Carregando página..." business={cachedBusiness(pathname)} />;
   }
 
   return activePage.element;

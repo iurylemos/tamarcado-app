@@ -113,6 +113,22 @@ describe('getCompanyCatalog', () => {
       }),
     );
   });
+
+  it('can load the booking business and product without waiting for galleries', async () => {
+    vi.mocked(getDocsFromServer)
+      .mockResolvedValueOnce({
+        docs: [{ id: 'tenant-aurora', data: () => ({ tenantId: 'tenant-aurora' }) }],
+      } as never)
+      .mockResolvedValue({ docs: [] } as never);
+
+    const catalog = await getCompanyCatalog('studio-aurora', {
+      productId: 'service-aurora',
+      includeGalleries: false,
+    });
+
+    expect(catalog).not.toBeNull();
+    expect(getDocsFromServer).toHaveBeenCalledTimes(2);
+  });
   it('returns only active public products owned by the business matched by the slug', async () => {
     vi.mocked(getDocsFromServer)
       .mockResolvedValueOnce({
@@ -286,8 +302,8 @@ describe('getCompanyCatalog', () => {
     const catalog = await getCompanyCatalog('studio-aurora', { pageSize: 10 });
 
     expect(catalog?.products.map((product) => product.id)).toEqual(['regular-service']);
-    expect(catalog?.promotions.map((product) => product.id)).toEqual(['valid-offer']);
-    expect(catalog?.promotions[0]).toMatchObject({
+    expect(catalog?.promotions?.map((product) => product.id)).toEqual(['valid-offer']);
+    expect(catalog?.promotions?.[0]).toMatchObject({
       priceCents: 12000,
       promotionalPriceCents: 9000,
       promotionActive: true,

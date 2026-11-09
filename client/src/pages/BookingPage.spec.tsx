@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { JSX } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,6 +37,7 @@ afterEach(cleanup);
 describe('BookingPage professional selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getProductImageGalleries).mockResolvedValue([]);
     vi.mocked(searchAvailability).mockImplementation(async (input) => {
       const date = input.date ?? '';
       const slots = await vi.mocked(listAvailability)({ ...input, date });
@@ -72,6 +73,254 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
+  });
+
+  it('displays the cached summary and starts availability without waiting for galleries', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey('studio-aurora'), {
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+        },
+      ],
+    });
+    vi.mocked(getProductImageGalleries).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <BookingPage slug="studio-aurora" productId="service-corte" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
+    await waitFor(() => expect(searchAvailability).toHaveBeenCalledTimes(1));
+    expect(getCompanyCatalog).not.toHaveBeenCalled();
+    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts the gallery alongside a cold catalog request and applies it after the summary appears', async () => {
+    let resolveGalleries!: (value: Awaited<ReturnType<typeof getProductImageGalleries>>) => void;
+    let resolveCatalog!: (value: Awaited<ReturnType<typeof getCompanyCatalog>>) => void;
+    vi.mocked(getProductImageGalleries).mockReturnValue(
+      new Promise((resolve) => {
+        resolveGalleries = resolve;
+      }),
+    );
+    vi.mocked(getCompanyCatalog).mockReturnValue(
+      new Promise((resolve) => {
+        resolveCatalog = resolve;
+      }),
+    );
+    const catalog: NonNullable<Awaited<ReturnType<typeof getCompanyCatalog>>> = {
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/default.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          customizationAttributes: [
+            {
+              id: 'color',
+              label: 'Cor',
+              options: [{ id: 'black', label: 'Preto' }],
+              defaultOptionId: 'black',
+            },
+          ],
+        },
+      ],
+    };
+    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <BookingPage slug="studio-aurora" productId="service-corte" />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getCompanyCatalog).toHaveBeenCalledTimes(1));
+    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('heading', { name: 'Corte' })).not.toBeInTheDocument();
+    expect(getCompanyCatalog).toHaveBeenCalledWith('studio-aurora', {
+      productId: 'service-corte',
+      includeGalleries: false,
+    });
+    await act(async () => resolveCatalog(catalog));
+    expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
+    await waitFor(() => expect(searchAvailability).toHaveBeenCalledTimes(1));
+    await act(async () =>
+      resolveGalleries([
+        {
+          id: 'gallery-black',
+          productId: 'service-corte',
+          combinationKey: 'color:black',
+          selections: [{ attributeId: 'color', optionId: 'black' }],
+          images: [{ id: 'black', storagePath: '', downloadUrl: '/black.jpg' }],
+        },
+      ]),
+    );
+    await waitFor(() =>
+      expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
+        'src',
+        '/black.jpg',
+      ),
+    );
+    expect(searchAvailability).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses cached galleries without requesting them again', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey('studio-aurora'), {
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          imageGalleries: [],
+        },
+      ],
+    });
+    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <BookingPage slug="studio-aurora" productId="service-corte" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
+    expect(getCompanyCatalog).not.toHaveBeenCalled();
+    expect(getProductImageGalleries).not.toHaveBeenCalled();
+  });
+
+  it('reports gallery failures without hiding the summary', async () => {
+    vi.mocked(getProductImageGalleries).mockRejectedValue(new Error('gallery unavailable'));
+    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    renderWithQueryClient(
+      <MemoryRouter>
+        <BookingPage slug="studio-aurora" productId="service-corte" />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar as imagens do serviço.',
+    );
+  });
+
+  it('waits for the pending gallery before submitting the selected customization image', async () => {
+    let resolveGalleries!: (value: Awaited<ReturnType<typeof getProductImageGalleries>>) => void;
+    vi.mocked(getProductImageGalleries).mockReturnValue(
+      new Promise((resolve) => {
+        resolveGalleries = resolve;
+      }),
+    );
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/default.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          customizationAttributes: [
+            {
+              id: 'color',
+              label: 'Cor',
+              options: [{ id: 'black', label: 'Preto' }],
+              defaultOptionId: 'black',
+            },
+          ],
+        },
+      ],
+    });
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+    vi.mocked(createAppointment).mockResolvedValue({
+      appointmentId: 'appointment-1',
+      status: 'pending',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+      startsAt: '2030-02-04T12:00:00.000Z',
+      endsAt: '2030-02-04T14:00:00.000Z',
+      effectivePriceCents: 12000,
+      originalPriceCents: 12000,
+      promotionApplied: false,
+    });
+    renderWithQueryClient(
+      <MemoryRouter>
+        <BookingPage slug="studio-aurora" productId="service-corte" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: /09:00/ }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByLabelText('Débito'));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+    await waitFor(() => expect(getCompanyCatalog).toHaveBeenCalledTimes(2));
+    expect(createAppointment).not.toHaveBeenCalled();
+    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+
+    await act(async () =>
+      resolveGalleries([
+        {
+          id: 'gallery-black',
+          productId: 'service-corte',
+          combinationKey: 'color:black',
+          selections: [{ attributeId: 'color', optionId: 'black' }],
+          images: [{ id: 'black', storagePath: '', downloadUrl: '/black.jpg' }],
+        },
+      ]),
+    );
+    await waitFor(() =>
+      expect(createAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({ selectedImageId: 'black' }),
+      ),
+    );
+    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
   });
 
   it('reuses the catalog product already loaded and fetches only its missing galleries', async () => {
@@ -347,6 +596,7 @@ describe('BookingPage professional selection', () => {
     expect(screen.getByRole('heading', { name: 'Preparando seu agendamento' })).toBeInTheDocument();
     expect(getCompanyCatalog).toHaveBeenCalledExactlyOnceWith('studio-aurora', {
       productId: 'service-corte',
+      includeGalleries: false,
     });
     queryClient.clear();
   });
@@ -467,9 +717,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
@@ -568,9 +816,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Solicitação enviada!');
@@ -601,6 +847,21 @@ describe('BookingPage professional selection', () => {
   });
 
   it('shows no-image state for combinations without a gallery and switches to exact-match galleries', async () => {
+    vi.mocked(getProductImageGalleries).mockResolvedValue([
+      {
+        id: 'gallery-black-silk',
+        productId: 'service-corte',
+        combinationKey: 'color:black|fabric:silk',
+        selections: [
+          { attributeId: 'color', optionId: 'black' },
+          { attributeId: 'fabric', optionId: 'silk' },
+        ],
+        images: [
+          { id: 'variant-1', storagePath: '', downloadUrl: '/variant-1.jpg' },
+          { id: 'variant-2', storagePath: '', downloadUrl: '/variant-2.jpg' },
+        ],
+      },
+    ]);
     vi.mocked(getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
@@ -638,21 +899,6 @@ describe('BookingPage professional selection', () => {
           defaultImages: [
             { id: 'default-1', storagePath: '', downloadUrl: '/default.jpg' },
             { id: 'default-2', storagePath: '', downloadUrl: '/default-2.jpg' },
-          ],
-          imageGalleries: [
-            {
-              id: 'gallery-black-silk',
-              productId: 'service-corte',
-              combinationKey: 'color:black|fabric:silk',
-              selections: [
-                { attributeId: 'color', optionId: 'black' },
-                { attributeId: 'fabric', optionId: 'silk' },
-              ],
-              images: [
-                { id: 'variant-1', storagePath: '', downloadUrl: '/variant-1.jpg' },
-                { id: 'variant-2', storagePath: '', downloadUrl: '/variant-2.jpg' },
-              ],
-            },
           ],
         },
       ],
@@ -716,9 +962,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
@@ -814,9 +1058,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
@@ -924,9 +1166,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(
@@ -1150,6 +1390,44 @@ describe('BookingPage professional selection', () => {
     );
   });
 
+  it('does not show time-slot skeletons while an estimated checkout verifies professionals', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+        timezone: 'America/New_York',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 3,
+        },
+      ],
+    });
+    vi.mocked(searchAvailabilityForEstimation).mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText('Verificando profissionais com horários nos próximos 31 dias...'),
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
+    expect(screen.queryByLabelText('Carregando horários disponíveis')).not.toBeInTheDocument();
+  });
+
   it('submits estimated checkouts without a customer-selected slot and shows the official result', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue({
       business: {
@@ -1221,20 +1499,19 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    const paymentMethod = screen.getByLabelText('Forma de pagamento');
-    expect(screen.getByRole('option', { name: 'Débito' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Crédito' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Dinheiro' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Pix' })).toBeInTheDocument();
-    fireEvent.change(paymentMethod, { target: { value: 'debit' } });
+    expect(screen.getByRole('radiogroup', { name: 'Forma de pagamento' })).toBeInTheDocument();
+    for (const label of ['Débito', 'Crédito', 'Dinheiro', 'Pix']) {
+      expect(screen.getByRole('radio', { name: label })).not.toBeChecked();
+    }
+    fireEvent.click(screen.getByLabelText('Débito'));
+    expect(screen.getByRole('radio', { name: 'Débito' })).toBeChecked();
     expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
-    fireEvent.change(paymentMethod, { target: { value: 'cash' } });
+    fireEvent.click(screen.getByLabelText('Dinheiro'));
+    expect(screen.getByRole('radio', { name: 'Débito' })).not.toBeChecked();
     expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
-    fireEvent.change(paymentMethod, { target: { value: 'pix' } });
+    fireEvent.click(screen.getByLabelText('Pix'));
     expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'credit' },
-    });
+    fireEvent.click(screen.getByLabelText('Crédito'));
     for (const installments of [1, 2, 3, 4, 5]) {
       expect(screen.getByRole('option', { name: `${installments}x` })).toBeInTheDocument();
     }
