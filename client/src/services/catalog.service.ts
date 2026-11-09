@@ -30,6 +30,7 @@ import { ColorUtil } from '../utils/color.util';
 
 export type CompanyCatalogOptions = {
   productId?: string;
+  includeGalleries?: boolean;
   pageSize?: number;
   after?: Pick<PublicProductSummary, 'id' | 'name'>;
 };
@@ -152,7 +153,7 @@ export async function getCompanyCatalog(
 ): Promise<CompanyCatalog | null> {
   if (!isValidBusinessSlug(slug)) return null;
 
-  const { productId, pageSize, after } = options;
+  const { productId, pageSize, after, includeGalleries = true } = options;
   const productConstraints: QueryConstraint[] = [
     where('businessSlug', '==', slug),
     where('active', '==', true),
@@ -187,7 +188,7 @@ export async function getCompanyCatalog(
       ),
     ),
     getDocsFromServer(query(collection(db, 'public_products'), ...productConstraints)),
-    productId
+    productId && includeGalleries
       ? getDocsFromServer(
           query(
             collection(db, 'public_product_galleries'),
@@ -228,7 +229,9 @@ export async function getCompanyCatalog(
   };
 
   const visibleProducts: PublicProductSummary[] = tenantProducts
-    .map((snapshot) => summarizeProduct(snapshot, galleries, Boolean(productId)))
+    .map((snapshot) =>
+      summarizeProduct(snapshot, galleries, Boolean(productId && includeGalleries)),
+    )
     .filter(
       (product) =>
         Number.isInteger(product.priceCents) && Number.isInteger(product.durationMinutes),

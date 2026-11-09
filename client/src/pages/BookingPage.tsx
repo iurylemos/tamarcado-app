@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
-import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type {
   AvailableProfessional,
   AvailableSlot,
@@ -30,12 +30,14 @@ import {
 } from '../services/professional.service';
 import { estimateDateFromInstant, isValidIanaTimezone } from '@shared/timezone';
 import { DateUtil } from '../utils/date.util';
+import { isValidBusinessSlug } from '../utils/business-slug.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import { ReactQueryConfig } from '../config/react-query.config';
 import { resolvePageMeta, updatePageMeta } from '../app/page-meta';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 import BusinessTheme from '../app/BusinessTheme';
+import { BookingUtil } from '../utils/booking.util';
 
 type BookingPageProps = {
   slug: string;
@@ -96,6 +98,59 @@ export default function BookingPage({
         : undefined,
     [catalog, slug, productId],
   );
+
+  const detailKey = useMemo<string[]>(
+    () => ReactQueryConfig.companyCatalogQueryKey(slug, productId),
+    [slug, productId],
+  );
+
+  const catalogKey = useMemo<string[]>(() => ReactQueryConfig.companyCatalogQueryKey(slug), [slug]);
+
+  const cachedDetail = queryClient.getQueryData<CompanyCatalog>(detailKey);
+  const cachedCatalog = queryClient.getQueryData<CompanyCatalog>(catalogKey);
+
+  const detailGalleries = useMemo<ProductImageGallery[] | undefined>(
+    () => BookingUtil.findCachedGalleries(cachedDetail, slug, productId),
+    [cachedDetail, slug, productId],
+  );
+
+  const catalogGalleries = useMemo<ProductImageGallery[] | undefined>(
+    () => BookingUtil.findCachedGalleries(cachedCatalog, slug, productId),
+    [cachedCatalog, slug, productId],
+  );
+
+  const initialGalleries = useMemo<ProductImageGallery[] | undefined>(
+    () =>
+      detailGalleries ??
+      catalogGalleries ??
+      (initialBusiness?.slug === slug && initialProduct?.id === productId
+        ? initialProduct.imageGalleries
+        : undefined),
+    [detailGalleries, catalogGalleries, initialBusiness, initialProduct, slug, productId],
+  );
+
+  const galleriesUpdatedAt = useMemo<number | undefined>(
+    () =>
+      detailGalleries
+        ? queryClient.getQueryState(detailKey)?.dataUpdatedAt
+        : catalogGalleries
+          ? queryClient.getQueryState(catalogKey)?.dataUpdatedAt
+          : 0,
+    [detailGalleries, catalogGalleries, queryClient, detailKey, catalogKey],
+  );
+
+  const galleryQuery = useQuery({
+    queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
+    queryFn: async () => await getProductImageGalleries(slug, productId),
+    enabled:
+      isValidBusinessSlug(slug) &&
+      Boolean(productId) &&
+      (initialStatus === undefined || initialStatus === 'ready'),
+    initialData: initialGalleries,
+    initialDataUpdatedAt: galleriesUpdatedAt ?? 0,
+    staleTime: ReactQueryConfig.queryStaleTime,
+  });
+
   const cachedBusiness = useMemo<CompanySummary | undefined>(
     () =>
       queryClient.getQueryData<CompanyCatalog>(ReactQueryConfig.companyCatalogQueryKey(slug))
@@ -208,26 +263,14 @@ export default function BookingPage({
 
   const effectiveImageGallery = useMemo<ProductImageGallery | undefined>(
     () =>
-      product &&
-      product.imageGalleries?.find(
-        (gallery) =>
-          gallery.selections.length === (product.customizationAttributes?.length ?? 0) &&
-          gallery.selections.every((selection) =>
-            customizationSelections.some(
-              (current) =>
-                current.attributeId === selection.attributeId &&
-                current.optionId === selection.optionId,
-            ),
-          ) &&
-          customizationSelections.every((selection) =>
-            gallery.selections.some(
-              (current) =>
-                current.attributeId === selection.attributeId &&
-                current.optionId === selection.optionId,
-            ),
-          ),
-      ),
-    [customizationSelections, product],
+      product
+        ? BookingUtil.findSelectedGallery(
+            product,
+            customizationSelections,
+            galleryQuery.data ?? product.imageGalleries,
+          )
+        : undefined,
+    [customizationSelections, product, galleryQuery.data],
   );
 
   const effectiveImages = useMemo<ProductImage[]>(() => {
@@ -278,7 +321,7 @@ export default function BookingPage({
         queryKey: detailKey,
         staleTime: refresh ? 0 : ReactQueryConfig.queryStaleTime,
         queryFn: async () => {
-          if (refresh) return await getCompanyCatalog(slug, { productId });
+          if (refresh) return await getCompanyCatalog(slug, { productId, includeGalleries: false });
 
           const cachedCatalog = currentQueryClient.getQueryData<CompanyCatalog>(
             ReactQueryConfig.companyCatalogQueryKey(slug),
@@ -290,23 +333,10 @@ export default function BookingPage({
               : undefined;
 
           if (!cachedCatalog || !cachedProduct) {
-            return await getCompanyCatalog(slug, { productId });
+            return await getCompanyCatalog(slug, { productId, includeGalleries: false });
           }
 
-          const imageGalleries = await currentQueryClient.query({
-            queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
-            queryFn: () => getProductImageGalleries(slug, productId),
-            staleTime: ReactQueryConfig.queryStaleTime,
-          });
-
-          const catalog: CompanyCatalog = {
-            ...cachedCatalog,
-            products: cachedCatalog.products.map((product) =>
-              product.id === productId ? { ...product, imageGalleries } : product,
-            ),
-          };
-
-          return catalog;
+          return cachedCatalog;
         },
       });
     },
@@ -486,8 +516,8 @@ export default function BookingPage({
 
       const refreshedSlots = await queryClient.query({
         queryKey,
-        queryFn: () =>
-          listAvailability({
+        queryFn: async () =>
+          await listAvailability({
             businessSlug: slug,
             productId,
             date: bookedDate,
@@ -537,7 +567,14 @@ export default function BookingPage({
         return;
       }
 
-      const currentCatalog = await getBookingCatalog(queryClient, slug, productId, true);
+      const [currentCatalog, galleries] = await Promise.all([
+        getBookingCatalog(queryClient, slug, productId, true),
+        queryClient.query({
+          queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
+          queryFn: () => getProductImageGalleries(slug, productId),
+          staleTime: ReactQueryConfig.queryStaleTime,
+        }),
+      ]);
 
       const currentProduct =
         currentCatalog?.business.slug === slug
@@ -552,6 +589,20 @@ export default function BookingPage({
         return;
       }
 
+      const currentGalleryImages =
+        BookingUtil.findSelectedGallery(
+          currentProduct,
+          customizationSelections,
+          galleries,
+        )?.images.filter((image) => image.downloadUrl) ?? [];
+
+      const imageId =
+        (currentProduct.customizationAttributes?.length ?? 0) > 0
+          ? currentGalleryImages.some((image) => image.id === selectedImageId)
+            ? selectedImageId
+            : (currentGalleryImages[0]?.id ?? '')
+          : effectiveSelectedImageId;
+
       const result = await createAppointment({
         businessSlug: slug,
         productId,
@@ -563,7 +614,7 @@ export default function BookingPage({
         paymentMethod: values.paymentMethod,
         ...(values.installments !== undefined ? { installments: values.installments } : {}),
         ...(customizationSelections.length > 0 ? { customizationSelections } : {}),
-        ...(effectiveSelectedImageId ? { selectedImageId: effectiveSelectedImageId } : {}),
+        ...(imageId ? { selectedImageId: imageId } : {}),
       });
 
       setReceipt({
@@ -756,7 +807,9 @@ export default function BookingPage({
         searchingNextDate={searchingNextDate}
         nextDateSearchComplete={nextDateSearchComplete}
         nextDateSearchError={nextDateSearchError}
-        error={error}
+        error={
+          error || (galleryQuery.isError ? 'Não foi possível carregar as imagens do serviço.' : '')
+        }
         busy={busy}
         canSubmit={canSubmit}
         receipt={receipt}
