@@ -15,6 +15,11 @@ type StorefrontGeneration = {
   renderer: StorefrontRendererModule;
 };
 
+type StorefrontGeneratedFile = {
+  relativePath: string;
+  content: string;
+};
+
 function createBookingShell(template: string): string {
   return template
     .replace('<!--app-head-->', '')
@@ -28,13 +33,15 @@ export async function generateStorefront({
   businesses,
   renderer,
 }: StorefrontGeneration): Promise<void> {
-  const generatedFiles: Array<{ relativePath: string; content: string }> = [];
+  const generatedFiles: Array<StorefrontGeneratedFile> = [];
   const seenSlugs = new Set<string>();
 
   const rootOutput = renderer.render({ url: '/' });
+
   if (rootOutput.statusCode !== 200) {
     throw new Error('The neutral storefront page could not be generated.');
   }
+
   generatedFiles.push({
     relativePath: 'index.html',
     content: renderer.renderDocument(template, rootOutput),
@@ -47,17 +54,21 @@ export async function generateStorefront({
     if (seenSlugs.has(business.slug)) {
       throw new Error('Published public business records contain duplicate slugs.');
     }
+
     seenSlugs.add(business.slug);
 
     const route = `/empresa/${business.slug}`;
+
     const output = renderer.render({
       url: route,
       initialBusiness: business,
       initialCatalogStatus: 'ready',
     });
+
     if (output.statusCode !== 200) {
       throw new Error('A published business storefront page could not be generated.');
     }
+
     generatedFiles.push({
       relativePath: path.join('empresa', business.slug, 'index.html'),
       content: renderer.renderDocument(template, output),
@@ -70,6 +81,7 @@ export async function generateStorefront({
   });
 
   const stagingDir = await mkdtemp(path.join(outputDir, '.storefront-'));
+
   try {
     for (const file of generatedFiles) {
       const stagedPath = path.join(stagingDir, file.relativePath);
@@ -91,7 +103,6 @@ export async function generateStorefront({
 async function buildStorefront(): Promise<void> {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
   const clientDir = path.resolve(scriptsDir, '..');
-  const rootDir = path.resolve(clientDir, '..');
   const environment = loadEnv('production', clientDir, '');
   const projectId = process.env.VITE_FIREBASE_PROJECT_ID || environment.VITE_FIREBASE_PROJECT_ID;
   const apiKey = process.env.VITE_FIREBASE_API_KEY || environment.VITE_FIREBASE_API_KEY;

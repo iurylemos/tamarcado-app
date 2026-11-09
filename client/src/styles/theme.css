@@ -827,6 +827,7 @@ html[data-navigating] main {
 }
 .product-image-gallery {
   order: -1;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   min-width: 0;
   margin: 0 0 0.35rem;
@@ -845,6 +846,7 @@ html[data-navigating] main {
 }
 .product-image-gallery__empty {
   margin: var(--pad);
+  min-width: 0;
   width: auto;
   border-color: var(--color-brand-line);
   border-radius: var(--radius-control);

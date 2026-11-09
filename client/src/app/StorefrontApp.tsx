@@ -6,38 +6,39 @@ import Layout from './Layout';
 import StorefrontNavigation from './StorefrontNavigation';
 export { createPageElement } from './page-renderer';
 
-type StorefrontAppBaseProps = {
+type StorefrontAppProps = {
   pathname: string;
   queryClient: QueryClient;
   page: JSX.Element;
+  routerMode: 'static' | 'browser';
+  loadPageComponents: (name: string) => Promise<Partial<PageComponents>>;
 };
 
-type StorefrontAppProps =
-  | (StorefrontAppBaseProps & { routerMode: 'static' })
-  | (StorefrontAppBaseProps & {
-      routerMode: 'browser';
-      loadPageComponents: (name: string) => Promise<Partial<PageComponents>>;
-    });
-
-export default function StorefrontApp(props: Readonly<StorefrontAppProps>): JSX.Element {
+export default function StorefrontApp({
+  queryClient,
+  routerMode,
+  pathname,
+  page,
+  loadPageComponents,
+}: Readonly<StorefrontAppProps>): JSX.Element {
   const app: JSX.Element = (
-    <QueryClientProvider client={props.queryClient}>
+    <QueryClientProvider client={queryClient}>
       <Layout>
-        {props.routerMode === 'static' ? (
-          props.page
+        {routerMode === 'static' ? (
+          page
         ) : (
           <StorefrontNavigation
-            initialPathname={props.pathname}
-            initialPage={props.page}
-            loadPageComponents={props.loadPageComponents}
+            initialPathname={pathname}
+            initialPage={page}
+            loadPageComponents={loadPageComponents}
           />
         )}
       </Layout>
     </QueryClientProvider>
   );
 
-  if (props.routerMode === 'static') {
-    return <StaticRouter location={props.pathname}>{app}</StaticRouter>;
+  if (routerMode === 'static') {
+    return <StaticRouter location={pathname}>{app}</StaticRouter>;
   }
 
   return <BrowserRouter>{app}</BrowserRouter>;
