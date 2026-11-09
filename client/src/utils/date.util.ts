@@ -68,4 +68,18 @@ export class DateUtil {
       timeZone: 'UTC',
     }).format(new Date(`${value}T12:00:00Z`));
   }
+
+  public static provisionalDate(provisionalEstimatedDate: string): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'long',
+      timeZone: 'UTC',
+    }).format(new Date(`${provisionalEstimatedDate}T12:00:00Z`));
+  }
+
+  public static receiptDate(receipt: BookingReceipt): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'full',
+      timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
+    }).format(new Date(receipt.startsAt));
+  }
 }

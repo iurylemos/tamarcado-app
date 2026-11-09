@@ -34,10 +34,10 @@ import { isValidBusinessSlug } from '../utils/business-slug.util';
 import { getBookingErrorMessage } from '../utils/booking-error.util';
 import { ReactQueryConfig } from '../config/react-query.config';
 import { resolvePageMeta, updatePageMeta } from '../app/page-meta';
+import { BookingUtil } from '../utils/booking.util';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 import BusinessTheme from '../app/BusinessTheme';
-import { BookingUtil } from '../utils/booking.util';
 
 type BookingPageProps = {
   slug: string;
@@ -106,8 +106,15 @@ export default function BookingPage({
 
   const catalogKey = useMemo<string[]>(() => ReactQueryConfig.companyCatalogQueryKey(slug), [slug]);
 
-  const cachedDetail = queryClient.getQueryData<CompanyCatalog>(detailKey);
-  const cachedCatalog = queryClient.getQueryData<CompanyCatalog>(catalogKey);
+  const cachedDetail = useMemo<CompanyCatalog | undefined>(
+    () => queryClient.getQueryData<CompanyCatalog>(detailKey),
+    [queryClient, detailKey],
+  );
+
+  const cachedCatalog = useMemo<CompanyCatalog | undefined>(
+    () => queryClient.getQueryData<CompanyCatalog>(catalogKey),
+    [queryClient, catalogKey],
+  );
 
   const detailGalleries = useMemo<ProductImageGallery[] | undefined>(
     () => BookingUtil.findCachedGalleries(cachedDetail, slug, productId),
@@ -206,7 +213,7 @@ export default function BookingPage({
   }, [customizationSelectionState, product]);
 
   const estimatedCheckout = useMemo<boolean>(
-    () => product?.estimatedDeliveryEnabled === true,
+    () => !!(product && product.estimatedDeliveryEnabled === true),
     [product],
   );
 
@@ -672,10 +679,7 @@ export default function BookingPage({
         text: [
           `Agendamento em ${catalog?.business.name ?? 'Tamarcado'}`,
           `Serviço: ${product?.name ?? ''}`,
-          `Data: ${new Intl.DateTimeFormat('pt-BR', {
-            dateStyle: 'full',
-            timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
-          }).format(new Date(receipt.startsAt))}`,
+          `Data: ${DateUtil.receiptDate(receipt)}`,
           `Horário: ${DateUtil.formatTimeRange(receipt)}`,
           `Protocolo: ${receipt.appointmentId}`,
         ].join('\n'),
@@ -686,16 +690,13 @@ export default function BookingPage({
     }
   };
 
-  const appointmentShareText = useMemo(
+  const appointmentShareText = useMemo<string>(
     () =>
       receipt && catalog && product
         ? [
             `Agendamento em ${catalog.business.name}`,
             `Serviço: ${product.name}`,
-            `Data: ${new Intl.DateTimeFormat('pt-BR', {
-              dateStyle: 'full',
-              timeZone: receipt.estimatedDelivery?.timezone ?? 'America/Sao_Paulo',
-            }).format(new Date(receipt.startsAt))}`,
+            `Data: ${DateUtil.receiptDate(receipt)}`,
             `Horário: ${DateUtil.formatTimeRange(receipt)}`,
             `Protocolo: ${receipt.appointmentId}`,
           ].join('\n')

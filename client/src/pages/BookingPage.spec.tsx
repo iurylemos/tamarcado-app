@@ -298,7 +298,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), { target: { value: 'debit' } });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
     await waitFor(() => expect(getCompanyCatalog).toHaveBeenCalledTimes(2));
     expect(createAppointment).not.toHaveBeenCalled();
@@ -717,9 +717,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
@@ -818,9 +816,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Solicitação enviada!');
@@ -966,9 +962,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
@@ -1064,9 +1058,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
@@ -1174,9 +1166,7 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(
@@ -1400,6 +1390,44 @@ describe('BookingPage professional selection', () => {
     );
   });
 
+  it('does not show time-slot skeletons while an estimated checkout verifies professionals', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+        timezone: 'America/New_York',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 3,
+        },
+      ],
+    });
+    vi.mocked(searchAvailabilityForEstimation).mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
+        <Routes>
+          <Route path="/empresa/:slug/agendar/:productId" element={<BookingRoutePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText('Verificando profissionais com horários nos próximos 31 dias...'),
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
+    expect(screen.queryByLabelText('Carregando horários disponíveis')).not.toBeInTheDocument();
+  });
+
   it('submits estimated checkouts without a customer-selected slot and shows the official result', async () => {
     vi.mocked(getCompanyCatalog).mockResolvedValue({
       business: {
@@ -1471,20 +1499,19 @@ describe('BookingPage professional selection', () => {
       target: { value: '(11) 99999-0000' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    const paymentMethod = screen.getByLabelText('Forma de pagamento');
-    expect(screen.getByRole('option', { name: 'Débito' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Crédito' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Dinheiro' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Pix' })).toBeInTheDocument();
-    fireEvent.change(paymentMethod, { target: { value: 'debit' } });
+    expect(screen.getByRole('radiogroup', { name: 'Forma de pagamento' })).toBeInTheDocument();
+    for (const label of ['Débito', 'Crédito', 'Dinheiro', 'Pix']) {
+      expect(screen.getByRole('radio', { name: label })).not.toBeChecked();
+    }
+    fireEvent.click(screen.getByLabelText('Débito'));
+    expect(screen.getByRole('radio', { name: 'Débito' })).toBeChecked();
     expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
-    fireEvent.change(paymentMethod, { target: { value: 'cash' } });
+    fireEvent.click(screen.getByLabelText('Dinheiro'));
+    expect(screen.getByRole('radio', { name: 'Débito' })).not.toBeChecked();
     expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
-    fireEvent.change(paymentMethod, { target: { value: 'pix' } });
+    fireEvent.click(screen.getByLabelText('Pix'));
     expect(screen.queryByLabelText('Parcelas sem juros')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'credit' },
-    });
+    fireEvent.click(screen.getByLabelText('Crédito'));
     for (const installments of [1, 2, 3, 4, 5]) {
       expect(screen.getByRole('option', { name: `${installments}x` })).toBeInTheDocument();
     }

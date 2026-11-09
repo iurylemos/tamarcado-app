@@ -37,9 +37,7 @@ describe('BookingForm', () => {
     expect(phoneInput).toHaveValue('(11) 99999-0000');
     expect(submitButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), {
-      target: { value: 'debit' },
-    });
+    fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(consent);
     expect(submitButton).toBeEnabled();
     fireEvent.click(submitButton);

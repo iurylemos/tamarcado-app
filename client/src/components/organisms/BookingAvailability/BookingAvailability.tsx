@@ -75,11 +75,7 @@ export default function BookingAvailability({
           )}
           {provisionalEstimatedDate ? (
             <p>
-              <b>Previsão provisória:</b>{' '}
-              {new Intl.DateTimeFormat('pt-BR', {
-                dateStyle: 'long',
-                timeZone: 'UTC',
-              }).format(new Date(`${provisionalEstimatedDate}T12:00:00Z`))}
+              <b>Previsão provisória:</b> {DateUtil.provisionalDate(provisionalEstimatedDate)}
             </p>
           ) : estimateUnavailableMessage ? (
             <p role="status">{estimateUnavailableMessage}</p>
@@ -108,11 +104,13 @@ export default function BookingAvailability({
               ? 'Verificando profissionais com horários nos próximos 31 dias...'
               : 'Buscando horários disponíveis...'}
           </p>
-          <div className="slot-grid" aria-label="Carregando horários disponíveis">
-            {Array.from({ length: 4 }, (_, index) => (
-              <SkeletonCard key={`booking-time-skeleton-${index}`} variant="time" />
-            ))}
-          </div>
+          {!estimatedCheckout && (
+            <div className="slot-grid" aria-label="Carregando horários disponíveis">
+              {Array.from({ length: 4 }, (_, index) => (
+                <SkeletonCard key={`booking-time-skeleton-${index}`} variant="time" />
+              ))}
+            </div>
+          )}
         </>
       ) : (
         <ProfessionalSelector
@@ -174,7 +172,7 @@ export default function BookingAvailability({
                 className={`slot-option${selectedStartsAt === slot.startsAt ? ' is-selected' : ''}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                        whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.95 }}
                 transition={{ delay: Math.min(index, 12) * 0.025 }}
               >
                 <input
