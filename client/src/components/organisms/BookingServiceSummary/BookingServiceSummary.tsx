@@ -80,9 +80,7 @@ export default function BookingServiceSummary({
 
         const combinationLabel = attributes
           .map((attribute) => {
-            const selection = variant.selections.find(
-              (item) => item.attributeId === attribute.id,
-            );
+            const selection = variant.selections.find((item) => item.attributeId === attribute.id);
             return attribute.options.find((option) => option.id === selection?.optionId)?.label;
           })
           .filter((label): label is string => label !== undefined)
@@ -183,30 +181,25 @@ export default function BookingServiceSummary({
                         ? { ...selection, optionId: option.id }
                         : selection,
                     );
+
                     const pricing = resolveProductPricing(product, selections);
+
+                    const checkPriceSelections =
+                      priceSelections.find((selection) => selection.attributeId === attribute.id)
+                        ?.optionId === option.id;
 
                     return (
                       <label className="booking-summary-option" key={option.id}>
                         <input
                           type="radio"
                           name={`product-${product.id}-${attribute.id}`}
-                          checked={
-                            priceSelections.find(
-                              (selection) => selection.attributeId === attribute.id,
-                            )?.optionId === option.id
-                          }
+                          checked={checkPriceSelections}
                           onClick={(event) => {
-                            if (
-                              priceSelections.find(
-                                (selection) => selection.attributeId === attribute.id,
-                              )?.optionId === option.id
-                            ) {
+                            if (checkPriceSelections) {
                               selectCustomization(selections, event.currentTarget);
                             }
                           }}
-                          onChange={(event) =>
-                            selectCustomization(selections, event.currentTarget)
-                          }
+                          onChange={(event) => selectCustomization(selections, event.currentTarget)}
                         />
                         <span className="booking-summary-option-content">
                           <span>{option.label}</span>
