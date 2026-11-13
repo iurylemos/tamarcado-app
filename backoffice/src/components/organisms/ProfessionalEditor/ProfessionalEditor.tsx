@@ -108,7 +108,7 @@ export default function ProfessionalEditor({
             </h2>
           </div>
           <button className="icon-button" aria-label="Fechar" onClick={onClose}>
-            ×
+            x
           </button>
         </header>
         <form className="form-stack" onSubmit={(event) => void submit(event)}>

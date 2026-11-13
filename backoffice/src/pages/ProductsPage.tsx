@@ -1,7 +1,9 @@
 import { useState, type JSX } from 'react';
 import type { ProductRecord } from '../interfaces/product.interface';
-import ProductEditor from '../components/organisms/ProductEditor/ProductEditor';
 import { CurrencyUtil } from '../utils/currency.util';
+import { DeliveryUtil } from '../utils/delivery.util';
+import ProductEditor from '../components/organisms/ProductEditor/ProductEditor';
+import EstimatedDeliverySimulator from '../components/organisms/EstimatedDeliverySimulator/EstimatedDeliverySimulator';
 
 type ProductsPageProps = {
   tenantId: string;
@@ -36,7 +38,7 @@ export default function ProductsPage({
             setEditorOpen(true);
           }}
         >
-          <span aria-hidden="true">＋</span> Novo serviço
+          <span aria-hidden="true">+</span> Novo serviço
         </button>
       </header>
       <div className="stat-row">
@@ -96,6 +98,9 @@ export default function ProductsPage({
                   <strong>{CurrencyUtil.formatMoney(product.priceCents)}</strong>
                   <span>{product.durationMinutes} min</span>
                 </div>
+                {!DeliveryUtil.hasCompleteEstimatedDelivery(product) && (
+                  <p className="muted">Prazo estimado não ativo ou incompleto.</p>
+                )}
                 <div className="product-footer">
                   <span>Comissão</span>
                   <strong>
@@ -108,6 +113,12 @@ export default function ProductsPage({
             </article>
           ))}
         </div>
+      )}
+      {products.length > 0 && (
+        <details className="estimate-simulator">
+          <summary>Simular prazo estimado</summary>
+          <EstimatedDeliverySimulator products={products} />
+        </details>
       )}
       {editorOpen && (
         <ProductEditor

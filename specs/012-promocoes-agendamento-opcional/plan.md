@@ -180,6 +180,28 @@ Este adendo registra os requisitos aprovados na revisão da especificação e pr
 - `functions/src/services/availability.service.ts`, `functions/src/services/booking.service.ts` e `functions/src/services/appointment-operations.service.ts`: geração e validação da mesma cadência por duração, cobrindo expediente, períodos separados, pausas, conflitos e reagendamento.
 - Testes focados em `client` e `functions`; não alterar `collaborator`, `backoffice`, `shared/domain`, regras Firestore, collections ou dados existentes.
 
+## Adendo de 2026-11-13 — edição agrupada e simulador administrativo
+
+Este adendo aplica-se somente à edição de prazos no backoffice e ao simulador administrativo descritos na História 4. Não altera o contrato existente de produto ou agendamento, os consumidores públicos, as Functions ou as regras de Firestore. Nenhum dado é migrado ou alterado em massa.
+
+### Fluxo e persistência
+
+1. No editor existente, permitir prazo geral e seleção explícita de um atributo relevante. Apresentar um grupo por opção desse atributo e tratar os demais atributos como variações secundárias. A edição em lote aplica o valor às combinações correspondentes; a indicação de herança descreve a configuração corrente da edição, sem afirmar que há uma regra persistida separada.
+2. Inicializar os valores de trabalho a partir dos prazos existentes por combinação. Quando um grupo tiver prazos distintos, mostrar as combinações e valores conflitantes. Alterar o agrupamento ou outros campos não modifica esses valores; exigir confirmação explícita antes de aplicar um novo prazo uniforme ao grupo. Até essa confirmação, preservar cada prazo ao salvar.
+3. Na submissão, validar prazos como inteiros positivos quando exigidos e expandir as alterações confirmadas para as combinações completas, reutilizando `variantPrices`, a geração de combinações e o salvamento existentes. Preservar os preços, preços promocionais e os prazos das combinações não alteradas. Não acrescentar campos ou coleções; a escolha do atributo não sobrevive como configuração independente. Ao reabrir, somente inferir um agrupamento quando inequívoco; caso contrário solicitar ao usuário que escolha novamente.
+4. Apresentar no backoffice um simulador independente usando os produtos carregados do tenant. Permitir escolher produtos, opções necessárias e quantidades inteiras positivas; resolver os prazos atuais pelas combinações existentes e somar prazo vezes quantidade. Não gravar dados nem criar pedidos; indicar ausência, configuração inválida ou seleção insuficiente sem apresentar uma soma parcial como resultado definitivo. A simulação não representa o cálculo real do agendamento.
+
+### Superfícies, ordem e validação
+
+1. Acrescentar testes comportamentais do editor em `backoffice/src/pages/ProductsPage.spec.tsx`: grupo por característica, prazo geral, variações secundárias, preços/promoções preservados, prazos legados conflitantes sem alteração, confirmação de unificação, entradas inválidas e salvamento existente.
+2. Implementar a lógica de agrupamento e resolução em código próprio do backoffice, independente da apresentação, e integrá-la a `backoffice/src/components/organisms/ProductEditor/ProductEditor.tsx`. Preservar o fluxo e o formato de `saveProduct`.
+3. Integrar o simulador à área de serviços do backoffice e testar seleção, quantidades, prazos ausentes e as somas 20 + 2 × 3 = 26 e 15 + 2 × 3 = 21. Garantir que o simulador não invoque operações de escrita.
+4. Executar os testes pertinentes do backoffice e `npm run build:functions`. Não iniciar nem encerrar emuladores, fazer deploy, alterar cliente, colaborador, Functions ou domínio compartilhado.
+
+### Limitação aceita
+
+O armazenamento continua materializando prazos em todas as combinações, pois o servidor exige esse formato. A interface reduz a repetição de entrada, mas não cria uma fonte de configuração persistida independente por característica. O simulador administrativo não adiciona seleção de múltiplos produtos ou quantidades ao cliente nem ao booking.
+
 ## Complexidade
 
 Não há violação constitucional que exija justificativa. As alterações se mantêm nos workspaces e documentos Firestore existentes; não se prevê infraestrutura ou dependência adicional.

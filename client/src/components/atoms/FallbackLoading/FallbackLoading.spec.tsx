@@ -9,7 +9,9 @@ describe('FallbackLoading', () => {
     render(<FallbackLoading message="Carregando página..." />);
 
     const status = screen.getByRole('status');
-    expect(status).toHaveStyle('--fb-main: #f97316');
+    expect(status).toHaveStyle('--fb-main: var(--color-brand)');
+    expect(status).toHaveStyle('--fb-accent: var(--color-promo)');
+    expect(status.querySelector('.market-bg')).toBeInTheDocument();
     expect(screen.getByText('Tá Marcado')).toBeInTheDocument();
     expect(screen.getByText('Carregando página...')).toBeInTheDocument();
   });
@@ -36,5 +38,42 @@ describe('FallbackLoading', () => {
     expect(screen.getByText('Studio Aurora')).toBeInTheDocument();
     expect(screen.queryByText('Tá Marcado')).not.toBeInTheDocument();
     expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/logo.png');
+    expect(status.querySelector('.market-bg')).toBeInTheDocument();
+  });
+
+  it('uses the business secondary color even when its primary color is absent', () => {
+    render(
+      <FallbackLoading
+        message="Carregando página..."
+        business={{
+          id: 'aurora',
+          name: 'Studio Aurora',
+          slug: 'studio-aurora',
+          segment: 'beauty',
+          secondaryColor: '#abcdef',
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveStyle('--fb-main: var(--color-brand)');
+    expect(screen.getByRole('status')).toHaveStyle('--fb-accent: #abcdef');
+    expect(screen.getByText('s')).toBeInTheDocument();
+  });
+
+  it('uses the standard accent when the business has no secondary color', () => {
+    render(
+      <FallbackLoading
+        message="Carregando página..."
+        business={{
+          id: 'aurora',
+          name: 'Studio Aurora',
+          slug: 'studio-aurora',
+          segment: 'beauty',
+          primaryColor: '#112233',
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveStyle('--fb-accent: var(--color-promo)');
   });
 });

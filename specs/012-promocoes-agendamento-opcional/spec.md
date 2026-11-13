@@ -46,6 +46,12 @@ Esta especificação registra o comportamento desejado e as regras que ainda dep
 - Q: O que fazer com o aviso da estimativa de entrega? → A: Manter o texto e as informações funcionais atuais, adicionando emoji de aviso e destaque visual.
 - Q: O nome deve ser opcional para concluir o agendamento? → A: Não. O nome permanece obrigatório; desconsiderar o critério inicial conflitante que permitia concluir sem informá-lo.
 
+### Session 2026-11-13 — Edição agrupada de prazo no backoffice
+
+- Q: O cálculo de vários produtos deve alterar o cliente ou o agendamento? → A: Não. Esta etapa é restrita ao backoffice; o total de vários produtos existe apenas em um simulador administrativo e não altera pedidos reais.
+- Q: Como tratar prazos existentes diferentes para combinações de uma mesma característica? → A: Mostrar os valores e o conflito, preservar todos os valores existentes e exigir confirmação explícita antes de unificá-los.
+- Q: O atributo principal de prazo é persistido como nova configuração? → A: Não. O contrato atual armazena prazos por combinação completa; o agrupamento é uma facilidade de edição e sua escolha deve ser reconstruída quando possível ou solicitada novamente.
+
 ## Problemas a resolver
 
 - O cadastro de produto não oferece estado e preço promocional.
@@ -144,7 +150,7 @@ Como cliente, quero consultar o prazo e a data estimada de um produto sem precis
 
 ### História 4 — Configurar prazo estimado de entrega (Prioridade: P1)
 
-Como usuário autorizado do backoffice, quero cadastrar uma estimativa em dias para cada variação do produto, para informar ao cliente a previsão de entrega ou conclusão sem exigir que escolha o dia.
+Como usuário autorizado do backoffice, quero editar o prazo em dias por produto e característica relevante, para evitar preencher repetidamente variações que não afetam o prazo e informar ao cliente a previsão de entrega ou conclusão.
 
 **Por que esta prioridade**: O prazo estimado pode variar conforme a variação selecionada e deve refletir a operação específica de cada opção.
 
@@ -157,6 +163,19 @@ Como usuário autorizado do backoffice, quero cadastrar uma estimativa em dias p
 3. **Dado** um produto com variações e estimativas válidas, **quando** o cliente seleciona uma variação, **então** o prazo correspondente àquela variação fica disponível para apresentação e o cliente não precisa escolher o dia.
 4. **Dado** uma estimativa inválida ou não preenchida quando obrigatória, **quando** o backoffice tenta salvar, **então** o sistema rejeita a configuração com uma mensagem clara.
 5. **Dado** um usuário sem permissão ou de tenant diferente, **quando** tenta alterar a configuração, **então** a alteração é negada.
+6. **Dado** um produto com atributos, **quando** o usuário escolhe a característica relevante e define um prazo para uma opção, **então** o backoffice aplica o valor às combinações compatíveis, sem exigir preenchimento separado para tecido, cor ou outros atributos.
+7. **Dado** um grupo cujas combinações possuem prazos diferentes, **quando** o usuário abre ou salva o serviço sem confirmar a unificação, **então** os prazos existentes são preservados e o conflito e seus valores são apresentados.
+8. **Dado** um grupo conflitante, **quando** o usuário informa um prazo único e confirma explicitamente a substituição, **então** o prazo é aplicado às combinações do grupo ao salvar.
+9. **Dado** o simulador administrativo com um sofá de 3 lugares de 20 dias e duas poltronas de 3 dias, **quando** as quantidades são selecionadas, **então** apresenta 26 dias; com um sofá de 2 lugares de 15 dias e duas poltronas, apresenta 21 dias.
+10. **Dado** um produto sem prazo válido ou uma seleção cujo prazo não possa ser identificado, **quando** participa da simulação, **então** o backoffice identifica o problema e não apresenta um total parcial como definitivo.
+
+#### Limites do agrupamento e da simulação
+
+- O prazo geral e os prazos por característica são controles de edição no backoffice. Para produtos com atributos, o salvamento continua expandindo os prazos em `variantPrices`, uma vez por combinação completa, conforme o contrato e as validações existentes.
+- A escolha do atributo relevante e a indicação de herança não são novos campos persistidos. Quando não houver evidência suficiente para reconstruí-las a partir dos valores, o usuário deve escolher novamente; a interface não deve apresentar uma inferência ambígua como configuração salva.
+- Abrir o editor, alterar dados não relacionados ou mudar a seleção de agrupamento não pode substituir valores legados. Preços, promoções, imagens e dados dos demais produtos devem ser preservados.
+- O simulador soma prazo individual multiplicado pela quantidade, não modifica dados nem cria pedidos e identifica explicitamente que não representa o cálculo real do agendamento. Os fluxos existentes de cliente e servidor continuam recebendo um único produto e resolvendo seu prazo pela combinação exata.
+- Não há migração, nova coleção, modificação em massa de dados existentes, alteração do cliente, do colaborador, das Functions, do domínio compartilhado ou do fluxo de booking.
 
 ## Requisitos funcionais
 
@@ -185,6 +204,9 @@ Como usuário autorizado do backoffice, quero cadastrar uma estimativa em dias p
 - **FR-015**: O agendamento MUST ser exigido por padrão; quando houver estimativa de entrega configurada, a experiência pública MUST apresentar a estimativa, permitir escolha do profissional quando houver mais de um elegível e não exigir escolha manual de data ou horário.
 - **FR-016**: Para produtos sem estimativa de entrega, o sistema MUST preservar o fluxo atual de seleção e validação de disponibilidade, profissional, data e horário.
 - **FR-017**: O backoffice MUST poder configurar a quantidade de dias estimados para entrega ou conclusão de cada variação do produto.
+- **FR-017A**: O backoffice MUST permitir editar um prazo geral ou por opção de um atributo escolhido e aplicá-lo às combinações compatíveis, preservando o contrato de prazo por combinação.
+- **FR-017B**: O backoffice MUST identificar e exibir conflitos legados e seus valores e MUST NOT substituir os prazos conflitantes sem confirmação explícita; o salvamento sem unificação MUST preservá-los.
+- **FR-017C**: O backoffice MUST oferecer simulação sem persistência da soma dos prazos individuais multiplicados pelas quantidades, indicar dados ausentes e distinguir a simulação de pedidos reais.
 - **FR-018**: Para produto com estimativa válida, a experiência pública MUST apresentar o prazo em dias e a data estimada correspondentes à variação selecionada; o cliente MUST poder escolher o profissional quando houver mais de um elegível, e MUST NOT precisar escolher data ou horário.
 - **FR-019**: A apresentação da estimativa MUST distinguir previsão de data confirmada. Antes do envio do pedido, a data provisória MUST ser calculada em dias corridos, incluindo fins de semana, a partir do dia seguinte à data local atual da empresa. Ao criar o pedido, o servidor MUST recalcular a data oficial a partir do dia seguinte à data local do instante de criação, utilizando o fuso horário da empresa; a data estimada MUST ser independente da data futura do horário reservado.
 - **FR-020**: Para produto com estimativa, o servidor MUST atribuir o horário disponível mais próximo para o profissional escolhido e criar o agendamento e a reserva de disponibilidade usando as validações e garantias transacionais atuais. O cliente MUST NOT enviar uma data/horário arbitrário para determinar essa atribuição.

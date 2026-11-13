@@ -52,7 +52,7 @@ describe('ProductsPage', () => {
     expect(screen.getByRole('heading', { name: 'Seus serviços' })).toBeInTheDocument();
     expect(screen.getByText(/120,00/)).toBeInTheDocument();
     expect(screen.getByText('35%')).toBeInTheDocument();
-    expect(screen.getByText('Hidratação profunda')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hidratação profunda' })).toBeInTheDocument();
     expect(screen.getByText('Inativo')).toBeInTheDocument();
   });
 
@@ -512,10 +512,13 @@ describe('ProductsPage', () => {
     fireEvent.change(options[0], { target: { value: 'Castanho' } });
     fireEvent.change(options[1], { target: { value: 'Loiro' } });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar prazo estimado' }));
-    fireEvent.change(screen.getByLabelText('Prazo estimado da combinação Cor: Castanho (dias)'), {
+    fireEvent.change(screen.getByLabelText('Característica que define o prazo'), {
+      target: { value: screen.getByRole('option', { name: 'Cor' }).getAttribute('value') },
+    });
+    fireEvent.change(screen.getByLabelText('Cor: Castanho (dias)'), {
       target: { value: '7' },
     });
-    fireEvent.change(screen.getByLabelText('Prazo estimado da combinação Cor: Loiro (dias)'), {
+    fireEvent.change(screen.getByLabelText('Cor: Loiro (dias)'), {
       target: { value: '15' },
     });
     fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
@@ -559,7 +562,10 @@ describe('ProductsPage', () => {
     fireEvent.change(options[0], { target: { value: 'Castanho' } });
     fireEvent.change(options[1], { target: { value: 'Loiro' } });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Ativar prazo estimado' }));
-    fireEvent.change(screen.getByLabelText('Prazo estimado da combinação Cor: Castanho (dias)'), {
+    fireEvent.change(screen.getByLabelText('Característica que define o prazo'), {
+      target: { value: screen.getByRole('option', { name: 'Cor' }).getAttribute('value') },
+    });
+    fireEvent.change(screen.getByLabelText('Cor: Castanho (dias)'), {
       target: { value: '7' },
     });
     fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
@@ -569,4 +575,243 @@ describe('ProductsPage', () => {
     );
     expect(saveProductMock).not.toHaveBeenCalled();
   });
+
+  it('preserves conflicting legacy deadlines when saving unrelated edits', async () => {
+    const product = sofaProduct();
+    saveProductMock.mockResolvedValueOnce({ id: product.id });
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[product]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Sofá' }));
+    fireEvent.change(screen.getByLabelText('Característica que define o prazo'), {
+      target: { value: 'size' },
+    });
+    expect(
+      screen.getByText('Conflito: as combinações possuem prazos diferentes.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Lugares: 2 lugares / Tecido: Linho: 15 dias')).toBeInTheDocument();
+    expect(screen.getByText('Lugares: 2 lugares / Tecido: Couro: 17 dias')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Descrição'), { target: { value: 'Atualizado' } });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    await waitFor(() => expect(saveProductMock).toHaveBeenCalledOnce());
+    expect(saveProductMock.mock.calls[0]![0].variantPrices).toEqual(product.variantPrices);
+  });
+
+  it('requires explicit confirmation before applying a deadline to conflicting variants', async () => {
+    const product = sofaProduct();
+    saveProductMock.mockResolvedValueOnce({ id: product.id });
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[product]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Sofá' }));
+    fireEvent.change(screen.getByLabelText('Característica que define o prazo'), {
+      target: { value: 'size' },
+    });
+    fireEvent.change(screen.getByLabelText('Lugares: 2 lugares (dias)'), {
+      target: { value: '15' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Confirme a substituição');
+    expect(saveProductMock).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar prazo único para Lugares: 2 lugares' }),
+    );
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    await waitFor(() => expect(saveProductMock).toHaveBeenCalledOnce());
+    const saved = saveProductMock.mock.calls[0]![0].variantPrices!;
+    expect(saved.map((variant) => variant.estimatedDeliveryDays)).toEqual([15, 15, 20, 20]);
+    expect(saved.map((variant) => variant.priceCents)).toEqual([10000, 11000, 12000, 13000]);
+    expect(saved.map((variant) => variant.promotionalPriceCents)).toEqual([
+      9000, 10000, 11000, 12000,
+    ]);
+  });
+
+  it('updates all secondary variants of a characteristic without modifying other groups', async () => {
+    const product = sofaProduct();
+    saveProductMock.mockResolvedValueOnce({ id: product.id });
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[product]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Sofá' }));
+    fireEvent.change(screen.getByLabelText('Característica que define o prazo'), {
+      target: { value: 'size' },
+    });
+    fireEvent.change(screen.getByLabelText('Lugares: 3 lugares (dias)'), {
+      target: { value: '22' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    await waitFor(() => expect(saveProductMock).toHaveBeenCalledOnce());
+    const saved = saveProductMock.mock.calls[0]![0].variantPrices!;
+    expect(saved.map((variant) => variant.estimatedDeliveryDays)).toEqual([15, 17, 22, 22]);
+    expect(saved.map((variant) => variant.priceCents)).toEqual([10000, 11000, 12000, 13000]);
+  });
+
+  it('applies a general deadline to all variants and displays the inherited value', async () => {
+    const product = sofaProduct();
+    product.variantPrices = product.variantPrices!.map((variant) => ({
+      ...variant,
+      estimatedDeliveryDays: 15,
+    }));
+    saveProductMock.mockResolvedValueOnce({ id: product.id });
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[product]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Sofá' }));
+    expect(
+      screen.getByText('As 4 combinações herdam o prazo geral nesta edição.'),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Prazo geral (dias)'), {
+      target: { value: '12' },
+    });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    await waitFor(() => expect(saveProductMock).toHaveBeenCalledOnce());
+    expect(
+      saveProductMock.mock.calls[0]![0].variantPrices!.map(
+        (variant) => variant.estimatedDeliveryDays,
+      ),
+    ).toEqual([12, 12, 12, 12]);
+  });
+
+  it('simulates quantities without writing and reports missing deadlines', () => {
+    const sofa = sofaProduct();
+    const chair: ProductRecord = {
+      ...products[0]!,
+      id: 'chair',
+      name: 'Poltrona',
+      estimatedDeliveryEnabled: true,
+      estimatedDeliveryDays: 3,
+    };
+    const missing: ProductRecord = { ...products[1]!, id: 'missing', name: 'Sem prazo' };
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[sofa, chair, missing]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByText('Simular prazo estimado'));
+    fireEvent.change(screen.getByLabelText('Quantidade de Sofá'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Sofá — Lugares'), { target: { value: 'three' } });
+    fireEvent.change(screen.getByLabelText('Quantidade de Poltrona'), { target: { value: '2' } });
+    expect(screen.getByText('Prazo estimado da simulação: 26 dias')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Sofá — Lugares'), { target: { value: 'two' } });
+    expect(screen.getByText('Prazo estimado da simulação: 21 dias')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Quantidade de Sem prazo'), { target: { value: '1' } });
+    expect(
+      screen.getByText('Configure os prazos ausentes antes de calcular o total.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Prazo estimado da simulação:/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Quantidade de Sem prazo'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Quantidade de Poltrona'), { target: { value: '1.5' } });
+    expect(
+      screen.getByText('Corrija as quantidades para calcular a simulação.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Prazo estimado da simulação:/)).not.toBeInTheDocument();
+    expect(saveProductMock).not.toHaveBeenCalled();
+  });
+
+  it('does not simulate a product when another variant has no configured deadline', () => {
+    const product = sofaProduct();
+    product.variantPrices = product.variantPrices!.map((variant, index) =>
+      index === 3 ? { ...variant, estimatedDeliveryDays: undefined } : variant,
+    );
+    render(
+      <ProductsPage
+        tenantId={tenantId}
+        products={[product]}
+        onSaved={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByText('Simular prazo estimado'));
+    fireEvent.change(screen.getByLabelText('Quantidade de Sofá'), { target: { value: '1' } });
+    expect(
+      screen.getByText('Configure os prazos ausentes antes de calcular o total.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Prazo estimado da simulação:/)).not.toBeInTheDocument();
+  });
 });
+
+function sofaProduct(): ProductRecord {
+  const attributes = [
+    {
+      id: 'size',
+      label: 'Lugares',
+      defaultOptionId: 'two',
+      options: [
+        { id: 'two', label: '2 lugares' },
+        { id: 'three', label: '3 lugares' },
+      ],
+    },
+    {
+      id: 'fabric',
+      label: 'Tecido',
+      defaultOptionId: 'linen',
+      options: [
+        { id: 'linen', label: 'Linho' },
+        { id: 'leather', label: 'Couro' },
+      ],
+    },
+  ];
+  return {
+    ...products[0]!,
+    id: 'sofa',
+    name: 'Sofá',
+    promotionActive: true,
+    estimatedDeliveryEnabled: true,
+    customizationAttributes: attributes,
+    variantPrices: [
+      {
+        selections: [
+          { attributeId: 'size', optionId: 'two' },
+          { attributeId: 'fabric', optionId: 'linen' },
+        ],
+        priceCents: 10000,
+        promotionalPriceCents: 9000,
+        estimatedDeliveryDays: 15,
+      },
+      {
+        selections: [
+          { attributeId: 'size', optionId: 'two' },
+          { attributeId: 'fabric', optionId: 'leather' },
+        ],
+        priceCents: 11000,
+        promotionalPriceCents: 10000,
+        estimatedDeliveryDays: 17,
+      },
+      {
+        selections: [
+          { attributeId: 'size', optionId: 'three' },
+          { attributeId: 'fabric', optionId: 'linen' },
+        ],
+        priceCents: 12000,
+        promotionalPriceCents: 11000,
+        estimatedDeliveryDays: 20,
+      },
+      {
+        selections: [
+          { attributeId: 'size', optionId: 'three' },
+          { attributeId: 'fabric', optionId: 'leather' },
+        ],
+        priceCents: 13000,
+        promotionalPriceCents: 12000,
+        estimatedDeliveryDays: 20,
+      },
+    ],
+  };
+}
