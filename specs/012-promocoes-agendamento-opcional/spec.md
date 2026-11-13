@@ -37,6 +37,15 @@ Esta especificação registra o comportamento desejado e as regras que ainda dep
 - Q: O que o checkout deve registrar sobre pagamento? → A: Apenas a forma escolhida — débito, crédito, dinheiro ou Pix — e, para crédito, o número de parcelas de 1 a 5 sem juros; não haverá integração com provedor, cobrança ou processamento do pagamento.
 - Q: Como apresentar a data estimada antes de existir pedido? → A: Mostrar uma previsão provisória calculada a partir do dia seguinte à data local atual da empresa; no envio, recalcular e apresentar a data oficial a partir do dia seguinte à data local efetiva de criação do pedido.
 
+### Session 2026-11-12
+
+- Q: Como apresentar uma combinação de opções e seu preço? → A: Cada combinação válida aparece como um único controle selecionável, com os rótulos combinados (por exemplo, “Cílios + Sobrancelhas”) e seu preço efetivo; selecionar outra combinação substitui a anterior.
+- Q: Qual deve ser o intervalo entre os horários iniciais? → A: Usar a duração do serviço como intervalo entre inícios, ancorado no começo de cada período de expediente; manter as demais verificações atuais de expediente, intervalos, bloqueios, agendamentos e reservas.
+- Q: Como apresentar estimativas diferentes por combinação na vitrine? → A: Mostrar o prazo em dias no card quando for único ou igual em todas as combinações; se variar, indicar que o prazo depende da opção, e apresentar o prazo exato no agendamento após a seleção.
+- Q: Como identificar a busca de profissionais? → A: Durante a busca, mostrar indicador visual e a mensagem “Buscando profissionais, aguarde...”, distinguindo-a do carregamento inicial e do envio do agendamento.
+- Q: O que fazer com o aviso da estimativa de entrega? → A: Manter o texto e as informações funcionais atuais, adicionando emoji de aviso e destaque visual.
+- Q: O nome deve ser opcional para concluir o agendamento? → A: Não. O nome permanece obrigatório; desconsiderar o critério inicial conflitante que permitia concluir sem informá-lo.
+
 ## Problemas a resolver
 
 - O cadastro de produto não oferece estado e preço promocional.
@@ -45,6 +54,8 @@ Esta especificação registra o comportamento desejado e as regras que ainda dep
 - O card de catálogo apresenta o preço base, enquanto os preços de combinações são conhecidos na tela de agendamento após configurar as opções.
 - A forma de representar a seleção de opções precisa respeitar os produtos existentes, que podem ter vários atributos e preços por combinação.
 - O histórico de agendamentos ainda não preserva os valores e dados da promoção aplicada.
+- A vitrine não informa no card o prazo estimado do serviço, e os controles de escolha não reúnem o nome da combinação e seu preço.
+- A cadência atual dos horários iniciais usa o intervalo configurado pela empresa, em vez da duração do serviço selecionado.
 
 ## Objetivos
 
@@ -66,12 +77,16 @@ Esta especificação registra o comportamento desejado e as regras que ainda dep
 - Checkout para registrar forma de pagamento e parcelas escolhidas, sem processar cobrança ou integrar provedor.
 - Atribuição e reserva, pelo servidor, do horário disponível mais próximo para o profissional escolhido no fluxo com estimativa.
 - Exibição antecipada das variações e respectivos preços, com seleção visual no estilo checkbox.
+- Apresentação de cada combinação válida em um único controle com rótulos e preço efetivo, mantendo uma única combinação selecionada por vez.
+- Apresentação do prazo estimado nos cards da vitrine e destaque acessível do aviso de estimativa no agendamento.
+- Estado visual específico para busca de profissionais, com mensagem explícita e tratamento separado de erro e ausência de resultados.
+- Cadência dos horários iniciais igual à duração do serviço, aplicada igualmente à busca, criação e reagendamento, sem alterar as demais restrições de disponibilidade.
 - Compatibilidade com produtos e registros preexistentes.
 
 ### Fora do escopo desta especificação
 
 - Integração com provedores, autorização/captura de pagamento, cobrança, frete ou criação de pedido sem agendamento. Os pedidos desta especificação continuam sendo agendamentos registrados no fluxo existente.
-- Alteração das regras de disponibilidade, confirmação, cancelamento ou transição de status de agendamentos existentes, exceto o necessário para preservar o fluxo dos produtos que exigem agendamento.
+- Alteração das regras de confirmação, cancelamento ou transição de status de agendamentos existentes. A única alteração de disponibilidade incluída é a cadência por duração descrita nesta especificação; as demais restrições atuais permanecem.
 - Implementação, migração, alteração de regras Firestore, publicação, deploy ou mudança de dados.
 - Reestruturação do catálogo, do modelo multi-tenant ou da persistência atual sem justificativa decorrente das decisões em aberto.
 
@@ -179,13 +194,21 @@ Como usuário autorizado do backoffice, quero cadastrar uma estimativa em dias p
 - **FR-024**: O registro histórico da solicitação MUST preservar o preço efetivo, o preço original e os dados da promoção aplicada à variação selecionada.
 - **FR-025**: O checkout MUST permitir registrar uma forma de pagamento entre débito, crédito, dinheiro e Pix. Para crédito, MUST permitir registrar de 1 a 5 parcelas sem juros. A forma e a quantidade de parcelas aplicáveis MUST ser preservadas no histórico do agendamento; o sistema MUST NOT processar pagamentos nem integrar provedor.
 - **FR-026**: Para pedido com estimativa, o histórico MUST preservar a quantidade de dias estimados, a data oficial estimada calculada no momento da criação e o fuso horário da empresa usado no cálculo.
+- **FR-027**: Cada combinação válida de opções MUST ser apresentada como um único controle selecionável, contendo seus rótulos combinados e preço efetivo. A seleção MUST representar uma opção válida por atributo e selecionar outra combinação MUST substituir a combinação anterior.
+- **FR-028**: A vitrine MUST apresentar o prazo estimado em dias no card quando o serviço tiver prazo único ou igual em todas as combinações. Quando os prazos variarem entre combinações, o card MUST informar que o prazo depende da opção, e a tela de agendamento MUST apresentar o prazo correspondente à combinação selecionada.
+- **FR-029**: Para cada período de expediente, os horários iniciais disponíveis MUST avançar pela duração real do serviço selecionado, a partir do início do período. O horário final de cada opção MUST ser o horário inicial acrescido dessa duração.
+- **FR-030**: A mesma regra de cadência e duração MUST ser validada pelo servidor na busca de disponibilidade, criação pública e reagendamento. Expediente, pausas, bloqueios, agendamentos existentes, reservas, fuso horário e proteção contra conflitos MUST continuar sendo respeitados.
+- **FR-031**: A interface de horários MUST apresentar início e fim de cada opção no fuso horário da empresa, usando os horários retornados pelo servidor e sem recalcular a disponibilidade no cliente.
+- **FR-032**: Durante a busca de profissionais, o cliente MUST apresentar um indicador visual e o texto “Buscando profissionais, aguarde...”. Esse estado MUST ser distinto do carregamento inicial do catálogo e do envio do agendamento; falha e ausência de profissionais MUST continuar distinguíveis.
+- **FR-033**: O aviso existente sobre estimativa de entrega MUST manter suas informações funcionais, incluir um emoji de aviso e receber destaque visual suficiente para ser identificado durante o agendamento.
+- **FR-034**: O nome do cliente permanece obrigatório para concluir um agendamento; os demais requisitos atuais de contato e consentimento não são alterados por esta especificação.
 
 ## Requisitos não funcionais
 
 - **NFR-001 — Isolamento multi-tenant**: Leitura e alteração de produtos, promoções, configuração de agendamento e dados relacionados MUST respeitar o tenant e o papel autorizados; identificadores enviados pelo cliente não substituem a autorização.
 - **NFR-002 — Integridade financeira**: Valores monetários MUST manter precisão e significado consistentes entre cadastro, apresentação ao cliente, cálculo de comissão aplicável e registro histórico.
 - **NFR-003 — Compatibilidade**: Produtos e agendamentos existentes sem os novos dados MUST continuar sendo lidos sem erro e manter o comportamento anterior.
-- **NFR-004 — Integridade de agendamento**: Produtos que exigem agendamento MUST continuar sujeitos às verificações atuais de disponibilidade e prevenção de conflito. A atribuição automática para produtos com estimativa MUST reservar um horário real pelo mesmo mecanismo transacional e MUST NOT permitir conflito ou duplicidade.
+- **NFR-004 — Integridade de agendamento**: Produtos que exigem agendamento MUST continuar sujeitos às verificações atuais de expediente, pausa, bloqueio, agendamento e reserva contra conflito. A cadência entre inícios MUST seguir a duração do serviço e ser consistente na apresentação, criação e reagendamento. A atribuição automática para produtos com estimativa MUST reservar um horário real pelo mesmo mecanismo transacional e MUST NOT permitir conflito ou duplicidade.
 - **NFR-005 — Clareza e acessibilidade**: Preço original, preço vigente, indicação de promoção, opções selecionadas, estimativa e estados de erro MUST ser distinguíveis e compreensíveis em telas móveis e desktop, com controles acessíveis.
 - **NFR-006 — Falhas explícitas**: Dados inválidos, preços ou combinações indisponíveis e falhas ao prosseguir MUST ser comunicados como falhas; o sistema MUST NOT indicar sucesso com dados incompletos ou inconsistentes.
 - **NFR-007 — Simplicidade arquitetural**: A especificação MUST preservar as fronteiras de responsabilidade existentes e não introduzir infraestrutura ou dependências sem justificativa.
@@ -203,6 +226,8 @@ Como usuário autorizado do backoffice, quero cadastrar uma estimativa em dias p
 - **BR-009**: O histórico da solicitação preserva o preço efetivo, o preço original e os dados da promoção aplicada à variação selecionada, mesmo que a configuração do produto mude posteriormente.
 - **BR-010**: Regras de comissão, preço, disponibilidade e estado de agendamento existentes continuam aplicáveis conforme a configuração e o fluxo definidos para o produto.
 - **BR-011**: A forma de pagamento e, para crédito, o número de parcelas são dados informativos do pedido; não representam pagamento autorizado, capturado ou recebido.
+- **BR-012**: Cada período de expediente produz horários candidatos iniciando no começo do período e avançando pela duração do serviço; um candidato só é oferecido quando todo o intervalo do atendimento cabe no expediente e não conflita com pausas, bloqueios, agendamentos ou reservas.
+- **BR-013**: O nome informado permanece obrigatório no agendamento. A estimativa exibida no card é o número configurado de dias, não uma data de entrega confirmada; combinações com prazos diferentes são identificadas como dependentes da opção.
 
 ## Análise arquitetural: implementação atual
 
@@ -282,6 +307,9 @@ Esta seção descreve evidências do código observado para orientar a especific
 - **SC-005**: Em todos os cenários de produto com estimativa de entrega, o cliente consegue visualizar a estimativa da variação selecionada, escolhe um profissional quando houver mais de um elegível, não escolhe data ou horário, e o servidor cria um agendamento pendente no horário disponível mais próximo com uma reserva válida e dados de pagamento informativos.
 - **SC-006**: Tentativas de leitura ou alteração fora do tenant autorizado não revelam nem alteram dados de outra empresa.
 - **SC-007**: Para cada regra ainda sem definição, o planejamento começa somente após registrar uma decisão explícita, evitando datas, descontos ou fluxos de pedido inventados.
+- **SC-008**: Para serviços com durações distintas, os horários apresentados e aceitos pelo servidor avançam pela duração do serviço; cada término corresponde à duração configurada e nenhum candidato conflita com as restrições de disponibilidade vigentes.
+- **SC-009**: Os controles de combinação apresentam rótulos e preço efetivo juntos; os cards apresentam prazo único ou indicam claramente quando ele depende da opção.
+- **SC-010**: A busca de profissionais, o aviso de estimativa e os estados de erro/ausência são identificáveis e compreensíveis em dispositivos móveis, sem alterar a obrigatoriedade do nome.
 
 ## Casos limite e cenários de exceção
 

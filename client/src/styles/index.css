@@ -762,13 +762,15 @@ select {
   gap: 0.4rem;
 }
 .booking-summary-option {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
   align-items: center;
   gap: 0.55rem;
-  width: fit-content;
-  padding: 0.35rem 0.55rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.65rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 0.55rem;
+  border-radius: 0.75rem;
   cursor: pointer;
 }
 .booking-summary-option:has(input:checked) {

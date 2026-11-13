@@ -88,6 +88,7 @@ export default function BookingPage({
     selections: ProductCustomizationSelection[];
   } | null>(null);
   const [selectedImageId, setSelectedImageId] = useState<string>('');
+  const [scrollSelectionKey, setScrollSelectionKey] = useState<string>('');
   const skipSearchForDate = useRef<string | null>(null);
   const selectedDateRef = useRef<string>(date);
 
@@ -758,30 +759,25 @@ export default function BookingPage({
         catalog={catalog}
         product={product}
         customizationSelections={customizationSelections}
-        onCustomizationChange={(attributeId, optionId) => {
+        allowContactScroll={scrollSelectionKey === `${slug}/${product.id}`}
+        onCustomizationChange={(selections) => {
           const attributes = product.customizationAttributes ?? [];
-          setCustomizationSelectionState((current) => {
-            const currentSelections = current?.productId === product.id ? current.selections : [];
+          setCustomizationSelectionState({
+            productId: product.id,
+            selections: attributes.map((attribute) => {
+              const selected = selections.find(
+                (selection) => selection.attributeId === attribute.id,
+              );
+              const optionId = selected?.optionId;
 
-            return {
-              productId: product.id,
-              selections: attributes.map((attribute) => {
-                const currentOptionId = currentSelections.find(
-                  (selection) => selection.attributeId === attribute.id,
-                )?.optionId;
-
-                return {
-                  attributeId: attribute.id,
-                  optionId:
-                    attribute.id === attributeId
-                      ? optionId
-                      : currentOptionId &&
-                          attribute.options.some((option) => option.id === currentOptionId)
-                        ? currentOptionId
-                        : attribute.defaultOptionId,
-                };
-              }),
-            };
+              return {
+                attributeId: attribute.id,
+                optionId:
+                  optionId && attribute.options.some((option) => option.id === optionId)
+                    ? optionId
+                    : attribute.defaultOptionId,
+              };
+            }),
           });
         }}
         effectiveImages={effectiveImages}
@@ -797,6 +793,7 @@ export default function BookingPage({
         professionals={professionals}
         selectedProfessionalId={selectedProfessionalId}
         onProfessionalChange={(professionalId) => {
+          if (professionalId) setScrollSelectionKey(`${slug}/${product.id}`);
           setSelectedProfessionalId(professionalId);
           setSelectedStartsAt('');
         }}
@@ -804,7 +801,10 @@ export default function BookingPage({
         slots={slots}
         visibleSlots={visibleSlots}
         selectedStartsAt={selectedStartsAt}
-        onTimeChange={setSelectedStartsAt}
+        onTimeChange={(startsAt) => {
+          setScrollSelectionKey(`${slug}/${product.id}`);
+          setSelectedStartsAt(startsAt);
+        }}
         searchingNextDate={searchingNextDate}
         nextDateSearchComplete={nextDateSearchComplete}
         nextDateSearchError={nextDateSearchError}

@@ -10,13 +10,16 @@ import BookingCustomerDetails from '../BookingCustomerDetails/BookingCustomerDet
 import BookingReceiptDialog from '../BookingReceiptDialog/BookingReceiptDialog';
 import { companyCatalogPath } from '../../../app/routes';
 
-type BookingReadyProps = Extract<BookingTemplateProps, { status: 'ready' }>;
+type BookingReadyProps = Extract<BookingTemplateProps, { status: 'ready' }> & {
+  allowContactScroll: boolean;
+};
 
 export default function BookingReady({
   slug,
   catalog,
   product,
   customizationSelections,
+  allowContactScroll,
   onCustomizationChange,
   effectiveImages,
   selectedImageId,
@@ -99,9 +102,11 @@ export default function BookingReady({
               nextDateSearchError={nextDateSearchError}
               error={error}
               durationMinutes={product.durationMinutes}
+              timezone={catalog.business.timezone}
             />
             <BookingCustomerDetails
               canSubmit={canSubmit}
+              allowContactScroll={allowContactScroll}
               busy={busy}
               error={error}
               onSubmit={onSubmit}
