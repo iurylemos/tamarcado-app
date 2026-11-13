@@ -5,6 +5,7 @@ import { BrowserRouter, Link, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createQueryClient } from '../config/query-client.config';
+import { ReactQueryConfig } from '../config/react-query.config';
 import type { PageComponents } from '../interfaces/page.interface';
 import CompanyCatalogPage from '../pages/CompanyCatalogPage';
 import { getCompanyCatalog } from '../services/catalog.service';
@@ -42,6 +43,58 @@ function LocationOutput(): JSX.Element {
 afterEach(cleanup);
 
 describe('StorefrontNavigation', () => {
+  it('shows only the destination business identity during page loading', async () => {
+    const business = {
+      id: 'aurora',
+      name: 'Studio Aurora',
+      slug: 'studio-aurora',
+      segment: 'beauty' as const,
+      logoUrl: 'https://example.com/logo.png',
+      primaryColor: '#112233',
+      secondaryColor: '#abcdef',
+    };
+    const initialPathname = '/empresa/studio-aurora';
+    window.history.replaceState({}, '', initialPathname);
+    const queryClient = createQueryClient();
+    queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey(business.slug), {
+      business,
+      products: [],
+    });
+    queryClient.setQueryData(ReactQueryConfig.companyCatalogQueryKey('other'), {
+      business,
+      products: [],
+    });
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Link to="/empresa/other">Other business</Link>
+          <StorefrontNavigation
+            initialPathname={initialPathname}
+            initialPage={<CatalogStart />}
+            loadPageComponents={() => new Promise<Partial<PageComponents>>(() => {})}
+          />
+        </BrowserRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Book a service' }));
+    expect(screen.getByRole('status')).toHaveStyle('--fb-main: #112233');
+    expect(screen.getByText('Studio Aurora')).toBeInTheDocument();
+    expect(screen.getByRole('status').querySelector('img')).toHaveAttribute(
+      'src',
+      business.logoUrl,
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Other business' }));
+    expect(screen.getByText('Tá Marcado')).toBeInTheDocument();
+    expect(screen.queryByText('Studio Aurora')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveStyle('--fb-main: var(--color-brand)');
+    expect(screen.getByRole('status').querySelector('img')).toBeNull();
+    queryClient.clear();
+  });
+
   it('updates and clears the active business theme while navigating between slugs', async () => {
     const businesses = {
       first: {

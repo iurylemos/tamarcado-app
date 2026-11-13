@@ -14,12 +14,12 @@ export class ColorUtil {
   public static readonly defaultColorWhite: string = '#ffffff';
 
   public static readonly defaultPalette: ColorPalette = {
-    main: '#f97316',
-    deep: '#c2410c',
-    accent: '#fb923c',
-    glow: '#fed7aa',
-    soft: '#ffedd5',
-    background: '#fff7ed',
+    main: 'var(--color-brand)',
+    deep: 'var(--color-brand-deep)',
+    accent: 'var(--color-promo)',
+    glow: 'var(--color-brand-soft)',
+    soft: 'var(--color-brand-soft)',
+    background: 'var(--color-background)',
     on: this.defaultColorWhite,
   };
 
@@ -27,13 +27,17 @@ export class ColorUtil {
     const { primaryColor, secondaryColor } = business
       ? ColorUtil.readPublicBusinessColors(business)
       : {};
-    if (!primaryColor) return this.defaultPalette;
+    if (!primaryColor) {
+      return secondaryColor
+        ? { ...this.defaultPalette, accent: secondaryColor }
+        : this.defaultPalette;
+    }
 
     const white = ColorUtil.defaultColorWhite;
     return {
       main: primaryColor,
       deep: ColorUtil.darkenForContrast(primaryColor, white, 4.5),
-      accent: secondaryColor ?? primaryColor,
+      accent: secondaryColor ?? this.defaultPalette.accent,
       glow: ColorUtil.mix(primaryColor, white, 0.7),
       soft: ColorUtil.mix(primaryColor, white, 0.88),
       background: ColorUtil.mix(primaryColor, white, 0.94),

@@ -39,7 +39,7 @@ export default function EstimatedDeliveryGroups({
   );
 
   const groups = useMemo<DeliveryGroup[]>(() => {
-    const defaultGroup = {
+    const defaultGroup: DeliveryGroup = {
       id: DeliveryUtil.generalEstimateKey,
       label: 'Prazo geral',
       combinations,

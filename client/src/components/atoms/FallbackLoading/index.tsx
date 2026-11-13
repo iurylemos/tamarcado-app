@@ -21,9 +21,7 @@ export default function FallbackLoading({
       '--fb-main': palette.main,
       '--fb-deep': palette.deep,
       '--fb-accent': palette.accent,
-      '--fb-glow': palette.glow,
       '--fb-soft': palette.soft,
-      '--fb-bg': palette.background,
       '--fb-on': palette.on,
     }),
     [palette],
@@ -36,16 +34,9 @@ export default function FallbackLoading({
       role="status"
       aria-live="polite"
       style={style}
-      className="fixed inset-0 z-50 flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-white to-(--fb-bg) px-6"
+      className="fixed inset-0 z-50 flex min-h-screen items-center justify-center overflow-hidden px-6"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-(--fb-glow) opacity-30 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-(--fb-glow) opacity-30 blur-3xl"
-      />
+      <div className="market-bg" aria-hidden="true" />
 
       <section className="relative flex w-full max-w-sm flex-col items-center text-center">
         <div className="relative mb-8 flex h-20 w-20 items-center justify-center">
@@ -70,12 +61,12 @@ export default function FallbackLoading({
           {businessName || 'Tá Marcado'}
         </p>
 
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Preparando seu espaço
+        <h1 className="text-2xl font-bold tracking-tight text-(--color-text) sm:text-3xl">
+          Preparando seu agendamento
           <span className="animate-pulse text-(--fb-main)">...</span>
         </h1>
 
-        <p className="mt-3 max-w-xs text-sm leading-6 text-slate-500">{message}</p>
+        <p className="mt-3 max-w-xs text-sm leading-6 text-(--color-muted)">{message}</p>
 
         <div
           className="mt-8 h-1 w-40 overflow-hidden rounded-full bg-(--fb-soft)"
@@ -84,7 +75,9 @@ export default function FallbackLoading({
           <div className="h-full w-2/5 animate-[loading_1.4s_ease-in-out_infinite] rounded-full bg-linear-to-r from-(--fb-accent) to-(--fb-main)" />
         </div>
 
-        <p className="mt-4 text-xs font-medium text-slate-400">Só um instante, estamos quase lá.</p>
+        <p className="mt-4 text-xs font-medium text-(--color-muted)">
+          Só um instante, estamos quase lá.
+        </p>
       </section>
 
       <style>{`
