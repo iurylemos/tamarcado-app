@@ -96,6 +96,13 @@ O monorepo já contém os workspaces, dependências, Firebase, Firestore, Functi
 
 **Checkpoint**: configuração de prazo validada e isolada por tenant/combinação; registros antigos permanecem sem estimativa e sem migração.
 
+### Adendo — edição agrupada e simulador no backoffice
+
+- [x] T050 [US4] Testar agrupamento por característica, prazo geral, preservação e confirmação explícita de conflitos legados, e preservação de preços e promoções no editor.
+- [x] T051 [US4] Implementar edição agrupada no backoffice usando as combinações e o contrato de salvamento existentes, sem mudar os consumidores ou sobrescrever prazos conflitantes implicitamente.
+- [x] T052 [US4] Implementar e testar simulador administrativo sem gravação, incluindo quantidades, estimativas indisponíveis e os totais de 26 e 21 dias.
+- [x] T053 [US4] Executar os testes pertinentes do backoffice e `npm run build:functions`, sem iniciar ou encerrar emuladores nem executar deploy.
+
 ## Fase 6: História 3 — Consultar estimativa sem escolher o dia (P1)
 
 **Objetivo**: permitir checkout com estimativa provisória, profissional aplicável e pagamento informativo; o servidor recalcula a previsão oficial e atribui/reserva um horário real.

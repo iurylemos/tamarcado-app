@@ -23,6 +23,7 @@ import {
   validateProductImage,
 } from '../../../services/product-image.service';
 import { ImageUtil } from '../../../utils/image.util';
+import EstimatedDeliveryGroups from './EstimatedDeliveryGroups';
 
 type ProductEditorProps = {
   product?: ProductRecord;
@@ -89,6 +90,7 @@ export default function ProductEditor({
         ]),
     ),
   );
+  const [pendingEstimateDrafts, setPendingEstimateDrafts] = useState<Record<string, string>>({});
 
   const [galleryDrafts, setGalleryDrafts] = useState<GalleryDraft[]>(
     product?.imageGalleries?.map((gallery) => ({
@@ -229,6 +231,12 @@ export default function ProductEditor({
       parsedEstimatedDeliveryDays === undefined
     ) {
       setError('Informe um prazo estimado inteiro maior que zero.');
+      setBusy(false);
+      return;
+    }
+
+    if (Object.values(pendingEstimateDrafts).some((value) => value.trim() !== '')) {
+      setError('Confirme a substituição dos prazos conflitantes antes de salvar.');
       setBusy(false);
       return;
     }
@@ -795,40 +803,14 @@ export default function ProductEditor({
                 />
               </label>
             ) : (
-              <div className="form-stack">
-                {customizationCombinations.map((selections) => {
-                  const key = productCustomizationCombinationKey(selections);
-                  const combinationLabel = selections
-                    .map((selection) => {
-                      const attribute = customizationAttributes.find(
-                        (item) => item.id === selection.attributeId,
-                      );
-                      const option = attribute?.options.find(
-                        (item) => item.id === selection.optionId,
-                      );
-                      return `${attribute?.label || 'Atributo'}: ${option?.label || 'Opção'}`;
-                    })
-                    .join(' / ');
-                  return (
-                    <label className="form-grid" key={key}>
-                      Prazo estimado da combinação {combinationLabel} (dias)
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={variantEstimatedDeliveryDrafts[key] ?? ''}
-                        onChange={(event) =>
-                          setVariantEstimatedDeliveryDrafts((current) => ({
-                            ...current,
-                            [key]: event.target.value,
-                          }))
-                        }
-                        required={estimatedDeliveryEnabled}
-                      />
-                    </label>
-                  );
-                })}
-              </div>
+              <EstimatedDeliveryGroups
+                attributes={customizationAttributes}
+                combinations={customizationCombinations}
+                drafts={variantEstimatedDeliveryDrafts}
+                onChange={setVariantEstimatedDeliveryDrafts}
+                pending={pendingEstimateDrafts}
+                onPendingChange={setPendingEstimateDrafts}
+              />
             )}
           </fieldset>
           <fieldset className="form-stack">
