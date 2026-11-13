@@ -50,7 +50,7 @@ export default function EstimatedDeliveryGroups({
     }
 
     if (attribute) {
-      return attribute.options.map((option) => ({
+      const currentGroups = attribute.options.map((option) => ({
         id: option.id,
         label: `${attribute.label || 'Característica'}: ${option.label || 'Opção'}`,
         combinations: combinations.filter((selections) =>
@@ -60,6 +60,8 @@ export default function EstimatedDeliveryGroups({
           ),
         ),
       }));
+
+      return currentGroups;
     }
 
     return [];

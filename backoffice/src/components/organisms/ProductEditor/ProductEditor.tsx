@@ -132,7 +132,7 @@ export default function ProductEditor({
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const customizationCombinations = useMemo(
+  const customizationCombinations = useMemo<ProductCustomizationSelection[][]>(
     () => productCustomizationCombinations(customizationAttributes),
     [customizationAttributes],
   );
