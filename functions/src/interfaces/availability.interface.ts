@@ -28,7 +28,6 @@ export interface BoundedProfessionalSchedule {
 
 export interface BoundedAvailabilityContext {
   timezone: string;
-  bookingInterval: number;
   durationMinutes: number;
   professionals: BoundedProfessionalSchedule[];
   now: number;
@@ -37,7 +36,6 @@ export interface BoundedAvailabilityContext {
 export type SearchAvailabilityBase = {
   tenantId: string;
   timezone: string;
-  bookingInterval: number;
   durationMinutes: number;
   assignedIds: string[];
 };

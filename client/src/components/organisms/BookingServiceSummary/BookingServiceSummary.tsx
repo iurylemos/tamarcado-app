@@ -16,15 +16,16 @@ type PriceSelection = {
 };
 
 type PriceVariant = {
+  selections: ProductCustomizationSelection[];
   combinationLabel: string;
-  pricing: ResolvedProductPricing | undefined;
+  pricing: ResolvedProductPricing;
 };
 
 type BookingServiceSummaryProps = {
   catalog: CompanyCatalog;
   product: PublicProductSummary;
   customizationSelections: ProductCustomizationSelection[];
-  onCustomizationChange: (attributeId: string, optionId: string) => void;
+  onCustomizationChange: (selections: ProductCustomizationSelection[]) => void;
   images: ProductImage[];
   selectedImageId: string;
   onImageSelect: (imageId: string) => void;
@@ -62,21 +63,56 @@ export default function BookingServiceSummary({
 
   const variantPrices = useMemo<PriceVariant[] | undefined>(
     () =>
-      product.variantPrices?.map((variant) => {
-        const pricing = resolveProductPricing(product, variant.selections);
-        const combinationLabel = variant.selections
-          .map((selection) => {
-            const attribute = attributes.find((item) => item.id === selection.attributeId);
-            const option = attribute?.options.find((item) => item.id === selection.optionId);
-            return attribute && option ? `${attribute.label}: ${option.label}` : null;
-          })
-          .filter((label): label is string => label !== null)
-          .join(' · ');
+      product.variantPrices?.flatMap((variant) => {
+        const validCombination =
+          variant.selections.length === attributes.length &&
+          attributes.every((attribute) =>
+            variant.selections.some(
+              (selection) =>
+                selection.attributeId === attribute.id &&
+                attribute.options.some((option) => option.id === selection.optionId),
+            ),
+          );
+        if (!validCombination) return [];
 
-        return { combinationLabel, pricing };
+        const pricing = resolveProductPricing(product, variant.selections);
+        if (!pricing) return [];
+
+        const combinationLabel = attributes
+          .map((attribute) => {
+            const selection = variant.selections.find((item) => item.attributeId === attribute.id);
+            return attribute.options.find((option) => option.id === selection?.optionId)?.label;
+          })
+          .filter((label): label is string => label !== undefined)
+          .join(' + ');
+
+        const selections = attributes.map((attribute) => ({
+          attributeId: attribute.id,
+          optionId:
+            variant.selections.find((item) => item.attributeId === attribute.id)?.optionId ??
+            attribute.defaultOptionId,
+        }));
+
+        return [{ combinationLabel, pricing, selections }];
       }),
     [product, attributes],
   );
+
+  const selectCustomization = (
+    selections: ProductCustomizationSelection[],
+    input: HTMLInputElement,
+  ): void => {
+    onCustomizationChange(selections);
+
+    const bookingPanel = input
+      .closest('.booking-layout')
+      ?.querySelector<HTMLElement>('.booking-panel');
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    bookingPanel?.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  };
 
   return (
     <div className="booking-product-column">
@@ -84,38 +120,40 @@ export default function BookingServiceSummary({
         <section className="booking-summary-choices-card" aria-labelledby="booking-choice-heading">
           <p className="eyebrow">PERSONALIZE SEU SERVIÇO</p>
           <h3 id="booking-choice-heading">Escolha suas opções</h3>
-          {attributes.map((attribute) => (
-            <fieldset className="booking-summary-options" key={attribute.id}>
-              <legend>{attribute.label}</legend>
+          {variantPrices?.length ? (
+            <fieldset className="booking-summary-options">
+              <legend>Combinações disponíveis</legend>
               <div className="booking-summary-option-list">
-                {attribute.options.map((option) => (
-                  <label className="booking-summary-option" key={option.id}>
+                {variantPrices.map(({ combinationLabel, pricing, selections }) => (
+                  <label className="booking-summary-option" key={combinationLabel}>
                     <input
                       type="radio"
-                      name={`product-${product.id}-${attribute.id}`}
-                      checked={
-                        priceSelections.find((selection) => selection.attributeId === attribute.id)
-                          ?.optionId === option.id
-                      }
-                      onChange={() => onCustomizationChange(attribute.id, option.id)}
+                      name={`product-${product.id}-combination`}
+                      checked={selections.every((selection) =>
+                        priceSelections.some(
+                          (selected) =>
+                            selected.attributeId === selection.attributeId &&
+                            selected.optionId === selection.optionId,
+                        ),
+                      )}
+                      onClick={(event) => {
+                        if (
+                          selections.every((selection) =>
+                            priceSelections.some(
+                              (selected) =>
+                                selected.attributeId === selection.attributeId &&
+                                selected.optionId === selection.optionId,
+                            ),
+                          )
+                        ) {
+                          selectCustomization(selections, event.currentTarget);
+                        }
+                      }}
+                      onChange={(event) => selectCustomization(selections, event.currentTarget)}
                     />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-          {!!variantPrices?.length && (
-            <ul className="booking-summary-variant-prices" aria-label="Preços das combinações">
-              {variantPrices.map(({ combinationLabel, pricing }, index) => (
-                <li
-                  className="booking-summary-variant-price"
-                  key={`${combinationLabel ?? 'combination'}-${index}`}
-                >
-                  <span>{combinationLabel || 'Combinação indisponível'}</span>
-                  {pricing ? (
-                    <span>
-                      <span className={pricing.promotionApplied ? 'promotion-price-values' : ''}>
+                    <span className="booking-summary-option-content">
+                      <span>{combinationLabel}</span>
+                      <span className="booking-summary-option-price">
                         {pricing.promotionApplied && (
                           <del className="promotion-original-price">
                             {formatBrl(pricing.originalPriceCents)}
@@ -128,12 +166,70 @@ export default function BookingServiceSummary({
                         </strong>
                       </span>
                     </span>
-                  ) : (
-                    <strong>Preço indisponível</strong>
-                  )}
-                </li>
-              ))}
-            </ul>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : (
+            attributes.map((attribute) => (
+              <fieldset className="booking-summary-options" key={attribute.id}>
+                <legend>{attribute.label}</legend>
+                <div className="booking-summary-option-list">
+                  {attribute.options.map((option) => {
+                    const selections = priceSelections.map((selection) =>
+                      selection.attributeId === attribute.id
+                        ? { ...selection, optionId: option.id }
+                        : selection,
+                    );
+
+                    const pricing = resolveProductPricing(product, selections);
+
+                    const checkPriceSelections =
+                      priceSelections.find((selection) => selection.attributeId === attribute.id)
+                        ?.optionId === option.id;
+
+                    return (
+                      <label className="booking-summary-option" key={option.id}>
+                        <input
+                          type="radio"
+                          name={`product-${product.id}-${attribute.id}`}
+                          checked={checkPriceSelections}
+                          onClick={(event) => {
+                            if (checkPriceSelections) {
+                              selectCustomization(selections, event.currentTarget);
+                            }
+                          }}
+                          onChange={(event) => selectCustomization(selections, event.currentTarget)}
+                        />
+                        <span className="booking-summary-option-content">
+                          <span>{option.label}</span>
+                          <span className="booking-summary-option-price">
+                            {pricing ? (
+                              <>
+                                {pricing.promotionApplied && (
+                                  <del className="promotion-original-price">
+                                    {formatBrl(pricing.originalPriceCents)}
+                                  </del>
+                                )}
+                                <strong
+                                  className={
+                                    pricing.promotionApplied ? 'promotion-current-price' : ''
+                                  }
+                                >
+                                  {formatBrl(pricing.effectivePriceCents)}
+                                </strong>
+                              </>
+                            ) : (
+                              <strong>Preço indisponível</strong>
+                            )}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            ))
           )}
         </section>
       )}

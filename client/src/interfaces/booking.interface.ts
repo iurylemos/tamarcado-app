@@ -48,7 +48,7 @@ export type BookingTemplateProps =
       catalog: CompanyCatalog;
       product: PublicProductSummary;
       customizationSelections: ProductCustomizationSelection[];
-      onCustomizationChange: (attributeId: string, optionId: string) => void;
+      onCustomizationChange: (selections: ProductCustomizationSelection[]) => void;
       effectiveImages: ProductImage[];
       selectedImageId: string;
       onImageSelect: (imageId: string) => void;

@@ -378,8 +378,10 @@ describe('BookingPage professional selection', () => {
     expect(screen.getByText('SERVIÇO ESCOLHIDO')).toBeInTheDocument();
     expect(container.querySelector('.booking-summary-options')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Quando você quer vir?' })).toBeInTheDocument();
-    expect(screen.getByText('Buscando horários disponíveis...')).toBeInTheDocument();
-    expect(screen.getByText('Buscando horários disponíveis...')).toHaveClass('skeleton-status');
+    expect(screen.getByText('Buscando profissionais, aguarde...')).toBeInTheDocument();
+    expect(screen.getByText('Buscando profissionais, aguarde...')).toHaveClass(
+      'professional-search-status',
+    );
     expect(container.querySelectorAll('.skeleton-card')).toHaveLength(4);
   });
 
@@ -409,15 +411,30 @@ describe('BookingPage professional selection', () => {
               ],
               defaultOptionId: 'lash-lifting',
             },
+            {
+              id: 'brow-service',
+              label: 'Complemento',
+              options: [
+                { id: 'brow-design', label: 'Design de sobrancelha' },
+                { id: 'brow-henna', label: 'Henna de sobrancelha' },
+              ],
+              defaultOptionId: 'brow-design',
+            },
           ],
           variantPrices: [
             {
-              selections: [{ attributeId: 'lash-service', optionId: 'lash-lifting' }],
+              selections: [
+                { attributeId: 'lash-service', optionId: 'lash-lifting' },
+                { attributeId: 'brow-service', optionId: 'brow-design' },
+              ],
               priceCents: 10000,
               promotionalPriceCents: 8000,
             },
             {
-              selections: [{ attributeId: 'lash-service', optionId: 'volume-brasileiro' }],
+              selections: [
+                { attributeId: 'lash-service', optionId: 'volume-brasileiro' },
+                { attributeId: 'brow-service', optionId: 'brow-design' },
+              ],
               priceCents: 12000,
               promotionalPriceCents: 9500,
             },
@@ -435,24 +452,25 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const procedure = await screen.findByRole('radio', { name: 'Lash Lifting' });
+    const procedure = await screen.findByRole('radio', { name: /Lash Lifting.*80,00/ });
     const summaryDetails = container.querySelector('.booking-summary-details');
-    const variantPrices = container.querySelector('.booking-summary-variant-prices');
     const choiceCard = container.querySelector('.booking-summary-choices-card');
     const selectedCard = container.querySelector('.booking-summary');
     expect(procedure).toBeChecked();
-    expect(screen.getByRole('group', { name: 'Procedimento' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Combinações disponíveis' })).toBeInTheDocument();
     expect(screen.getByText('SERVIÇO ESCOLHIDO')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Escolha suas opções' })).toBeInTheDocument();
     expect(choiceCard).toContainElement(procedure);
     expect(selectedCard).not.toContainElement(procedure);
     expect(selectedCard?.parentElement).toHaveClass('booking-product-column');
-    expect(variantPrices).toHaveTextContent('Lash Lifting');
-    expect(variantPrices).toHaveTextContent('80,00');
-    expect(variantPrices).toHaveTextContent('Volume Brasileiro');
-    expect(variantPrices).toHaveTextContent('95,00');
-    expect(variantPrices?.querySelector('.promotion-original-price')).toBeInTheDocument();
-    expect(variantPrices?.querySelector('.promotion-current-price')).toBeInTheDocument();
+    expect(procedure.closest('label')).toHaveTextContent(
+      'Lash Lifting + Design de sobrancelha',
+    );
+    expect(procedure.closest('label')).toHaveTextContent('80,00');
+    expect(
+      screen.getByRole('radio', { name: /Volume Brasileiro \+ Design de sobrancelha.*95,00/ }),
+    ).toBeInTheDocument();
+    expect(container.querySelector('.booking-summary-variant-prices')).not.toBeInTheDocument();
     expect(summaryDetails?.textContent).toContain('80,00');
     expect(summaryDetails?.querySelector('.promotion-original-price')).toBeInTheDocument();
     expect(summaryDetails?.querySelector('.promotion-current-price')).toBeInTheDocument();
@@ -463,10 +481,15 @@ describe('BookingPage professional selection', () => {
       summaryPriceValues?.querySelectorAll('.promotion-original-price, .promotion-current-price'),
     ).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Volume Brasileiro' }));
+    fireEvent.click(
+      screen.getByRole('radio', { name: /Volume Brasileiro \+ Design de sobrancelha.*95,00/ }),
+    );
 
     expect(summaryDetails?.textContent).toContain('95,00');
     expect(summaryDetails?.textContent).not.toContain('80,00');
+    expect(container.querySelector('.booking-summary-customizations')).toHaveTextContent(
+      'Procedimento: Volume BrasileiroComplemento: Design de sobrancelha',
+    );
   });
 
   it('resets selections to the active product defaults when the product changes', async () => {
@@ -518,8 +541,8 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Serviço A' })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('radio', { name: 'Premium' }));
-    expect(screen.getByRole('radio', { name: 'Premium' })).toBeChecked();
+    fireEvent.click(await screen.findByRole('radio', { name: /Premium.*100,00/ }));
+    expect(screen.getByRole('radio', { name: /Premium.*100,00/ })).toBeChecked();
 
     rerender(
       <MemoryRouter>
@@ -530,8 +553,8 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Serviço B' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Básico' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Premium' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /Básico.*100,00/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Premium.*100,00/ })).not.toBeChecked();
   });
 
   it('keeps static booking content visible while catalog-backed summary data loads', () => {
@@ -736,22 +759,41 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const searchingMessage = await screen.findByText('Buscando horários disponíveis...');
-    expect(searchingMessage).toHaveClass('skeleton-status');
+    const searchingMessage = await screen.findByText('Buscando profissionais, aguarde...');
+    expect(searchingMessage).toHaveClass('professional-search-status');
+    expect(container.querySelector('.professional-search-spinner')).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(4);
   });
 
   it('shows complete appointment ranges through the end of a two-hour service day', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+        timezone: 'America/New_York',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Corte',
+          imageUrl: '/corte.jpg',
+          priceCents: 12000,
+          durationMinutes: 120,
+        },
+      ],
+    });
     vi.mocked(listAvailability).mockResolvedValue([
       {
-        startsAt: '2030-02-04T12:00:00.000Z',
-        endsAt: '2030-02-04T14:00:00.000Z',
+        startsAt: '2030-02-04T14:00:00.000Z',
+        endsAt: '2030-02-04T16:00:00.000Z',
         professionalId: 'ana',
         professionalName: 'Ana Souza',
       },
       {
-        startsAt: '2030-02-04T20:20:00.000Z',
-        endsAt: '2030-02-04T22:20:00.000Z',
+        startsAt: '2030-02-04T22:20:00.000Z',
+        endsAt: '2030-02-05T00:20:00.000Z',
         professionalId: 'ana',
         professionalName: 'Ana Souza',
       },
@@ -841,7 +883,7 @@ describe('BookingPage professional selection', () => {
     );
     await waitFor(() => expect(listAvailability).toHaveBeenCalledTimes(2));
     expect(searchAvailability).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText('Buscando horários disponíveis...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Buscando profissionais, aguarde...')).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '11:00 - 13:00' })).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
   });
@@ -933,16 +975,16 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    const naturalOption = await screen.findByRole('radio', { name: 'Natural' });
-    const cottonOption = screen.getByRole('radio', { name: 'Algodão' });
+    const naturalOption = await screen.findByRole('radio', { name: /Natural.*120,00/ });
+    const cottonOption = screen.getByRole('radio', { name: /Algodão.*120,00/ });
     expect(naturalOption).toBeChecked();
     expect(cottonOption).toBeChecked();
     expect(screen.getByText('Imagens não disponíveis para esta combinação.')).toBeInTheDocument();
     expect(document.querySelector('.product-image-gallery__main')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Preto' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Preto.*120,00/ }));
     expect(screen.getByText('Imagens não disponíveis para esta combinação.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('radio', { name: 'Seda' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Seda.*120,00/ }));
     expect(
       screen.queryByText('Imagens não disponíveis para esta combinação.'),
     ).not.toBeInTheDocument();
@@ -1044,8 +1086,8 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('radio', { name: 'Natural' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Algodão' })).toBeChecked();
+    expect(await screen.findByRole('radio', { name: /Natural.*120,00/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Algodão.*120,00/ })).toBeChecked();
     await waitFor(() =>
       expect(container.querySelector('.booking-summary-customizations')).toHaveTextContent(
         'Cor: NaturalTecido: Algodão',
@@ -1422,7 +1464,7 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(
-      await screen.findByText('Verificando profissionais com horários nos próximos 31 dias...'),
+      await screen.findByText('Buscando profissionais, aguarde...'),
     ).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
     expect(screen.queryByLabelText('Carregando horários disponíveis')).not.toBeInTheDocument();
@@ -1488,6 +1530,9 @@ describe('BookingPage professional selection', () => {
 
     expect(await screen.findByText('Prazo estimado:')).toBeInTheDocument();
     expect(screen.getByText(/até 3 dias corridos/)).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(
+      /⚠️\s*A data é uma previsão, não uma confirmação de entrega ou conclusão\./,
+    );
     expect(screen.getByText('Previsão provisória:').parentElement).toHaveTextContent(/\d{4}/);
     expect(screen.queryByText('120 minutos')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Data do atendimento')).not.toBeInTheDocument();

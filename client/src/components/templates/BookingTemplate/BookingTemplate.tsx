@@ -7,7 +7,10 @@ import BookingHero from '../../atoms/BookingHero';
 import BookingReady from '../../organisms/BookingReady';
 import { companyCatalogPath } from '../../../app/routes';
 
-export default function BookingTemplate(props: Readonly<BookingTemplateProps>): JSX.Element {
+type Props = BookingTemplateProps &
+  ({ status: 'ready'; allowContactScroll: boolean } | { status: 'loading' | 'error' | 'not-found' });
+
+export default function BookingTemplate(props: Readonly<Props>): JSX.Element {
   if (props.status === 'loading') {
     return (
       <>

@@ -72,6 +72,122 @@ emulatorOnly('public booking on the Firestore emulator', () => {
     );
   });
 
+  it.each([15, 60, 120])(
+    'uses the service duration for availability, booking, and reservation (%i minutes)',
+    async (durationMinutes) => {
+      await db.collection('products').doc('service-corte').update({ durationMinutes });
+
+      const date = nextOpenDate();
+      const slots = (
+        await listAvailableSlots({
+          businessSlug: 'studio-aurora',
+          productId: 'service-corte',
+          professionalId: 'professional-ana',
+          date,
+        })
+      ).sort((first, second) => first.startsAt.localeCompare(second.startsAt));
+
+      expect(slots.length).toBeGreaterThan(0);
+      for (const [index, slot] of slots.entries()) {
+        expect(Date.parse(slot.endsAt) - Date.parse(slot.startsAt)).toBe(durationMinutes * 60_000);
+        if (index > 0) {
+          expect(Date.parse(slot.startsAt) - Date.parse(slots[index - 1]!.startsAt)).toBe(
+            durationMinutes * 60_000,
+          );
+        }
+      }
+
+      const offCadenceTime = durationMinutes === 15 ? '09:05' : '09:15';
+      await expect(
+        createPublicAppointment({
+          businessSlug: 'studio-aurora',
+          productId: 'service-corte',
+          professionalId: 'professional-ana',
+          startsAt: localDateTimeToUtc(date, offCadenceTime, 'America/Sao_Paulo').toISOString(),
+          customerName: 'Maria Silva',
+          customerPhone: '(11) 99999-0009',
+          paymentMethod: 'debit',
+        }),
+      ).rejects.toMatchObject({ code: 'already-exists' });
+
+      const selectedSlot = slots[0]!;
+      const result = await createPublicAppointment({
+        businessSlug: 'studio-aurora',
+        productId: 'service-corte',
+        professionalId: 'professional-ana',
+        startsAt: selectedSlot.startsAt,
+        customerName: 'Maria Silva',
+        customerPhone: '(11) 99999-0009',
+        paymentMethod: 'debit',
+      });
+      const appointment = (
+        await db.collection('appointments').doc(result.appointmentId).get()
+      ).data();
+      expect(appointment).toMatchObject({
+        durationMinutes,
+        startsAt: Timestamp.fromDate(new Date(selectedSlot.startsAt)),
+        endsAt: Timestamp.fromDate(new Date(selectedSlot.endsAt)),
+      });
+      expect(
+        (
+          await db
+            .collection('booking_reservations')
+            .where('appointmentId', '==', result.appointmentId)
+            .get()
+        ).empty,
+      ).toBe(false);
+
+      if (durationMinutes === 120) {
+        const search = await searchAvailability({
+          businessSlug: 'studio-aurora',
+          productId: 'service-corte',
+          date,
+        });
+        const starts = search.slots
+          .filter((slot) => slot.professionalId === 'professional-ana')
+          .map((slot) => {
+            const local = getZonedDateTimeParts(new Date(slot.startsAt), 'America/Sao_Paulo');
+            return `${String(local.hour).padStart(2, '0')}:${String(local.minute).padStart(2, '0')}`;
+          });
+
+        expect(search.date).toBe(date);
+        expect(starts).toEqual(['09:00', '11:00', '13:00', '15:00']);
+      }
+    },
+  );
+
+  it('restarts duration cadence at the beginning of each working period', async () => {
+    const date = nextOpenDate();
+    const weekday = new Date(`${date}T12:00:00.000Z`).getUTCDay() || 7;
+    const workingHoursId = `tenant-aurora__professional-ana__${weekday}`;
+    await db.collection('working_hours').doc(workingHoursId).update({
+      startLocalTime: '09:00',
+      endLocalTime: '11:00',
+    });
+    await db.collection('working_hours').doc(`${workingHoursId}__afternoon`).set({
+      tenantId: 'tenant-aurora',
+      professionalId: 'professional-ana',
+      dayOfWeek: weekday,
+      startLocalTime: '16:00',
+      endLocalTime: '18:00',
+      active: true,
+    });
+    await db.collection('products').doc('service-corte').update({ durationMinutes: 120 });
+
+    const slots = await listAvailableSlots({
+      businessSlug: 'studio-aurora',
+      productId: 'service-corte',
+      professionalId: 'professional-ana',
+      date,
+    });
+    const starts = slots.map((slot) => {
+      const local = getZonedDateTimeParts(new Date(slot.startsAt), 'America/Sao_Paulo');
+      return `${String(local.hour).padStart(2, '0')}:${String(local.minute).padStart(2, '0')}`;
+    });
+
+    expect(starts).toEqual(['09:00', '16:00']);
+  });
+
   it('validates current selections and snapshots server-derived labels and the selected gallery URL', async () => {
     const slots = await listAvailableSlots({
       businessSlug: 'studio-aurora',

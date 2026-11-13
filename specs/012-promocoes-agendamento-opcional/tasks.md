@@ -197,14 +197,37 @@ O MVP recomendado é a **US1**: configuração de promoção no backoffice, vali
 
 Cada fase deve passar seu teste independente antes de avançar; nenhum passo desta lista autoriza migration, deploy, seed ou alteração de dados de produção.
 
+## Fase 8: Ajustes de experiência e cadência de disponibilidade (P1)
+
+**Objetivo**: concluir a apresentação de combinações/prazos e garantir que os horários oferecidos, criados e reagendados avancem pela duração do serviço, sem enfraquecer as restrições de disponibilidade existentes.
+
+**Teste independente**: validar combinações e preços no booking, estimativas nos cards, loading/aviso, e horários para durações distintas com expediente, períodos separados, bloqueios, agendamentos e reservas; confirmar que criação e reagendamento rejeitam inícios fora da cadência.
+
+### Testes
+
+- [x] T040 [P] [US2] Estender `client/src/pages/BookingPage.spec.tsx` e os testes do `BookingServiceSummary` para selecionar uma combinação por controle, mostrar rótulos e preço juntos, substituir a seleção anterior e preservar produtos sem combinações explícitas.
+- [x] T041 [P] [US3] Estender `client/src/pages/CompanyCatalogPage.spec.tsx` e `client/src/pages/BookingPage.spec.tsx` para prazo único/igual/diferente nos cards, aviso com destaque, mensagem e indicador de busca, erro/ausência e formatação dos horários no fuso da empresa.
+- [x] T042 [P] [US3] Estender `functions/src/functions/appointments/create-public-appointment.spec.ts` e `functions/src/functions/appointments/update-appointment.spec.ts` para cadência de 15, 60 e 120 minutos, término pela duração, horários fora da cadência, períodos de expediente distintos, pausas, bloqueios, conflito e reserva.
+
+### Implementação
+
+- [x] T043 [US3] Atualizar `functions/src/services/availability.service.ts`, `functions/src/services/booking.service.ts` e `functions/src/services/appointment-operations.service.ts` para gerar e validar inícios espaçados pela duração do produto/agendamento, preservando as validações de expediente, conflitos e reservas.
+- [x] T044 [US2] Atualizar `client/src/components/organisms/BookingServiceSummary/BookingServiceSummary.tsx` para apresentar cada combinação explícita como um único controle acessível com os rótulos combinados e o preço efetivo; preservar o fallback por atributo sem combinações explícitas.
+- [x] T045 [US3] Atualizar `client/src/components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate.tsx` e `client/src/interfaces/company.interface.ts` se necessário para apresentar prazo único ou dependente da opção nos cards promocionais e convencionais, sem inferir prazo de combinações inválidas.
+- [x] T046 [US3] Atualizar `client/src/components/organisms/BookingAvailability/BookingAvailability.tsx`, `client/src/utils/date.util.ts` e estilos relacionados para exibir início/fim no fuso da empresa, o aviso de estimativa destacado e o indicador com “Buscando profissionais, aguarde...”, mantendo erro e ausência distintos.
+- [x] T047 Executar os testes focados de `client` e `functions` e os builds desses workspaces; corrigir regressões relacionadas à cadência, às combinações e aos estados visuais sem alterar funcionalidades fora do escopo.
+
+**Checkpoint**: a combinação escolhida mostra seu preço, os cards não omitem nem inventam estimativas, a busca tem estado visível, e busca/criação/reagendamento compartilham a cadência por duração e mantêm a proteção contra conflito.
+
 ## Contagem e critérios independentes
 
-- **Total**: 39 tarefas.
+- **Total**: 47 tarefas (39 concluídas anteriormente e 8 adicionadas na Fase 8).
 - **Fundacional**: 5 tarefas.
 - **US1 — Promoção**: 9 tarefas; teste independente descrito na Fase 3.
 - **US2 — Seleção e preços**: 4 tarefas; teste independente descrito na Fase 4.
 - **US4 — Configurar estimativa**: 4 tarefas; teste independente descrito na Fase 5.
 - **US3 — Consultar estimativa/checkout**: 12 tarefas; teste independente descrito na Fase 6.
 - **Polimento**: 5 tarefas, incluindo collaborator, emulador, matriz de testes e builds.
+- **Fase 8 — Experiência e cadência**: 8 tarefas; testes independentes cobrem client e Functions.
 
 Todos os itens de tarefa seguem o formato de checklist com caixa, ID sequencial, `[P]` somente quando aplicável, etiqueta de história nas fases de usuário e caminho(s) dos arquivos. Nenhum teste, build, migration, deploy ou commit foi executado nesta etapa documental.

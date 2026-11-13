@@ -186,6 +186,8 @@ describe('CompanyCatalogPage', () => {
           imageUrl: '/regular.jpg',
           priceCents: 5000,
           durationMinutes: 30,
+          estimatedDeliveryEnabled: true,
+          estimatedDeliveryDays: 15,
         },
       ],
       promotions: [
@@ -212,11 +214,13 @@ describe('CompanyCatalogPage', () => {
               selections: [{ attributeId: 'color', optionId: 'blue' }],
               priceCents: 15000,
               promotionalPriceCents: 12000,
+              estimatedDeliveryDays: 15,
             },
             {
               selections: [{ attributeId: 'color', optionId: 'red' }],
               priceCents: 11000,
               promotionalPriceCents: 9000,
+              estimatedDeliveryDays: 30,
             },
           ],
           durationMinutes: 60,
@@ -240,10 +244,73 @@ describe('CompanyCatalogPage', () => {
     expect(offers).toHaveTextContent(/R\$\s*120,00/);
     expect(offers).toHaveTextContent(/R\$\s*110,00/);
     expect(offers).toHaveTextContent(/R\$\s*90,00/);
-    expect(offers).toHaveTextContent('Prazo estimado · Solicitar serviço');
+    expect(offers).toHaveTextContent('Prazo estimado · varia conforme a opção');
     expect(offers).not.toHaveTextContent('60 min');
     expect(screen.getByRole('heading', { name: 'Serviço regular' })).toBeInTheDocument();
-    expect(regularCatalog).toHaveTextContent('30 min · Escolher horário');
+    expect(regularCatalog).toHaveTextContent('Prazo estimado · 15 dias');
+    expect(regularCatalog).not.toHaveTextContent('30 min');
+  });
+
+  it('ignores estimated delivery values attached to invalid combinations on both card surfaces', async () => {
+    const product = {
+      id: 'service-variants',
+      name: 'Serviço com opções',
+      imageUrl: '/service.jpg',
+      priceCents: 5000,
+      promotionActive: true,
+      estimatedDeliveryEnabled: true,
+      durationMinutes: 60,
+      customizationAttributes: [
+        {
+          id: 'style',
+          label: 'Estilo',
+          options: [
+            { id: 'classic', label: 'Clássico' },
+            { id: 'modern', label: 'Moderno' },
+          ],
+          defaultOptionId: 'classic',
+        },
+      ],
+      variantPrices: [
+        {
+          selections: [{ attributeId: 'style', optionId: 'classic' }],
+          priceCents: 5000,
+          promotionalPriceCents: 4000,
+          estimatedDeliveryDays: 7,
+        },
+        {
+          selections: [{ attributeId: 'style', optionId: 'modern' }],
+          priceCents: 5000,
+          promotionalPriceCents: 4500,
+          estimatedDeliveryDays: 7,
+        },
+        {
+          selections: [{ attributeId: 'style', optionId: 'missing-option' }],
+          priceCents: 5000,
+          promotionalPriceCents: 4500,
+          estimatedDeliveryDays: 99,
+        },
+      ],
+    };
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [product],
+      promotions: [product],
+    });
+
+    renderCatalogPage('studio-aurora');
+
+    const offers = await screen.findByRole('region', { name: 'Ofertas' });
+    const regularCatalog = screen.getByRole('region', { name: 'Serviços' });
+    expect(offers).toHaveTextContent('Prazo estimado · 7 dias');
+    expect(regularCatalog).toHaveTextContent('Prazo estimado · 7 dias');
+    expect(offers).not.toHaveTextContent('99 dias');
+    expect(regularCatalog).not.toHaveTextContent('99 dias');
   });
 
   it('offers a business-named PWA install prompt only after a valid catalog loads', async () => {

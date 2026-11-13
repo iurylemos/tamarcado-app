@@ -29,6 +29,7 @@ type BookingAvailabilityProps = {
   nextDateSearchError: string;
   error: string;
   durationMinutes: number;
+  timezone?: string;
 };
 
 export default function BookingAvailability({
@@ -52,6 +53,7 @@ export default function BookingAvailability({
   nextDateSearchError,
   error,
   durationMinutes,
+  timezone,
 }: Readonly<BookingAvailabilityProps>): JSX.Element {
   return (
     <>
@@ -80,8 +82,9 @@ export default function BookingAvailability({
           ) : estimateUnavailableMessage ? (
             <p role="status">{estimateUnavailableMessage}</p>
           ) : null}
-          <p className="muted">
-            A data é uma previsão, não uma confirmação de entrega ou conclusão.
+          <p className="booking-estimate-notice" role="note">
+            <span aria-hidden="true">⚠️</span>
+            <span>A data é uma previsão, não uma confirmação de entrega ou conclusão.</span>
           </p>
         </div>
       ) : (
@@ -99,11 +102,10 @@ export default function BookingAvailability({
 
       {availabilityLoading ? (
         <>
-          <p className="skeleton-status" role="status">
-            {estimatedCheckout
-              ? 'Verificando profissionais com horários nos próximos 31 dias...'
-              : 'Buscando horários disponíveis...'}
-          </p>
+          <div className="professional-search-state" role="status" aria-busy="true">
+            <span className="professional-search-spinner" aria-hidden="true" />
+            <span className="professional-search-status">Buscando profissionais, aguarde...</span>
+          </div>
           {!estimatedCheckout && (
             <div className="slot-grid" aria-label="Carregando horários disponíveis">
               {Array.from({ length: 4 }, (_, index) => (
@@ -182,7 +184,7 @@ export default function BookingAvailability({
                   checked={selectedStartsAt === slot.startsAt}
                   onChange={() => onTimeChange(slot.startsAt)}
                 />
-                <span>{DateUtil.formatTimeRange(slot)}</span>
+                <span>{DateUtil.formatTimeRange(slot, timezone)}</span>
               </motion.label>
             ))}
           </div>

@@ -954,25 +954,45 @@ html[data-navigating] main {
   font-size: 0.82rem;
 }
 .booking-summary-option-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.4rem;
 }
 .booking-summary-option {
-  min-height: 2.5rem;
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  width: 100%;
+  min-height: 3.25rem;
+  align-items: center;
   border-color: var(--color-brand-line);
-  border-radius: 999px;
-  padding: 0.35rem 0.85rem 0.35rem 0.7rem;
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.85rem;
   background: white;
   font-size: 0.86rem;
   font-weight: 600;
   transition:
     border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms var(--ease-out);
+    background 160ms ease;
 }
-.booking-summary-option:active {
-  transform: scale(0.97);
+.booking-summary-option-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+  min-width: 0;
+  line-height: 1.35;
+}
+.booking-summary-option-price {
+  display: inline-flex;
+  align-items: baseline;
+  justify-self: end;
+  text-align: right;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+.booking-summary-option-price strong:not(.promotion-current-price) {
+  color: var(--color-brand);
 }
 .booking-summary-option:has(input:checked) {
   border-color: var(--color-brand);
@@ -1009,6 +1029,55 @@ html[data-navigating] main {
 }
 .booking-summary-variant-price .promotion-current-price {
   font-size: 0.95rem;
+}
+.booking-estimate-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0;
+  border: 1px solid #fbbf24;
+  border-left: 0.25rem solid #f59e0b;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  background: #fffbeb;
+  color: #78350f;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.booking-estimate-notice > span:first-child {
+  flex: 0 0 auto;
+}
+.professional-search-state {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--color-brand-line);
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  background: var(--color-brand-soft);
+  color: var(--color-brand-deep);
+}
+.professional-search-status {
+  font-weight: 700;
+}
+.professional-search-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 1.1rem;
+  border: 2px solid var(--color-brand-line);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: professional-search-spin 750ms linear infinite;
+}
+@keyframes professional-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .professional-search-spinner {
+    animation: none;
+  }
 }
 
 /* ---------- Booking: panel & form ---------- */

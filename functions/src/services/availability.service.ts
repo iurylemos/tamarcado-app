@@ -111,6 +111,13 @@ export async function listAvailableSlots(input: ListAvailabilityInput): Promise<
     throw new DomainError('NOT_BOOKABLE', 'Esta empresa não está aceitando agendamentos.');
   }
 
+  if (!Number.isSafeInteger(product.durationMinutes) || product.durationMinutes <= 0) {
+    throw new DomainError(
+      'TEMPORARY_FAILURE',
+      'A duração do serviço está configurada incorretamente.',
+    );
+  }
+
   const timezone = String(tenant.timezone);
   const bookingInterval = Number(tenant.bookingIntervalMinutes);
 
@@ -240,7 +247,7 @@ export async function listAvailableSlots(input: ListAvailabilityInput): Promise<
       for (
         let startMinute = opening;
         startMinute + product.durationMinutes <= closing;
-        startMinute += bookingInterval
+        startMinute += product.durationMinutes
       ) {
         const localTime = `${String(Math.floor(startMinute / 60)).padStart(2, '0')}:${String(startMinute % 60).padStart(2, '0')}`;
         const startsAt = localDateTimeToUtc(input.date, localTime, timezone);
@@ -345,6 +352,13 @@ async function loadSearchBase(input: SearchAvailabilityInput): Promise<SearchAva
     throw new DomainError('NOT_BOOKABLE', 'Este serviço não está disponível.');
   }
 
+  if (!Number.isSafeInteger(product.durationMinutes) || product.durationMinutes <= 0) {
+    throw new DomainError(
+      'TEMPORARY_FAILURE',
+      'A duração do serviço está configurada incorretamente.',
+    );
+  }
+
   const tenant = tenantSnapshot?.data() as TenantDocument | undefined;
 
   if (!tenantSnapshot?.exists || tenant?.active !== true) {
@@ -360,7 +374,6 @@ async function loadSearchBase(input: SearchAvailabilityInput): Promise<SearchAva
   return {
     tenantId: business.tenantId,
     timezone: String(tenant.timezone),
-    bookingInterval,
     durationMinutes: product.durationMinutes,
     assignedIds: [
       ...new Set(
@@ -505,7 +518,6 @@ function buildContext(
 
   return {
     timezone: base.timezone,
-    bookingInterval: base.bookingInterval,
     durationMinutes: base.durationMinutes,
     professionals: schedules,
     now: Date.now(),
@@ -543,7 +555,7 @@ function listSlotsForDate(context: BoundedAvailabilityContext, date: string): Av
       for (
         let startMinute = opening;
         startMinute + context.durationMinutes <= closing;
-        startMinute += context.bookingInterval
+        startMinute += context.durationMinutes
       ) {
         const localTime = `${String(Math.floor(startMinute / 60)).padStart(2, '0')}:${String(startMinute % 60).padStart(2, '0')}`;
         let startsAt: Date;
@@ -808,7 +820,7 @@ export async function isRequestedSlotAvailable(
 
     return (
       minuteOfDay >= opening &&
-      (minuteOfDay - opening) % input.bookingIntervalMinutes === 0 &&
+      (minuteOfDay - opening) % input.durationMinutes === 0 &&
       minuteOfDay + input.durationMinutes <= closing
     );
   });

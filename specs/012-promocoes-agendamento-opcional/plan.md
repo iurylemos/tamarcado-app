@@ -158,6 +158,28 @@ firestore.indexes.json
 7. **Índice de catálogo**: a consulta promocional separada exige validar o índice composto no Emulator Suite antes de publicação; nenhuma publicação/deploy faz parte deste plano.
 8. **Compatibilidade de clientes durante a atualização**: a Function e os bundles públicos têm um contrato de entrada ampliado (pagamento e data/horário opcional condicional). A liberação futura deve coordenar os clientes com o backend e só habilitar a estimativa depois que o client compatível estiver disponível; este plano não executa deploy.
 
+## Adendo aprovado em 2026-11-12 — experiência de seleção e cadência
+
+Este adendo registra os requisitos aprovados na revisão da especificação e prevalece sobre as decisões anteriores somente nos comportamentos abaixo. A implementação permanece limitada ao código de `client/` e `functions/`, sem novo endpoint, alteração de schema/collections, regras Firestore, migração ou mudança no nome obrigatório.
+
+### Decisões técnicas
+
+- **Combinações no booking**: em combinações de produto explícitas, o cliente apresenta um único radio por combinação, com rótulos combinados e preço efetivo resolvido por `resolveProductPricing`. Selecionar uma combinação atualiza suas seleções de atributos; nenhuma combinação ou preço enviado pelo browser será autoridade no backend. Produtos sem combinações explícitas preservam os controles por atributo existentes.
+- **Geração de horários**: `listAvailableSlots` e `searchAvailability` avançam o início pelo `durationMinutes` do produto, reiniciando no começo de cada período de expediente. O fim continua sendo início + duração. Expediente, pausas, bloqueios, agendamentos, reservas, fuso e proteção contra concorrência permanecem aplicáveis; `bookingIntervalMinutes` e seu armazenamento não são removidos nem migrados.
+- **Validação consistente**: `isRequestedSlotAvailable` validará o início conforme a mesma cadência do produto, e `appointment-operations.service.ts` aplicará a regra à alteração de horário usando a duração preservada no agendamento. A criação transacional continua relendo os dados do produto e revalidando conflitos/reservas.
+- **Apresentação de disponibilidade**: o `client` usa `startsAt` e `endsAt` retornados pelo backend, formatados no fuso público IANA da empresa; não calcula slots nem duração localmente. Durações em múltiplos valores serão cobertas por testes, inclusive 15, 60 e 120 minutos.
+- **Cards de catálogo**: apresentar o prazo em dias quando ele for único ou igual em todas as combinações; se os prazos diferirem, apresentar uma indicação de dependência da opção. A tela de booking permanece a fonte do prazo exato da combinação escolhida. Aplicar a mesma regra nos cards de ofertas e catálogo convencional.
+- **Estados e aviso**: reutilizar o estado de busca da disponibilidade, visualmente separado do carregamento inicial e do envio, com spinner e a mensagem aprovada. Destacar o aviso existente com emoji, cores e espaçamento, preservando seu texto funcional.
+- **Nome**: permanece obrigatório; telefone, consentimento e pagamento mantêm as validações atuais.
+
+### Superfícies e testes adicionais
+
+- `client/src/components/organisms/BookingServiceSummary/BookingServiceSummary.tsx` e testes: controle único por combinação, preço efetivo, substituição da combinação selecionada e fallback por atributo.
+- `client/src/components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate.tsx` e testes de `CompanyCatalogPage`: estimativa nos cards de ofertas e catálogo, incluindo estimativas iguais e diferentes entre combinações.
+- `client/src/components/organisms/BookingAvailability/BookingAvailability.tsx`, `client/src/utils/date.util.ts` e testes de `BookingPage`: término vindo do backend, fuso da empresa, estado de busca com texto/indicador, aviso destacado e estados de erro/ausência.
+- `functions/src/services/availability.service.ts`, `functions/src/services/booking.service.ts` e `functions/src/services/appointment-operations.service.ts`: geração e validação da mesma cadência por duração, cobrindo expediente, períodos separados, pausas, conflitos e reagendamento.
+- Testes focados em `client` e `functions`; não alterar `collaborator`, `backoffice`, `shared/domain`, regras Firestore, collections ou dados existentes.
+
 ## Complexidade
 
 Não há violação constitucional que exija justificativa. As alterações se mantêm nos workspaces e documentos Firestore existentes; não se prevê infraestrutura ou dependência adicional.

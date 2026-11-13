@@ -5,6 +5,7 @@ import BookingForm from '../BookingForm/BookingForm';
 
 type BookingCustomerDetailsProps = {
   canSubmit: boolean;
+  allowContactScroll: boolean;
   busy: boolean;
   error: string;
   onSubmit: (values: BookingFormValues) => Promise<void>;
@@ -12,21 +13,28 @@ type BookingCustomerDetailsProps = {
 
 export default function BookingCustomerDetails({
   canSubmit,
+  allowContactScroll,
   busy,
   error,
   onSubmit,
 }: Readonly<BookingCustomerDetailsProps>): JSX.Element {
   const contactRef = useRef<HTMLDivElement>(null);
   const wasReady = useRef<boolean>(false);
+  const wasVisible = useRef<boolean>(false);
   const shouldScrollToContact = useRef<boolean>(false);
 
   useEffect(() => {
-    const justBecameReady = canSubmit && !wasReady.current;
-    wasReady.current = canSubmit;
+    const ready = canSubmit && allowContactScroll;
+    const justBecameReady = ready && !wasReady.current;
+    const alreadyVisible = wasVisible.current;
+    wasReady.current = ready;
+    wasVisible.current = canSubmit;
+    if (!ready) shouldScrollToContact.current = false;
     if (!justBecameReady) return;
 
     shouldScrollToContact.current = true;
-  }, [canSubmit]);
+    if (alreadyVisible) scrollToContactAfterExpand();
+  }, [canSubmit, allowContactScroll]);
 
   const scrollToContactAfterExpand = (): void => {
     if (!shouldScrollToContact.current) return;

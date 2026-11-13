@@ -367,8 +367,6 @@ export async function updateAppointment(
       ]);
 
     const localMinute = requestedMinute;
-    const interval = Number(tenant.bookingIntervalMinutes);
-
     const withinWorkingHours = hoursSnapshot.docs.some((document) => {
       const hour = document.data();
       const opening = minutesFromLocalTime(String(hour.startLocalTime));
@@ -382,14 +380,14 @@ export async function updateAppointment(
         localMinute !== undefined &&
         localMinute >= opening &&
         localMinute + durationMinutes <= closing &&
-        (localMinute - opening) % interval === 0
+        (localMinute - opening) % durationMinutes === 0
       );
     });
 
     if (!withinWorkingHours) {
       throw new HttpsError(
         'failed-precondition',
-        'O horário está fora do expediente ou do intervalo de agendamento.',
+        'O horário está fora do expediente ou da cadência da duração do serviço.',
       );
     }
 

@@ -1,5 +1,5 @@
 import type { AvailableSlot } from '@shared/interfaces/availability.interface';
-import { getZonedDateTimeParts } from '@shared/timezone';
+import { getZonedDateTimeParts, isValidIanaTimezone } from '@shared/timezone';
 import type { BookingReceipt } from '../interfaces/booking.interface';
 
 export class DateUtil {
@@ -44,12 +44,16 @@ export class DateUtil {
     return `${candidate.getUTCFullYear()}-${String(candidate.getUTCMonth() + 1).padStart(2, '0')}-${String(candidate.getUTCDate()).padStart(2, '0')}`;
   }
 
-  public static formatTimeRange(slot: AvailableSlot | BookingReceipt): string {
+  public static formatTimeRange(
+    slot: AvailableSlot | BookingReceipt,
+    timezone = 'America/Sao_Paulo',
+  ): string {
+    const timeZone = isValidIanaTimezone(timezone) ? timezone : 'America/Sao_Paulo';
     const formatTime = (value: string): string =>
       new Intl.DateTimeFormat('pt-BR', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'America/Sao_Paulo',
+        timeZone,
       }).format(new Date(value));
 
     return `${formatTime(slot.startsAt)} - ${formatTime(slot.endsAt)}`;

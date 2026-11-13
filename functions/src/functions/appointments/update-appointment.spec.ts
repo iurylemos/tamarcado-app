@@ -147,9 +147,54 @@ emulatorOnly('collaborator appointment operations on the Firestore emulator', ()
     ).rejects.toThrow('não é permitida');
   });
 
+  it.each([15, 60, 120])(
+    'uses the appointment duration cadence when rescheduling (%i minutes)',
+    async (durationMinutes) => {
+      const date = nextBusinessDate();
+      await db.collection('appointments').doc('appointment-pending').update({ durationMinutes });
+
+      const offCadenceTime = durationMinutes === 15 ? '09:05' : '09:15';
+      await expect(
+        updateAppointment(manager, {
+          appointmentId: 'appointment-pending',
+          startsAt: localDateTimeToUtc(date, offCadenceTime, 'America/Sao_Paulo').toISOString(),
+          professionalId: 'professional-ana',
+        }),
+      ).rejects.toThrow('cadência da duração do serviço');
+
+      const validTime = durationMinutes === 120 ? '13:00' : '12:00';
+      const validStart = localDateTimeToUtc(date, validTime, 'America/Sao_Paulo');
+      const updated = await updateAppointment(manager, {
+        appointmentId: 'appointment-pending',
+        startsAt: validStart.toISOString(),
+        professionalId: 'professional-ana',
+      });
+
+      expect(updated.endsAt).toBe(
+        new Date(validStart.getTime() + durationMinutes * 60_000).toISOString(),
+      );
+      expect(
+        (await db.collection('appointments').doc('appointment-pending').get()).data(),
+      ).toMatchObject({
+        durationMinutes,
+        endsAt: Timestamp.fromMillis(validStart.getTime() + durationMinutes * 60_000),
+      });
+    },
+  );
+
   it('rejects overlapping edits and atomically reassigns an eligible booking with its reservations', async () => {
     const date = nextBusinessDate();
     const startsAt = localDateTimeToUtc(date, '10:00', 'America/Sao_Paulo');
+    await db.collection('appointments').doc('appointment-pending').update({ durationMinutes: 120 });
+
+    await expect(
+      updateAppointment(manager, {
+        appointmentId: 'appointment-pending',
+        startsAt: localDateTimeToUtc(date, '09:15', 'America/Sao_Paulo').toISOString(),
+        professionalId: 'professional-ana',
+      }),
+    ).rejects.toThrow('duração do serviço');
+
     await db
       .collection('appointments')
       .doc('appointment-conflict')

@@ -16,6 +16,7 @@ import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service
 import Skeleton from '../../atoms/Skeleton/Skeleton.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
 import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.js';
+import { CatalogUtil } from '../../../utils/catalog.util.js';
 
 type CompanyCatalogTemplateProps = {
   catalog: CompanyCatalog | null;
@@ -248,11 +249,7 @@ export default function CompanyCatalogTemplate({
                               );
                             })}
                           </div>
-                          <span className="store">
-                            {product.estimatedDeliveryEnabled
-                              ? 'Prazo estimado · Solicitar serviço'
-                              : `${product.durationMinutes} min · Escolher horário`}
-                          </span>
+                          <span className="store">{CatalogUtil.serviceScheduleLabel(product)}</span>
                         </div>
                       </Link>
                     </motion.article>
@@ -326,9 +323,8 @@ export default function CompanyCatalogTemplate({
                               <p className="service-description">{product.description}</p>
                             )}
                             <span className="store">
-                              {product.estimatedDeliveryEnabled
-                                ? 'Prazo estimado · Solicitar serviço →'
-                                : `${product.durationMinutes} min · Escolher horário →`}
+                              {CatalogUtil.serviceScheduleLabel(product)}
+                              {product.estimatedDeliveryEnabled ? ' · Solicitar serviço →' : ' →'}
                             </span>
                           </div>
                         </Link>
