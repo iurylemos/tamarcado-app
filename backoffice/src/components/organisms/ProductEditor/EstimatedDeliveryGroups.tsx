@@ -3,6 +3,7 @@ import type {
   ProductCustomizationAttribute,
   ProductCustomizationSelection,
 } from '@shared/interfaces/product.interface';
+import type { DeliveryGroup } from '../../../interfaces/delivery.interface';
 import { productCustomizationCombinationKey } from '@shared/product-variant-price';
 import { DeliveryUtil } from '../../../utils/delivery.util';
 
@@ -27,31 +28,41 @@ export default function EstimatedDeliveryGroups({
     DeliveryUtil.inferEstimateGrouping(attributes, drafts),
   );
 
-  const attribute = useMemo(
+  const attribute = useMemo<ProductCustomizationAttribute | undefined>(
     () => attributes.find((item) => item.id === grouping),
     [attributes, grouping],
   );
 
-  const currentGrouping = useMemo(
+  const currentGrouping = useMemo<string>(
     () => (grouping === DeliveryUtil.generalEstimateKey || attribute ? grouping : ''),
     [grouping, attribute],
   );
 
-  const groups = useMemo(() => {
-    return currentGrouping === DeliveryUtil.generalEstimateKey
-      ? [{ id: DeliveryUtil.generalEstimateKey, label: 'Prazo geral', combinations }]
-      : attribute
-        ? attribute.options.map((option) => ({
-            id: option.id,
-            label: `${attribute.label || 'Característica'}: ${option.label || 'Opção'}`,
-            combinations: combinations.filter((selections) =>
-              selections.some(
-                (selection) =>
-                  selection.attributeId === attribute.id && selection.optionId === option.id,
-              ),
-            ),
-          }))
-        : [];
+  const groups = useMemo<DeliveryGroup[]>(() => {
+    const defaultGroup = {
+      id: DeliveryUtil.generalEstimateKey,
+      label: 'Prazo geral',
+      combinations,
+    };
+
+    if (currentGrouping === DeliveryUtil.generalEstimateKey) {
+      return [defaultGroup];
+    }
+
+    if (attribute) {
+      return attribute.options.map((option) => ({
+        id: option.id,
+        label: `${attribute.label || 'Característica'}: ${option.label || 'Opção'}`,
+        combinations: combinations.filter((selections) =>
+          selections.some(
+            (selection) =>
+              selection.attributeId === attribute.id && selection.optionId === option.id,
+          ),
+        ),
+      }));
+    }
+
+    return [];
   }, [currentGrouping, attribute, combinations]);
 
   return (

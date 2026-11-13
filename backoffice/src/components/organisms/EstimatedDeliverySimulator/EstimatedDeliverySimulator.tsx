@@ -1,6 +1,7 @@
 import { useMemo, useState, type JSX } from 'react';
 import type { ProductCustomizationSelection } from '@shared/interfaces/product.interface';
 import type { ProductRecord } from '../../../interfaces/product.interface';
+import type { DeliveryRow } from '../../../interfaces/delivery.interface';
 import { DeliveryUtil } from '../../../utils/delivery.util';
 
 type Props = { products: ProductRecord[] };
@@ -9,7 +10,7 @@ export default function EstimatedDeliverySimulator({ products }: Readonly<Props>
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [choices, setChoices] = useState<Record<string, ProductCustomizationSelection[]>>({});
 
-  const rows = useMemo(
+  const rows = useMemo<DeliveryRow[]>(
     () =>
       products.map((product) => {
         const attributes = product.customizationAttributes ?? [];
