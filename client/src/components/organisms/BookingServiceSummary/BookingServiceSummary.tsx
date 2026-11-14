@@ -261,7 +261,7 @@ export default function BookingServiceSummary({
               if (!attribute || !option) return null;
               return (
                 <li key={selection.attributeId}>
-                  <strong>{attribute.label}:</strong> {option.label}
+                  {attribute.label} <strong>{option.label}:</strong>
                 </li>
               );
             })}
