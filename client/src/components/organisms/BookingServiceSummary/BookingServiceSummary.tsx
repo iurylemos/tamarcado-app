@@ -41,7 +41,7 @@ export default function BookingServiceSummary({
   selectedImageId,
   onImageSelect,
 }: Readonly<BookingServiceSummaryProps>): JSX.Element {
-  const [comboNotice, setComboNotice] = useState('');
+  const [comboNotice, setComboNotice] = useState<string>('');
 
   const isCombo = useMemo<boolean>(() => ComboUtil.hasComboItems(product), [product]);
 
