@@ -3,9 +3,15 @@ export interface ProductCustomizationOption {
   label: string;
 }
 
+export interface ProductComboItem {
+  id: string;
+  label: string;
+}
+
 export interface ProductCustomizationAttribute {
   id: string;
   label: string;
+  comboItemId?: string;
   options: ProductCustomizationOption[];
   defaultOptionId: string;
 }
@@ -31,6 +37,7 @@ export interface ProductVariantPrice {
 export interface ProductCustomizationSnapshot extends ProductCustomizationSelection {
   attributeLabel: string;
   optionLabel: string;
+  comboItemId?: string;
 }
 
 export interface ProductImageGallery {
@@ -48,6 +55,7 @@ export interface PublicProduct {
   name: string;
   description?: string;
   imageUrl: string;
+  comboItems?: ProductComboItem[];
   customizationAttributes?: ProductCustomizationAttribute[];
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];

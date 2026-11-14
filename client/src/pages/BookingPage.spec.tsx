@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { JSX } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -463,9 +463,7 @@ describe('BookingPage professional selection', () => {
     expect(choiceCard).toContainElement(procedure);
     expect(selectedCard).not.toContainElement(procedure);
     expect(selectedCard?.parentElement).toHaveClass('booking-product-column');
-    expect(procedure.closest('label')).toHaveTextContent(
-      'Lash Lifting + Design de sobrancelha',
-    );
+    expect(procedure.closest('label')).toHaveTextContent('Lash Lifting + Design de sobrancelha');
     expect(procedure.closest('label')).toHaveTextContent('80,00');
     expect(
       screen.getByRole('radio', { name: /Volume Brasileiro \+ Design de sobrancelha.*95,00/ }),
@@ -490,6 +488,197 @@ describe('BookingPage professional selection', () => {
     expect(container.querySelector('.booking-summary-customizations')).toHaveTextContent(
       'Procedimento: Volume BrasileiroComplemento: Design de sobrancelha',
     );
+  });
+
+  it('configures combo items separately and submits the valid reviewed combination', async () => {
+    const combo = {
+      id: 'service-corte',
+      name: 'Sofá + Poltrona',
+      imageUrl: '/combo.jpg',
+      priceCents: 10000,
+      durationMinutes: 120,
+      comboItems: [
+        { id: 'sofa', label: 'Sofá' },
+        { id: 'chair', label: 'Poltrona' },
+      ],
+      customizationAttributes: [
+        {
+          id: 'color',
+          label: 'Cor',
+          comboItemId: 'sofa',
+          defaultOptionId: 'beige',
+          options: [
+            { id: 'beige', label: 'Bege' },
+            { id: 'gray', label: 'Cinza' },
+            { id: 'red', label: 'Vermelho' },
+          ],
+        },
+        {
+          id: 'quantity',
+          label: 'Quantidade',
+          comboItemId: 'chair',
+          defaultOptionId: 'two',
+          options: [
+            { id: 'one', label: '1 poltrona' },
+            { id: 'two', label: '2 poltronas' },
+          ],
+        },
+      ],
+      variantPrices: [
+        {
+          selections: [
+            { attributeId: 'color', optionId: 'beige' },
+            { attributeId: 'quantity', optionId: 'one' },
+          ],
+          priceCents: 10000,
+        },
+        {
+          selections: [
+            { attributeId: 'color', optionId: 'gray' },
+            { attributeId: 'quantity', optionId: 'two' },
+          ],
+          priceCents: 15000,
+        },
+      ],
+    };
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [combo],
+    });
+    vi.mocked(getProductImageGalleries).mockResolvedValue([
+      {
+        id: 'gray-two',
+        productId: combo.id,
+        combinationKey: 'gray-two',
+        selections: combo.variantPrices[1]!.selections,
+        images: [{ id: 'gray-image', storagePath: '', downloadUrl: '/gray.jpg' }],
+      },
+    ]);
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+    vi.mocked(createAppointment).mockResolvedValue({
+      appointmentId: 'combo-booking',
+      status: 'pending',
+      professionalId: 'ana',
+      professionalName: 'Ana Souza',
+      startsAt: '2030-02-04T12:00:00.000Z',
+      endsAt: '2030-02-04T14:00:00.000Z',
+      effectivePriceCents: 15000,
+      originalPriceCents: 15000,
+      promotionApplied: false,
+    });
+    renderWithQueryClient(
+      <MemoryRouter>
+        <BookingPage slug="studio-aurora" productId={combo.id} />
+      </MemoryRouter>,
+    );
+
+    const sofa = await screen.findByRole('group', { name: 'Sofá' });
+    const chair = screen.getByRole('group', { name: 'Poltrona' });
+    expect(within(sofa).getByLabelText('Cor')).toHaveValue('beige');
+    expect(within(chair).getByLabelText('Quantidade')).toHaveValue('one');
+    expect(within(sofa).getByRole('option', { name: 'Vermelho' })).toBeDisabled();
+    expect(screen.getByText(/combinação padrão não está disponível/)).toBeInTheDocument();
+    fireEvent.change(within(sofa).getByLabelText('Cor'), { target: { value: 'gray' } });
+    expect(within(chair).getByLabelText('Quantidade')).toHaveValue('two');
+    expect(screen.getByText(/Outras opções foram ajustadas/)).toBeInTheDocument();
+    const review = screen.getByLabelText('Resumo das escolhas do combo');
+    expect(review).toHaveTextContent('Cor: Cinza');
+    expect(review).toHaveTextContent('Quantidade: 2 poltronas');
+    expect(document.querySelector('.booking-summary-details')).toHaveTextContent('150,00');
+    await waitFor(() =>
+      expect(document.querySelector('.product-image-gallery__main')).toHaveAttribute(
+        'src',
+        '/gray.jpg',
+      ),
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: /09:00/ }));
+    fireEvent.change(screen.getByLabelText('Seu nome'), { target: { value: 'Maria Silva' } });
+    fireEvent.change(screen.getByLabelText(/Celular com DDD/i), {
+      target: { value: '(11) 99999-0000' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByLabelText('Débito'));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
+    await waitFor(() =>
+      expect(createAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customizationSelections: combo.variantPrices[1]!.selections,
+          selectedImageId: 'gray-image',
+        }),
+      ),
+    );
+  });
+
+  it('blocks booking when the combo has no valid priced combination', async () => {
+    vi.mocked(getCompanyCatalog).mockResolvedValue({
+      business: {
+        id: 'tenant-aurora',
+        name: 'Studio Aurora',
+        slug: 'studio-aurora',
+        segment: 'beauty',
+      },
+      products: [
+        {
+          id: 'service-corte',
+          name: 'Combo',
+          imageUrl: '/combo.jpg',
+          priceCents: 10000,
+          durationMinutes: 120,
+          comboItems: [
+            { id: 'sofa', label: 'Sofá' },
+            { id: 'chair', label: 'Poltrona' },
+          ],
+          customizationAttributes: [
+            {
+              id: 'color',
+              label: 'Cor',
+              comboItemId: 'sofa',
+              defaultOptionId: 'beige',
+              options: [
+                { id: 'beige', label: 'Bege' },
+                { id: 'gray', label: 'Cinza' },
+              ],
+            },
+          ],
+          variantPrices: [
+            { selections: [{ attributeId: 'color', optionId: 'missing' }], priceCents: 10000 },
+          ],
+        },
+      ],
+    });
+    vi.mocked(listAvailability).mockResolvedValue([
+      {
+        startsAt: '2030-02-04T12:00:00.000Z',
+        endsAt: '2030-02-04T14:00:00.000Z',
+        professionalId: 'ana',
+        professionalName: 'Ana Souza',
+      },
+    ]);
+    renderWithQueryClient(
+      <MemoryRouter>
+        <BookingPage slug="studio-aurora" productId="service-corte" />
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByText(/Não há combinações disponíveis para este combo/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Cor')).toBeDisabled();
+    fireEvent.click(await screen.findByRole('radio', { name: /09:00/ }));
+    expect(screen.queryByRole('button', { name: 'Solicitar agendamento' })).not.toBeInTheDocument();
+    expect(createAppointment).not.toHaveBeenCalled();
   });
 
   it('resets selections to the active product defaults when the product changes', async () => {
@@ -1463,9 +1652,7 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      await screen.findByText('Buscando profissionais, aguarde...'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Buscando profissionais, aguarde...')).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
     expect(screen.queryByLabelText('Carregando horários disponíveis')).not.toBeInTheDocument();
   });

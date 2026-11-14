@@ -111,3 +111,19 @@ configured through `SEED_USER_PASSWORDS_JSON`.
 - Public reads work for product image paths; upload/delete require active
   backoffice role and matching tenant.
 - Legacy product URLs and appointments remain compatible.
+
+## Structured combo configuration
+
+1. In the backoffice product editor, add at least two entries under “Itens do
+   combo” and name them. Associate each existing customization attribute with
+   the item it describes, then save the product.
+2. Open that product in the client. Verify each item and its attributes are
+   grouped separately, select the desired options and check the grouped
+   summary, price, and effective image before requesting the appointment.
+3. If choices depend on each other, select an option that requires adjustment
+   of another item and verify the updated selection is communicated. Confirm
+   that the persisted appointment includes the server-derived item and
+   selection snapshots.
+4. Verify a product without structured items retains its existing selection
+   flow. Existing combos require explicit configuration; the change does not
+   migrate or modify production data automatically.

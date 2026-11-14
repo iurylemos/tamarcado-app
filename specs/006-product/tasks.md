@@ -113,6 +113,45 @@
 
 - [x] T032 Run the focused workspace tests and builds, Storage Rules Emulator checks, and manual scenarios documented in `specs/006-product/quickstart.md`; resolve regressions without changing existing booking or commercial behavior.
 
+## Phase 8: Structured combo configuration
+
+**Prerequisites**: Approved FR-022–FR-029 and the structured combo addendum in
+`plan.md`. Preserve the behavior of products without structured combo data.
+
+- [x] T033 Add tests for combo metadata validation and round-trip persistence
+      in `functions/src/functions/products/manage-product.spec.ts` and product
+      editor behavior in `backoffice/src/pages/ProductsPage.spec.tsx`.
+- [x] T034 Define optional combo item and attribute association types in
+      `shared/domain/interfaces/product.interface.ts`, and implement validation,
+      product persistence, and editor controls in `functions/src/services/backoffice.service.ts`,
+      `functions/src/model/product.model.ts`, and `backoffice/src/components/organisms/ProductEditor/`.
+- [x] T035 Test and implement metadata propagation through
+      `functions/src/functions/catalog/get-public-catalog.ts`,
+      `functions/src/functions/catalog/render-storefront.ts`,
+      `client/src/services/catalog.service.ts`, and the corresponding public
+      product interfaces and existing catalog/SSR tests.
+- [x] T036 Test and implement server-derived immutable combo item and
+      attribute association snapshots in `functions/src/services/booking.service.ts`,
+      shared appointment/product types, and
+      `functions/src/functions/appointments/create-public-appointment.spec.ts`;
+      verify compatibility with historical appointments.
+- [x] T037 Add client tests in `client/src/pages/BookingPage.spec.tsx` for
+      grouped controls and review, dependent selections, unavailable combinations,
+      selected pricing/images, submitted IDs, and unchanged legacy behavior.
+- [x] T038 Implement the combo-only selection and review in
+      `client/src/components/organisms/BookingServiceSummary/`,
+      `client/src/pages/BookingPage.tsx`, and existing client styles; preserve a
+      single complete selection for pricing, images, estimates, and submission.
+- [x] T039 Run targeted affected tests and workspace builds, verify accessible
+      mobile and desktop behavior, and document the results without running seeds,
+      imports, or deployments.
+
+      Focused Functions persistence checks use a simulated Firestore; emulator-only
+      cases were not run against the existing emulator data. Standalone app
+      TypeScript checks also report pre-existing errors in
+      `backoffice/src/pages/AIAnalysisPage.spec.tsx` and
+      `client/src/services/booking-performance.spec.ts`.
+
 ## Dependencies and Execution Order
 
 ### Phase Dependencies

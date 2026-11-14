@@ -3,4 +3,5 @@ export type BookingSnapshot = {
   attributeLabel: string;
   optionId: string;
   optionLabel: string;
+  comboItemId?: string;
 };

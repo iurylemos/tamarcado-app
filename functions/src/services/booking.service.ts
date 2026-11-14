@@ -214,6 +214,7 @@ function validateCustomizationSelections(
     return {
       attributeId: attribute.id,
       attributeLabel: attribute.label,
+      ...(attribute.comboItemId ? { comboItemId: attribute.comboItemId } : {}),
       optionId: option.id,
       optionLabel: option.label,
     };
@@ -578,6 +579,7 @@ export async function createPublicAppointment(
         productNameSnapshot: product.name,
         productImageUrlSnapshot: selectedImage.downloadUrl,
         ...(customization.snapshot ? { customizationSnapshot: customization.snapshot } : {}),
+        ...(product.comboItems?.length ? { comboItemsSnapshot: product.comboItems } : {}),
         productPriceCentsSnapshot: priceCents,
         productOriginalPriceCentsSnapshot: pricing.originalPriceCents,
         ...(pricing.promotionApplied

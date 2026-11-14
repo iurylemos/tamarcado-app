@@ -17,7 +17,11 @@ vi.mock('../../services/public-catalog.service', () => ({
   findPublicProductRecord: vi.fn(),
 }));
 
-vi.mock('../../../../client/src/config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
+vi.mock('../../../../client/src/config/firebase.config', () => ({
+  db: {},
+  functions: {},
+  auth: {},
+}));
 
 // Uses the client sources directly so the test does not depend on a production build.
 vi.mock('./storefront-renderer', async () => {
@@ -204,6 +208,33 @@ describe('renderStorefront', () => {
     expect(response.body).toContain('Corte e finalização');
     expect(response.body).toContain('Agende Corte e finalização');
     expect(response.body).not.toContain('private-tenant-aurora');
+  });
+
+  it('preserves combo item metadata in server-rendered booking data', async () => {
+    vi.mocked(findPublicProductRecord).mockResolvedValueOnce({
+      ...products['studio-aurora'][0]!,
+      comboItems: [
+        { id: 'sofa', label: 'Sofá' },
+        { id: 'chair', label: 'Poltrona' },
+      ],
+      customizationAttributes: [
+        {
+          id: 'color',
+          label: 'Cor',
+          comboItemId: 'sofa',
+          defaultOptionId: 'beige',
+          options: [
+            { id: 'beige', label: 'Bege' },
+            { id: 'gray', label: 'Cinza' },
+          ],
+        },
+      ],
+    });
+    const response = await requestStorefront('/empresa/studio-aurora/agendar/service-corte');
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('"comboItems"');
+    expect(response.body).toContain('"comboItemId":"sofa"');
+    expect(response.body).toContain('Poltrona');
   });
 
   it('returns a public not-found state for an unknown slug', async () => {

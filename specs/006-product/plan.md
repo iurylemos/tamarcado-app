@@ -60,7 +60,7 @@ shared domain types, fixtures, and focused tests.
 
 ## Constitution Check
 
-*Gate before Phase 0 and re-check after Phase 1 design.*
+_Gate before Phase 0 and re-check after Phase 1 design._
 
 - **I. Domain and User Flow Integrity — PASS**: Galleries and selections remain
   scoped to the product and business of the current public catalog.
@@ -286,6 +286,74 @@ firebase.json
 boundaries. Use one public gallery metadata query per business and Firebase
 Storage object paths scoped by tenant/product. Do not introduce a generic
 asset-management service or a new workspace.
+
+## Addendum: structured combo configuration
+
+This addendum implements FR-022 through FR-029 in the existing product,
+catalog, and booking boundaries. It does not change availability, payment,
+professional eligibility, or delivery-estimate rules.
+
+### Data and trust boundaries
+
+- Add optional, ordered combo-item definitions with stable IDs and display
+  names to the product, and an optional item ID to each customization
+  attribute. The definitions describe components of the bookable product;
+  they do not reference or create separate product documents.
+- When combo definitions are present, validate at least two uniquely
+  identified items, nonempty names, and exactly one existing item reference
+  for each attribute. Reject dangling references and ambiguous definitions.
+  Products without definitions retain the existing contract and behavior.
+  An item can have no configurable attribute; never invent its quantity.
+- Extend the existing backoffice editor to create, rename, and remove items
+  and assign attributes. Make validation errors actionable. Removing an item
+  must not silently reassign its attributes.
+- Preserve the metadata through authorized product writes, public projection,
+  catalog callable, SSR, and browser catalog mapping. Keep it embedded in
+  existing documents and avoid a new collection.
+- Continue submitting existing attribute/option IDs. At booking time derive
+  immutable item names and attribute associations from the trusted product and
+  store them alongside the existing customization snapshot. Preserve the
+  existing snapshot fields and legacy reads, including items without
+  configurable attributes. Do not trust client-provided labels.
+
+### Client selection and review
+
+- Gate the new view on valid structured combo metadata; products without it
+  keep their existing controls and summary. Render compact item groups using
+  existing design tokens and native, labeled controls.
+- For products with variant prices, consider only complete, valid,
+  resolvable variants. Initialize with the configured defaults if valid;
+  otherwise select a valid variant deterministically and explain the
+  adjustment. If none exists, show an explicit error and block submission.
+- Changing an attribute selects a valid variant containing that choice,
+  preserving as many other current choices as possible with deterministic
+  tie-breaking. Disable choices present in no valid variant and communicate
+  any dependent changes. When variant prices are absent, preserve the
+  existing base-price behavior for valid attribute options.
+- Keep the chosen complete ID set as the single source for the existing price,
+  promotion, image, delivery-estimate, and booking paths. Review the same
+  choices grouped by item before submission; do not auto-scroll away from
+  the configuration after each choice.
+
+### Verification and rollout
+
+Add focused tests for backoffice editing and invalid metadata, Functions
+validation and authoritative historical snapshots, both catalog projections,
+SSR and browser mapping, and client behavior for dependent options, invalid
+defaults, empty variants, pricing, images, submission, and legacy products.
+Verify keyboard/mobile-friendly semantics using existing UI test tooling.
+Run the relevant existing test scripts and affected workspace builds. No seed,
+import, deploy, automatic production migration, or new dependency is planned.
+Existing combos require explicit metadata configuration before the new view
+is used.
+
+### Constitution check for the addendum
+
+**I–III — PASS**: business scoping, booking validation, and authorization remain
+authoritative on the server. **IV — PASS**: price resolution and historical
+commercial values remain unchanged. **V–VIII — PASS WITH CONSTRAINTS**:
+exercise legacy compatibility, dependent selections, accessibility, and
+server-derived snapshots; keep domain data independent of UI.
 
 ## Post-Design Constitution Check
 

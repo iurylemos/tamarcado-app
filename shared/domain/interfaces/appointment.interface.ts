@@ -1,6 +1,7 @@
 import type { CommissionType } from './product.interface.js';
 import type { AppointmentStatus } from '../appointment-status.js';
 import type {
+  ProductComboItem,
   ProductCustomizationSelection,
   ProductCustomizationSnapshot,
 } from './product.interface.js';
@@ -25,6 +26,7 @@ export interface Appointment {
   productNameSnapshot: string;
   productImageUrlSnapshot?: string;
   customizationSnapshot?: ProductCustomizationSnapshot[];
+  comboItemsSnapshot?: ProductComboItem[];
   productPriceCentsSnapshot: number;
   productOriginalPriceCentsSnapshot?: number;
   promotionSnapshot?: AppointmentPromotionSnapshot;

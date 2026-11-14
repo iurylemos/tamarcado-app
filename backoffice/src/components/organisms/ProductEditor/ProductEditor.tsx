@@ -1,5 +1,6 @@
 import { useMemo, useState, type JSX, type SubmitEvent } from 'react';
 import type {
+  ProductComboItem,
   ProductCustomizationAttribute,
   ProductCustomizationSelection,
   ProductImage,
@@ -53,6 +54,9 @@ export default function ProductEditor({
       ...attribute,
       options: attribute.options.map((option) => ({ ...option })),
     })) ?? [],
+  );
+  const [comboItems, setComboItems] = useState<ProductComboItem[]>(
+    () => product?.comboItems?.map((item) => ({ ...item })) ?? [],
   );
   const [variantPricingEnabled, setVariantPricingEnabled] = useState<boolean>(
     Boolean(product?.variantPrices?.length),
@@ -183,6 +187,28 @@ export default function ProductEditor({
     setError('');
     const parsedPrice = Number(price.replace(',', '.'));
     const parsedCommission = Number(commission.replace(',', '.'));
+
+    if (comboItems.length === 1) {
+      setError('Cadastre pelo menos dois itens ou desative a configuração de combo.');
+      setBusy(false);
+      return;
+    }
+    const comboLabels = comboItems.map((item) => item.label.trim().toLocaleLowerCase('pt-BR'));
+    if (comboLabels.some((label) => !label) || new Set(comboLabels).size !== comboLabels.length) {
+      setError('Informe nomes diferentes para todos os itens do combo.');
+      setBusy(false);
+      return;
+    }
+    if (
+      comboItems.length > 0 &&
+      customizationAttributes.some(
+        (attribute) => !comboItems.some((item) => item.id === attribute.comboItemId),
+      )
+    ) {
+      setError('Associe cada atributo a um item existente do combo.');
+      setBusy(false);
+      return;
+    }
 
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedCommission)) {
       setError('Informe valores numéricos válidos para preço e comissão.');
@@ -438,6 +464,7 @@ export default function ProductEditor({
         commissionValue: Math.round(parsedCommission * 100),
         active,
         customizationAttributes,
+        comboItems,
         defaultImages: finalImages,
       };
       const saved = await saveProduct(productInput);
@@ -601,6 +628,71 @@ export default function ProductEditor({
             />
           </label>
           <fieldset className="form-stack">
+            <legend>Itens do combo</legend>
+            <p>Cadastre os itens para organizar as opções de cada produto no agendamento.</p>
+            {comboItems.map((item) => (
+              <div className="form-grid" key={item.id}>
+                <label>
+                  Nome do item
+                  <input
+                    value={item.label}
+                    maxLength={80}
+                    required
+                    onChange={(event) =>
+                      setComboItems((current) =>
+                        current.map((candidate) =>
+                          candidate.id === item.id
+                            ? { ...candidate, label: event.target.value }
+                            : candidate,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="button secondary"
+                  aria-label={`Remover item ${item.label || 'sem nome'}`}
+                  disabled={comboItems.length === 1}
+                  onClick={() =>
+                    setComboItems((current) =>
+                      current.filter((candidate) => candidate.id !== item.id),
+                    )
+                  }
+                >
+                  Remover item
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() =>
+                setComboItems((current) => [...current, { id: crypto.randomUUID(), label: '' }])
+              }
+            >
+              Adicionar item do combo
+            </button>
+            {comboItems.length > 0 && (
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  setComboItems([]);
+                  setCustomizationAttributes((current) =>
+                    current.map((attribute) => {
+                      const updated = { ...attribute };
+                      delete updated.comboItemId;
+                      return updated;
+                    }),
+                  );
+                }}
+              >
+                Desativar configuração de combo
+              </button>
+            )}
+          </fieldset>
+          <fieldset className="form-stack">
             <legend>Personalização do serviço</legend>
             {customizationAttributes.map((attribute) => (
               <fieldset className="form-stack" key={attribute.id}>
@@ -619,6 +711,32 @@ export default function ProductEditor({
                     required
                   />
                 </label>
+                {comboItems.length > 0 && (
+                  <label>
+                    Item do combo
+                    <select
+                      value={
+                        comboItems.some((item) => item.id === attribute.comboItemId)
+                          ? attribute.comboItemId
+                          : ''
+                      }
+                      required
+                      onChange={(event) =>
+                        updateAttribute(attribute.id, (current) => ({
+                          ...current,
+                          comboItemId: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Selecione o item</option>
+                      {comboItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label || 'Novo item'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {attribute.options.map((option) => (
                   <div className="form-grid" key={option.id}>
                     <label>

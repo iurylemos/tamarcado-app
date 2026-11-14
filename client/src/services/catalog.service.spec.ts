@@ -154,6 +154,10 @@ describe('getCompanyCatalog', () => {
               imageUrl: '/corte.jpg',
               priceCents: 12000,
               durationMinutes: 60,
+              comboItems: [
+                { id: 'sofa', label: 'Sofá' },
+                { id: 'chair', label: 'Poltrona' },
+              ],
               variantPrices: [
                 {
                   selections: [{ attributeId: 'service', optionId: 'volume-brasileiro' }],
@@ -180,6 +184,10 @@ describe('getCompanyCatalog', () => {
 
     expect(catalog?.business.slug).toBe('studio-aurora');
     expect(catalog?.products.map((product) => product.id)).toEqual(['service-aurora']);
+    expect(catalog?.products[0]?.comboItems).toEqual([
+      { id: 'sofa', label: 'Sofá' },
+      { id: 'chair', label: 'Poltrona' },
+    ]);
     expect(catalog?.products[0]?.variantPrices).toEqual([
       {
         selections: [{ attributeId: 'service', optionId: 'volume-brasileiro' }],

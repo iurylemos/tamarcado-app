@@ -30,6 +30,13 @@ and `defaultOptionId` belonging to that attribute. Product customization is
 optional. The server rejects invalid or ambiguous attributes and default
 gallery counts outside one to ten.
 
+For a structured combo, `saveProduct` additionally accepts an ordered
+`comboItems` list of unique `{ id, label }` items and a `comboItemId` on each
+attribute. The server validates that each association references an item of
+that product. Omitting these fields preserves the existing product behavior;
+an empty item list disables the structured combo view. The catalog callable
+and SSR projection return the same metadata.
+
 ## Upload and delete product image objects
 
 The backoffice uploads JPEG, PNG, or WebP files up to 5 MB each to a path
@@ -94,6 +101,11 @@ The existing success response remains unchanged. The appointment transaction
 stores the optional customization snapshot and the validated selected image
 URL in `productImageUrlSnapshot`; commercial snapshots and reservation writes
 remain unchanged.
+
+For structured combos, the transaction also stores server-derived
+`comboItemsSnapshot` and each selection's `comboItemId`. The client continues
+to submit only attribute and option IDs; item names and associations are not
+accepted as authoritative customer input.
 
 ## List appointments
 

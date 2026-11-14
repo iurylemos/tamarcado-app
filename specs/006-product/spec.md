@@ -273,6 +273,59 @@ padrão.
   armazenamento.
   A interface MUST NOT comunicar sucesso se a remoção do arquivo falhar.
 
+## Ampliação: configuração de itens de combos
+
+O objetivo desta ampliação é permitir que o cliente configure e revise cada
+item de um combo separadamente, sem interpretar uma lista de combinações
+completas. O combo continua sendo um único produto agendável no negócio atual.
+
+- **FR-022**: O backoffice MUST poder identificar explicitamente os itens de
+  um combo e associar cada atributo configurável ao item correto. A associação
+  MUST NOT ser deduzida dos nomes do produto ou dos atributos.
+- **FR-023**: O cadastro MUST rejeitar associações ambíguas, referências a
+  itens inexistentes e identificações duplicadas. Um combo configurado para
+  esta experiência MUST identificar o item de cada atributo apresentado.
+- **FR-024**: No agendamento de um combo configurado, o cliente MUST ver os
+  itens identificados separadamente e escolher seus atributos em agrupamentos
+  claros, acessíveis e adaptados a telas móveis e desktop. Quantidades
+  configuráveis MUST ser apresentadas no item correspondente; valores não
+  cadastrados MUST NOT ser inventados.
+- **FR-025**: As opções disponíveis MUST respeitar as combinações e os preços
+  efetivamente cadastrados. Ao mudar uma escolha, a interface MUST manter uma
+  combinação completa válida ou orientar o cliente a completar uma escolha
+  válida; MUST NOT permitir o envio de uma combinação inválida. Quando não
+  existir combinação válida, MUST apresentar mensagem clara e impedir o envio.
+- **FR-026**: Antes da finalização, o cliente MUST poder revisar, por item,
+  os atributos e quantidades cadastrados e escolhidos. O preço, a promoção e
+  a imagem exibidos MUST corresponder à combinação efetivamente selecionada.
+- **FR-027**: O agendamento MUST preservar as escolhas e sua associação aos
+  itens a partir de informações confiáveis do produto no momento da solicitação,
+  de modo que alterações posteriores no cadastro não modifiquem o histórico.
+  A validação de combinações, preço e dados continua sendo responsabilidade
+  do backend.
+- **FR-028**: Produtos individuais e combos antigos sem identificação
+  estruturada MUST manter o fluxo existente. A experiência por item passa a
+  ser usada somente após o cadastro explícito dos itens e associações; não há
+  migração automática nem alteração de dados de produção nesta ampliação.
+- **FR-029**: A ampliação MUST preservar o isolamento por negócio, as regras de
+  disponibilidade, profissionais, prazo estimado, pagamento e agendamentos
+  históricos. Não há necessidade de nova coleção de dados para esta mudança.
+
+### Cenários de aceitação da ampliação
+
+1. Um combo configurado com sofá e poltrona apresenta cada item e seus
+   atributos próprios, incluindo quantidade quando cadastrada, e permite
+   revisar as escolhas agrupadas antes de agendar.
+2. Alterar um atributo atualiza as opções dependentes sem oferecer uma
+   combinação inexistente; preço, promoção e imagem acompanham a seleção
+   completa efetiva.
+3. O agendamento preserva as escolhas e os nomes dos itens ao longo de
+   alterações posteriores no cadastro. Dados legados continuam legíveis.
+4. Um produto individual e um combo sem identificação estruturada preservam
+   sua experiência anterior. Um cadastro com associação inválida é rejeitado.
+5. Se o combo não tiver combinação válida disponível, o cliente recebe uma
+   orientação explícita e não consegue finalizar o agendamento.
+
 ## Dados de mock e cenários de teste
 
 Os mocks e fixtures devem partir dos dados presentes em

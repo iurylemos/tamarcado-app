@@ -40,6 +40,39 @@ const products: ProductRecord[] = [
 describe('ProductsPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('saves explicit combo items and their attribute associations', async () => {
+    saveProductMock.mockResolvedValueOnce({ id: 'new-combo' });
+    render(
+      <ProductsPage tenantId={tenantId} products={[]} onSaved={vi.fn(async () => undefined)} />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Novo serviço' })[0]);
+    fireEvent.change(screen.getByLabelText('Nome do serviço'), { target: { value: 'Combo' } });
+    fireEvent.change(screen.getByLabelText('Imagem legada ou imagem de referência (URL)'), {
+      target: { value: 'https://images.example.test/combo.jpg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço (R$)'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar item do combo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar item do combo' }));
+    const names = screen.getAllByLabelText('Nome do item');
+    fireEvent.change(names[0]!, { target: { value: 'Sofá' } });
+    fireEvent.change(names[1]!, { target: { value: 'Poltrona' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar atributo' }));
+    fireEvent.change(screen.getByLabelText('Nome do atributo'), { target: { value: 'Cor' } });
+    const options = screen.getAllByLabelText('Opção');
+    fireEvent.change(options[0]!, { target: { value: 'Bege' } });
+    fireEvent.change(options[1]!, { target: { value: 'Cinza' } });
+    const selector = screen.getByLabelText('Item do combo') as HTMLSelectElement;
+    fireEvent.change(selector, { target: { value: selector.options[1]!.value } });
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    await waitFor(() => expect(saveProductMock).toHaveBeenCalledOnce());
+    const saved = saveProductMock.mock.calls[0]![0];
+    expect(saved.comboItems).toEqual([
+      { id: expect.any(String), label: 'Sofá' },
+      { id: expect.any(String), label: 'Poltrona' },
+    ]);
+    expect(saved.customizationAttributes[0]?.comboItemId).toBe(saved.comboItems?.[0]?.id);
+  });
+
   it('shows seeded product details and active states', () => {
     render(
       <ProductsPage

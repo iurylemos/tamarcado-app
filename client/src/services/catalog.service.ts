@@ -87,6 +87,7 @@ function summarizeProduct(
     ...(Array.isArray(data.customizationAttributes)
       ? { customizationAttributes: data.customizationAttributes }
       : {}),
+    ...(Array.isArray(data.comboItems) ? { comboItems: data.comboItems } : {}),
     ...(variantPrices ? { variantPrices } : {}),
     ...(Array.isArray(data.defaultImages) ? { defaultImages: data.defaultImages } : {}),
     ...(includeGalleries

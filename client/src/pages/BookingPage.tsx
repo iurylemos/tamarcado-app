@@ -35,6 +35,7 @@ import { getBookingErrorMessage } from '../utils/booking-error.util';
 import { ReactQueryConfig } from '../config/react-query.config';
 import { resolvePageMeta, updatePageMeta } from '../app/page-meta';
 import { BookingUtil } from '../utils/booking.util';
+import { ComboUtil } from '../utils/combo.util';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 import BusinessTheme from '../app/BusinessTheme';
@@ -98,6 +99,11 @@ export default function BookingPage({
         ? catalog.products.find((item) => item.id === productId)
         : undefined,
     [catalog, slug, productId],
+  );
+  const comboVariants = useMemo(
+    () =>
+      product && ComboUtil.hasComboItems(product) ? ComboUtil.validComboVariants(product) : [],
+    [product],
   );
 
   const detailKey = useMemo<string[]>(
@@ -205,13 +211,17 @@ export default function BookingPage({
         ? customizationSelectionState.selections
         : [];
 
-    return (product.customizationAttributes ?? []).map((attribute) => {
+    const selections = (product.customizationAttributes ?? []).map((attribute) => {
       const selected = storedSelections.find((selection) => selection.attributeId === attribute.id);
       return selected && attribute.options.some((option) => option.id === selected.optionId)
         ? selected
         : { attributeId: attribute.id, optionId: attribute.defaultOptionId };
     });
-  }, [customizationSelectionState, product]);
+    if (ComboUtil.hasComboItems(product) && product.variantPrices?.length) {
+      return ComboUtil.closestComboSelection(comboVariants, selections) ?? selections;
+    }
+    return selections;
+  }, [customizationSelectionState, product, comboVariants]);
 
   const estimatedCheckout = useMemo<boolean>(
     () => !!(product && product.estimatedDeliveryEnabled === true),
@@ -558,6 +568,15 @@ export default function BookingPage({
     setError('');
 
     try {
+      if (
+        product &&
+        ComboUtil.hasComboItems(product) &&
+        product.variantPrices?.length &&
+        comboVariants.length === 0
+      ) {
+        setError('Não há combinações disponíveis para este combo.');
+        return;
+      }
       const selectedSlot = estimatedCheckout
         ? undefined
         : slots.find(
@@ -707,12 +726,17 @@ export default function BookingPage({
 
   const canSubmit = useMemo<boolean>(
     () =>
-      estimatedCheckout
-        ? !availabilityLoading &&
-          estimatedDeliveryDays !== undefined &&
-          professionals.length > 0 &&
-          Boolean(selectedProfessionalId)
-        : Boolean(selectedStartsAt),
+      product &&
+      ComboUtil.hasComboItems(product) &&
+      product.variantPrices?.length &&
+      !comboVariants.length
+        ? false
+        : estimatedCheckout
+          ? !availabilityLoading &&
+            estimatedDeliveryDays !== undefined &&
+            professionals.length > 0 &&
+            Boolean(selectedProfessionalId)
+          : Boolean(selectedStartsAt),
     [
       estimatedCheckout,
       availabilityLoading,
@@ -720,6 +744,8 @@ export default function BookingPage({
       professionals.length,
       selectedProfessionalId,
       selectedStartsAt,
+      product,
+      comboVariants,
     ],
   );
 

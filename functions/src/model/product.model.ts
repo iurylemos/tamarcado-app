@@ -1,5 +1,6 @@
 import type { CommissionType } from '../../../shared/domain/interfaces/product.interface';
 import type {
+  ProductComboItem,
   ProductCustomizationAttribute,
   ProductImageGallery,
   ProductImage,
@@ -11,6 +12,7 @@ export interface ProductDocument {
   name: string;
   description?: string;
   imageUrl: string;
+  comboItems?: ProductComboItem[];
   customizationAttributes?: ProductCustomizationAttribute[];
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
@@ -32,6 +34,7 @@ export interface PublicProductDocument {
   name: string;
   description?: string;
   imageUrl: string;
+  comboItems?: ProductComboItem[];
   customizationAttributes?: ProductCustomizationAttribute[];
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];

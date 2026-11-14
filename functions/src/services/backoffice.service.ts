@@ -3,6 +3,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import type { BusinessSegment } from '../../../shared/domain/interfaces/tenant.interface';
 import type {
   CommissionType,
+  ProductComboItem,
   ProductCustomizationAttribute,
   ProductCustomizationSelection,
   ProductImage,
@@ -114,6 +115,7 @@ export interface ProductInput {
   name: string;
   description?: string;
   imageUrl: string;
+  comboItems?: ProductComboItem[];
   customizationAttributes?: ProductCustomizationAttribute[];
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
@@ -182,8 +184,49 @@ function validateCustomizationAttributes(
     if (!optionIds.has(defaultOptionId)) {
       throw new HttpsError('invalid-argument', 'A opção padrão deve pertencer ao atributo.');
     }
-    return { id, label, options, defaultOptionId };
+    const comboItemId =
+      attribute.comboItemId === undefined
+        ? undefined
+        : stableIdentifier(attribute.comboItemId, 'Identificador do item do combo');
+    return { id, label, options, defaultOptionId, ...(comboItemId ? { comboItemId } : {}) };
   });
+}
+
+function validateComboItems(value: unknown): ProductComboItem[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || (value.length > 0 && value.length < 2)) {
+    throw new HttpsError('invalid-argument', 'Um combo deve ter pelo menos dois itens.');
+  }
+  const ids = new Set<string>();
+  const labels = new Set<string>();
+  return value.map((rawItem) => {
+    const item = inputObject(rawItem);
+    const id = stableIdentifier(item.id, 'Identificador do item do combo');
+    const label = requiredText(item.label, 'Nome do item do combo', 80);
+    const normalized = label.toLocaleLowerCase('pt-BR');
+    if (ids.has(id) || labels.has(normalized)) {
+      throw new HttpsError('invalid-argument', 'Os itens do combo devem ter nomes e IDs únicos.');
+    }
+    ids.add(id);
+    labels.add(normalized);
+    return { id, label };
+  });
+}
+
+function validateComboAssociations(
+  items: ProductComboItem[] | undefined,
+  attributes: ProductCustomizationAttribute[] | undefined,
+): void {
+  const itemIds = new Set(items?.map((item) => item.id) ?? []);
+  for (const attribute of attributes ?? []) {
+    if (
+      itemIds.size
+        ? !attribute.comboItemId || !itemIds.has(attribute.comboItemId)
+        : attribute.comboItemId
+    ) {
+      throw new HttpsError('invalid-argument', 'Associe cada atributo a um item válido do combo.');
+    }
+  }
 }
 
 function validateProductImages(value: unknown): ProductImage[] | undefined {
@@ -316,6 +359,10 @@ export function validateProductInput(rawInput: unknown): ProductInput {
   const name = requiredText(input.name, 'Nome do serviço', 80);
   const description = optionalText(input.description, 'Descrição', 600);
   const customizationAttributes = validateCustomizationAttributes(input.customizationAttributes);
+  const comboItems = validateComboItems(input.comboItems);
+  if (comboItems !== undefined && customizationAttributes !== undefined) {
+    validateComboAssociations(comboItems, customizationAttributes);
+  }
   const promotionActive =
     input.promotionActive === undefined
       ? false
@@ -387,10 +434,7 @@ export function validateProductInput(rawInput: unknown): ProductInput {
         );
       }
     } else if (estimatedDeliveryDays === undefined) {
-      throw new HttpsError(
-        'invalid-argument',
-        'Informe um prazo estimado inteiro maior que zero.',
-      );
+      throw new HttpsError('invalid-argument', 'Informe um prazo estimado inteiro maior que zero.');
     }
   }
   const durationMinutes = requiredInteger(
@@ -416,6 +460,7 @@ export function validateProductInput(rawInput: unknown): ProductInput {
     ...(description ? { description } : {}),
     imageUrl,
     ...(customizationAttributes !== undefined ? { customizationAttributes } : {}),
+    ...(comboItems !== undefined ? { comboItems } : {}),
     ...(variantPrices !== undefined ? { variantPrices } : {}),
     ...(defaultImages !== undefined ? { defaultImages } : {}),
     priceCents,
@@ -563,6 +608,7 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     description,
     imageUrl,
     customizationAttributes,
+    comboItems,
     variantPrices,
     defaultImages,
     priceCents,
@@ -593,6 +639,10 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
     if (id && current?.tenantId !== tenantId) {
       throw new HttpsError('not-found', 'Serviço não encontrado nesta empresa.');
     }
+    validateComboAssociations(
+      comboItems ?? current?.comboItems,
+      customizationAttributes ?? current?.customizationAttributes,
+    );
     if (defaultImages) validateImageOwnership(defaultImages, tenantId, reference.id);
     const primaryImageUrl =
       defaultImages?.[0]?.downloadUrl ?? current?.defaultImages?.[0]?.downloadUrl ?? imageUrl;
@@ -648,6 +698,11 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
       name,
       description: description ?? '',
       imageUrl: primaryImageUrl,
+      ...(comboItems !== undefined
+        ? { comboItems }
+        : current?.comboItems
+          ? { comboItems: current.comboItems }
+          : {}),
       ...(customizationAttributes !== undefined
         ? { customizationAttributes }
         : current?.customizationAttributes
@@ -689,6 +744,11 @@ export async function saveProduct(tenantId: string, rawInput: unknown): Promise<
         name,
         description: description ?? '',
         imageUrl: primaryImageUrl,
+        ...(comboItems !== undefined
+          ? { comboItems }
+          : current?.comboItems
+            ? { comboItems: current.comboItems }
+            : {}),
         ...(customizationAttributes !== undefined
           ? { customizationAttributes }
           : current?.customizationAttributes

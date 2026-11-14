@@ -24,6 +24,56 @@ const validProduct = {
 };
 
 describe('product administration validation', () => {
+  it('validates explicit combo items and their attribute associations', () => {
+    const comboItems = [
+      { id: 'sofa', label: 'Sofá' },
+      { id: 'chair', label: 'Poltrona' },
+    ];
+    const customizationAttributes = [
+      {
+        id: 'color',
+        label: 'Cor',
+        comboItemId: 'sofa',
+        defaultOptionId: 'beige',
+        options: [
+          { id: 'beige', label: 'Bege' },
+          { id: 'gray', label: 'Cinza' },
+        ],
+      },
+    ];
+    expect(
+      validateProductInput({ ...validProduct, comboItems, customizationAttributes }),
+    ).toMatchObject({ comboItems, customizationAttributes });
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        comboItems: [comboItems[0]],
+        customizationAttributes,
+      }),
+    ).toThrow(/pelo menos dois itens/);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        comboItems: [comboItems[0], { id: 'other', label: 'sofá' }],
+        customizationAttributes,
+      }),
+    ).toThrow(/nomes e IDs únicos/);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        comboItems,
+        customizationAttributes: [{ ...customizationAttributes[0], comboItemId: 'missing' }],
+      }),
+    ).toThrow(/item válido/);
+    expect(() =>
+      validateProductInput({
+        ...validProduct,
+        comboItems,
+        customizationAttributes: [{ ...customizationAttributes[0], comboItemId: undefined }],
+      }),
+    ).toThrow(/item válido/);
+  });
+
   it.each([
     ['negative price', { priceCents: -1 }],
     ['fractional price', { priceCents: 1200.5 }],

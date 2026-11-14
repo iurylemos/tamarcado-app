@@ -189,7 +189,7 @@ export default function BookingAvailability({
             ))}
           </div>
           <p className="slot-help">
-            Cada opção mostra o início e o fim do atendimento ({durationMinutes} min).
+            Cada opção mostra o início e o fim do atendimento <b>({durationMinutes} min).</b>
           </p>
         </fieldset>
       )}

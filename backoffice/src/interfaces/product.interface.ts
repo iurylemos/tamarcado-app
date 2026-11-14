@@ -1,5 +1,6 @@
 import type {
   CommissionType,
+  ProductComboItem,
   ProductCustomizationAttribute,
   ProductImage,
   ProductImageGallery,
@@ -21,6 +22,7 @@ export type ProductInputData = {
   commissionValue: number;
   active: boolean;
   customizationAttributes: ProductCustomizationAttribute[];
+  comboItems?: ProductComboItem[];
   defaultImages: ProductImage[];
   id: string;
 };
@@ -32,6 +34,7 @@ export interface ProductRecord {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  comboItems?: ProductComboItem[];
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];

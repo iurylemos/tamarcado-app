@@ -23,6 +23,19 @@ definitions.
 Missing or empty `customizationAttributes` represents a product without
 variations and remains valid for existing Firestore documents.
 
+## Structured combo items
+
+The optional product field `comboItems` is an ordered list of at least two
+`{ id, label }` entries. IDs and labels are unique within the combo. When
+items are configured, each customization attribute has a `comboItemId`
+referencing exactly one of them. An item may have no configurable attribute;
+no quantity is inferred for it.
+
+The metadata is stored on the existing internal and public product records.
+Products without it retain their existing selection flow. Empty `comboItems`
+disables the structured combo view; no existing product is migrated
+automatically.
+
 ## Product image and default gallery
 
 Every product has a default gallery with one to ten `ProductImage` entries.
@@ -110,6 +123,12 @@ entry contains:
 | `attributeLabel` | string | Yes | Attribute label copied from that definition |
 | `optionId` | string | Yes | Selected option ID |
 | `optionLabel` | string | Yes | Option label copied from that definition |
+| `comboItemId` | string | For a structured combo | Associated item ID copied from the product |
+
+Structured combos also persist `comboItemsSnapshot`, an ordered copy of the
+item IDs and labels derived from the product. This preserves even items with
+no configurable attributes and keeps historical associations understandable
+after the product changes.
 
 The existing appointment field `productImageUrlSnapshot` stores the
 server-resolved URL of the selected main image. The selection labels and image

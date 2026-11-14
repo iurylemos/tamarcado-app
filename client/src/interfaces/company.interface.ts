@@ -1,5 +1,6 @@
 import type { BusinessSegment } from '../../../shared/domain/interfaces/tenant.interface.js';
 import type {
+  ProductComboItem,
   ProductCustomizationAttribute,
   ProductImage,
   ProductImageGallery,
@@ -31,6 +32,7 @@ export interface PublicProductSummary {
   description?: string;
   imageUrl: string;
   customizationAttributes?: ProductCustomizationAttribute[];
+  comboItems?: ProductComboItem[];
   variantPrices?: ProductVariantPrice[] | null;
   defaultImages?: ProductImage[];
   imageGalleries?: ProductImageGallery[];
