@@ -3,17 +3,17 @@ import StorefrontApp, { createPageElement } from './app/StorefrontApp';
 import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
 import { escapeHtml, renderPageMetaTags, resolvePageMeta } from './app/page-meta';
-import { matchRoute } from './app/routes';
 import { createQueryClient } from './config/query-client.config';
 import type {
   StorefrontRenderInput,
   StorefrontRenderOutput,
 } from './interfaces/storefront-render.interface';
+import type { PageComponents } from './interfaces/page.interface';
+import { RouteUtil } from './utils/route.util';
 import BookingPage from './pages/BookingPage';
 import CatalogRoutePage from './pages/CatalogRoutePage';
 import ErrorPage from './pages/ErrorPage';
 import HomePage from './pages/HomePage';
-import type { PageComponents } from './interfaces/page.interface';
 
 export const storefrontStateElementId = '__STOREFRONT_STATE__';
 
@@ -33,7 +33,7 @@ function serializeState(state: StorefrontInitialData): string {
 
 export function render({ url, ...initial }: StorefrontRenderInput): StorefrontRenderOutput {
   const { pathname } = new URL(url, 'http://localhost');
-  const page = resolvePageData(matchRoute(pathname), initial);
+  const page = resolvePageData(RouteUtil.matchRoute(pathname), initial);
   const meta = resolvePageMeta(page);
   const hasInitialData =
     initial.initialBusiness !== undefined || initial.initialCatalogStatus !== undefined;

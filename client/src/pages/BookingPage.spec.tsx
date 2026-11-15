@@ -3,13 +3,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import type { JSX } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAppointment } from '../services/appointment.service';
-import {
-  listAvailability,
-  searchAvailability,
-  searchAvailabilityForEstimation,
-} from '../services/availability.service';
-import { getCompanyCatalog, getProductImageGalleries } from '../services/catalog.service';
+import { AppointmentService } from '../services/appointment.service';
+import { AvailabilityService } from '../services/availability.service';
+import { CatalogService } from '../services/catalog.service';
 import { ReactQueryConfig } from '../config/react-query.config';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import { DateUtil } from '../utils/date.util';
@@ -22,25 +18,31 @@ function BookingRoutePage(): JSX.Element {
 }
 
 vi.mock('../services/availability.service', () => ({
-  listAvailability: vi.fn(),
-  searchAvailability: vi.fn(),
-  searchAvailabilityForEstimation: vi.fn(),
+  AvailabilityService: {
+    listAvailability: vi.fn(),
+    searchAvailability: vi.fn(),
+    searchAvailabilityForEstimation: vi.fn(),
+  },
 }));
 vi.mock('../services/catalog.service', () => ({
-  getCompanyCatalog: vi.fn(),
-  getProductImageGalleries: vi.fn(),
+  CatalogService: {
+    getCompanyCatalog: vi.fn(),
+    getProductImageGalleries: vi.fn(),
+  },
 }));
-vi.mock('../services/appointment.service', () => ({ createAppointment: vi.fn() }));
+vi.mock('../services/appointment.service', () => ({
+  AppointmentService: { createAppointment: vi.fn() },
+}));
 
 afterEach(cleanup);
 
 describe('BookingPage professional selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getProductImageGalleries).mockResolvedValue([]);
-    vi.mocked(searchAvailability).mockImplementation(async (input) => {
+    vi.mocked(CatalogService.getProductImageGalleries).mockResolvedValue([]);
+    vi.mocked(AvailabilityService.searchAvailability).mockImplementation(async (input) => {
       const date = input.date ?? '';
-      const slots = await vi.mocked(listAvailability)({ ...input, date });
+      const slots = await vi.mocked(AvailabilityService.listAvailability)({ ...input, date });
       return { date: slots.length > 0 ? date : null, slots };
     });
     vi.stubGlobal('scrollTo', vi.fn());
@@ -56,7 +58,7 @@ describe('BookingPage professional selection', () => {
       configurable: true,
       value: vi.fn(),
     });
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -94,8 +96,10 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(getProductImageGalleries).mockReturnValue(new Promise(() => undefined));
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(CatalogService.getProductImageGalleries).mockReturnValue(
+      new Promise(() => undefined),
+    );
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -106,25 +110,29 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
-    await waitFor(() => expect(searchAvailability).toHaveBeenCalledTimes(1));
-    expect(getCompanyCatalog).not.toHaveBeenCalled();
-    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(AvailabilityService.searchAvailability).toHaveBeenCalledTimes(1));
+    expect(CatalogService.getCompanyCatalog).not.toHaveBeenCalled();
+    expect(CatalogService.getProductImageGalleries).toHaveBeenCalledTimes(1);
   });
 
   it('starts the gallery alongside a cold catalog request and applies it after the summary appears', async () => {
-    let resolveGalleries!: (value: Awaited<ReturnType<typeof getProductImageGalleries>>) => void;
-    let resolveCatalog!: (value: Awaited<ReturnType<typeof getCompanyCatalog>>) => void;
-    vi.mocked(getProductImageGalleries).mockReturnValue(
+    let resolveGalleries!: (
+      value: Awaited<ReturnType<typeof CatalogService.getProductImageGalleries>>,
+    ) => void;
+    let resolveCatalog!: (
+      value: Awaited<ReturnType<typeof CatalogService.getCompanyCatalog>>,
+    ) => void;
+    vi.mocked(CatalogService.getProductImageGalleries).mockReturnValue(
       new Promise((resolve) => {
         resolveGalleries = resolve;
       }),
     );
-    vi.mocked(getCompanyCatalog).mockReturnValue(
+    vi.mocked(CatalogService.getCompanyCatalog).mockReturnValue(
       new Promise((resolve) => {
         resolveCatalog = resolve;
       }),
     );
-    const catalog: NonNullable<Awaited<ReturnType<typeof getCompanyCatalog>>> = {
+    const catalog: NonNullable<Awaited<ReturnType<typeof CatalogService.getCompanyCatalog>>> = {
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -149,7 +157,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     };
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
 
     renderWithQueryClient(
       <MemoryRouter>
@@ -157,16 +165,16 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(getCompanyCatalog).toHaveBeenCalledTimes(1));
-    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(CatalogService.getCompanyCatalog).toHaveBeenCalledTimes(1));
+    expect(CatalogService.getProductImageGalleries).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('heading', { name: 'Corte' })).not.toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledWith('studio-aurora', {
+    expect(CatalogService.getCompanyCatalog).toHaveBeenCalledWith('studio-aurora', {
       productId: 'service-corte',
       includeGalleries: false,
     });
     await act(async () => resolveCatalog(catalog));
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
-    await waitFor(() => expect(searchAvailability).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(AvailabilityService.searchAvailability).toHaveBeenCalledTimes(1));
     await act(async () =>
       resolveGalleries([
         {
@@ -184,7 +192,7 @@ describe('BookingPage professional selection', () => {
         '/black.jpg',
       ),
     );
-    expect(searchAvailability).toHaveBeenCalledTimes(1);
+    expect(AvailabilityService.searchAvailability).toHaveBeenCalledTimes(1);
   });
 
   it('reuses cached galleries without requesting them again', async () => {
@@ -207,7 +215,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -217,13 +225,15 @@ describe('BookingPage professional selection', () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
-    expect(getCompanyCatalog).not.toHaveBeenCalled();
-    expect(getProductImageGalleries).not.toHaveBeenCalled();
+    expect(CatalogService.getCompanyCatalog).not.toHaveBeenCalled();
+    expect(CatalogService.getProductImageGalleries).not.toHaveBeenCalled();
   });
 
   it('reports gallery failures without hiding the summary', async () => {
-    vi.mocked(getProductImageGalleries).mockRejectedValue(new Error('gallery unavailable'));
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(CatalogService.getProductImageGalleries).mockRejectedValue(
+      new Error('gallery unavailable'),
+    );
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
     renderWithQueryClient(
       <MemoryRouter>
         <BookingPage slug="studio-aurora" productId="service-corte" />
@@ -236,13 +246,15 @@ describe('BookingPage professional selection', () => {
   });
 
   it('waits for the pending gallery before submitting the selected customization image', async () => {
-    let resolveGalleries!: (value: Awaited<ReturnType<typeof getProductImageGalleries>>) => void;
-    vi.mocked(getProductImageGalleries).mockReturnValue(
+    let resolveGalleries!: (
+      value: Awaited<ReturnType<typeof CatalogService.getProductImageGalleries>>,
+    ) => void;
+    vi.mocked(CatalogService.getProductImageGalleries).mockReturnValue(
       new Promise((resolve) => {
         resolveGalleries = resolve;
       }),
     );
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -267,7 +279,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -275,7 +287,7 @@ describe('BookingPage professional selection', () => {
         professionalName: 'Ana Souza',
       },
     ]);
-    vi.mocked(createAppointment).mockResolvedValue({
+    vi.mocked(AppointmentService.createAppointment).mockResolvedValue({
       appointmentId: 'appointment-1',
       status: 'pending',
       professionalId: 'ana',
@@ -300,9 +312,9 @@ describe('BookingPage professional selection', () => {
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByLabelText('Débito'));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
-    await waitFor(() => expect(getCompanyCatalog).toHaveBeenCalledTimes(2));
-    expect(createAppointment).not.toHaveBeenCalled();
-    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(CatalogService.getCompanyCatalog).toHaveBeenCalledTimes(2));
+    expect(AppointmentService.createAppointment).not.toHaveBeenCalled();
+    expect(CatalogService.getProductImageGalleries).toHaveBeenCalledTimes(1);
 
     await act(async () =>
       resolveGalleries([
@@ -316,11 +328,11 @@ describe('BookingPage professional selection', () => {
       ]),
     );
     await waitFor(() =>
-      expect(createAppointment).toHaveBeenCalledWith(
+      expect(AppointmentService.createAppointment).toHaveBeenCalledWith(
         expect.objectContaining({ selectedImageId: 'black' }),
       ),
     );
-    expect(getProductImageGalleries).toHaveBeenCalledTimes(1);
+    expect(CatalogService.getProductImageGalleries).toHaveBeenCalledTimes(1);
   });
 
   it('reuses the catalog product already loaded and fetches only its missing galleries', async () => {
@@ -344,8 +356,8 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(getProductImageGalleries).mockResolvedValue([]);
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(CatalogService.getProductImageGalleries).mockResolvedValue([]);
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -356,15 +368,15 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Corte' })).toBeInTheDocument();
-    expect(getCompanyCatalog).not.toHaveBeenCalled();
-    expect(getProductImageGalleries).toHaveBeenCalledExactlyOnceWith(
+    expect(CatalogService.getCompanyCatalog).not.toHaveBeenCalled();
+    expect(CatalogService.getProductImageGalleries).toHaveBeenCalledExactlyOnceWith(
       'studio-aurora',
       'service-corte',
     );
   });
 
   it('shows booking detail and time-card skeletons while requests are pending', async () => {
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -386,7 +398,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('updates the booking price when the customer selects a different service variation', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -442,7 +454,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(listAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(AvailabilityService.listAvailability).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-cilios']}>
@@ -463,9 +475,7 @@ describe('BookingPage professional selection', () => {
     expect(choiceCard).toContainElement(procedure);
     expect(selectedCard).not.toContainElement(procedure);
     expect(selectedCard?.parentElement).toHaveClass('booking-product-column');
-    expect(procedure.closest('label')).toHaveTextContent(
-      'Lash Lifting + Design de sobrancelha',
-    );
+    expect(procedure.closest('label')).toHaveTextContent('Lash Lifting + Design de sobrancelha');
     expect(procedure.closest('label')).toHaveTextContent('80,00');
     expect(
       screen.getByRole('radio', { name: /Volume Brasileiro \+ Design de sobrancelha.*95,00/ }),
@@ -523,11 +533,11 @@ describe('BookingPage professional selection', () => {
       id: 'service-b',
       name: 'Serviço B',
     };
-    vi.mocked(getCompanyCatalog).mockImplementation(async (_slug, options) => ({
+    vi.mocked(CatalogService.getCompanyCatalog).mockImplementation(async (_slug, options) => ({
       business,
       products: [options?.productId === productB.id ? productB : productA],
     }));
-    vi.mocked(listAvailability).mockResolvedValue([]);
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([]);
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -558,7 +568,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('keeps static booking content visible while catalog-backed summary data loads', () => {
-    vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(CatalogService.getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -586,7 +596,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('applies the cached business theme while booking catalog details are loading', () => {
-    vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(CatalogService.getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -617,7 +627,7 @@ describe('BookingPage professional selection', () => {
       '--color-promo: #abcdef',
     );
     expect(screen.getByRole('heading', { name: 'Preparando seu agendamento' })).toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledExactlyOnceWith('studio-aurora', {
+    expect(CatalogService.getCompanyCatalog).toHaveBeenCalledExactlyOnceWith('studio-aurora', {
       productId: 'service-corte',
       includeGalleries: false,
     });
@@ -625,7 +635,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('offers an actionable catalog link when business validation fails', async () => {
-    vi.mocked(getCompanyCatalog).mockRejectedValue(new Error('network error'));
+    vi.mocked(CatalogService.getCompanyCatalog).mockRejectedValue(new Error('network error'));
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -645,7 +655,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('does not repeat the catalog lookup when preparing availability', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -662,15 +672,15 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(listAvailability).toHaveBeenCalled());
-    expect(getCompanyCatalog).toHaveBeenCalledTimes(1);
-    expect(listAvailability).toHaveBeenCalledWith(
+    await waitFor(() => expect(AvailabilityService.listAvailability).toHaveBeenCalled());
+    expect(CatalogService.getCompanyCatalog).toHaveBeenCalledTimes(1);
+    expect(AvailabilityService.listAvailability).toHaveBeenCalledWith(
       expect.objectContaining({ businessSlug: 'studio-aurora', productId: 'service-corte' }),
     );
   });
 
   it('does not load availability if the service is no longer in the business catalog', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValueOnce({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValueOnce({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -689,8 +699,8 @@ describe('BookingPage professional selection', () => {
     );
 
     expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledTimes(1);
-    expect(listAvailability).not.toHaveBeenCalled();
+    expect(CatalogService.getCompanyCatalog).toHaveBeenCalledTimes(1);
+    expect(AvailabilityService.listAvailability).not.toHaveBeenCalled();
   });
 
   it('does not submit when the service disappears from the latest business catalog', async () => {
@@ -711,11 +721,11 @@ describe('BookingPage professional selection', () => {
         },
       ],
     };
-    vi.mocked(getCompanyCatalog)
+    vi.mocked(CatalogService.getCompanyCatalog)
       .mockReset()
       .mockResolvedValueOnce(catalog)
       .mockResolvedValueOnce({ ...catalog, products: [] });
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -744,12 +754,12 @@ describe('BookingPage professional selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     expect(await screen.findByText('Serviço não encontrado.')).toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledTimes(2);
-    expect(createAppointment).not.toHaveBeenCalled();
+    expect(CatalogService.getCompanyCatalog).toHaveBeenCalledTimes(2);
+    expect(AppointmentService.createAppointment).not.toHaveBeenCalled();
   });
 
   it('keeps the search loading state while the bounded availability request is pending', async () => {
-    vi.mocked(searchAvailability).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(AvailabilityService.searchAvailability).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -766,7 +776,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('shows complete appointment ranges through the end of a two-hour service day', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -784,7 +794,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T14:00:00.000Z',
         endsAt: '2030-02-04T16:00:00.000Z',
@@ -827,10 +837,10 @@ describe('BookingPage professional selection', () => {
       professionalId: 'ana',
       professionalName: 'Ana Souza',
     };
-    vi.mocked(listAvailability)
+    vi.mocked(AvailabilityService.listAvailability)
       .mockResolvedValueOnce([bookedSlot, remainingSlot])
       .mockReturnValue(new Promise(() => undefined));
-    vi.mocked(createAppointment).mockResolvedValue({
+    vi.mocked(AppointmentService.createAppointment).mockResolvedValue({
       appointmentId: 'appointment-12345678',
       status: 'pending',
       professionalId: 'ana',
@@ -873,7 +883,7 @@ describe('BookingPage professional selection', () => {
       expect.stringContaining('https://mail.google.com/mail/'),
     );
     await waitFor(() =>
-      expect(createAppointment).toHaveBeenCalledWith(
+      expect(AppointmentService.createAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           businessSlug: 'studio-aurora',
           productId: 'service-corte',
@@ -881,15 +891,15 @@ describe('BookingPage professional selection', () => {
         }),
       ),
     );
-    await waitFor(() => expect(listAvailability).toHaveBeenCalledTimes(2));
-    expect(searchAvailability).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(AvailabilityService.listAvailability).toHaveBeenCalledTimes(2));
+    expect(AvailabilityService.searchAvailability).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Buscando profissionais, aguarde...')).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '11:00 - 13:00' })).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: '09:00 - 11:00' })).not.toBeInTheDocument();
   });
 
   it('shows no-image state for combinations without a gallery and switches to exact-match galleries', async () => {
-    vi.mocked(getProductImageGalleries).mockResolvedValue([
+    vi.mocked(CatalogService.getProductImageGalleries).mockResolvedValue([
       {
         id: 'gallery-black-silk',
         productId: 'service-corte',
@@ -904,7 +914,7 @@ describe('BookingPage professional selection', () => {
         ],
       },
     ]);
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -945,7 +955,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(listAvailability)
+    vi.mocked(AvailabilityService.listAvailability)
       .mockResolvedValueOnce([
         {
           startsAt: '2030-02-04T12:00:00.000Z',
@@ -955,7 +965,7 @@ describe('BookingPage professional selection', () => {
         },
       ])
       .mockReturnValue(new Promise(() => undefined));
-    vi.mocked(createAppointment).mockResolvedValue({
+    vi.mocked(AppointmentService.createAppointment).mockResolvedValue({
       appointmentId: 'appointment-customized',
       status: 'pending',
       professionalId: 'ana',
@@ -1008,7 +1018,7 @@ describe('BookingPage professional selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
-      expect(createAppointment).toHaveBeenCalledWith(
+      expect(AppointmentService.createAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           customizationSelections: [
             { attributeId: 'color', optionId: 'black' },
@@ -1021,7 +1031,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('submits every configured default when the customer leaves the options unchanged', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -1058,7 +1068,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -1066,7 +1076,7 @@ describe('BookingPage professional selection', () => {
         professionalName: 'Ana Souza',
       },
     ]);
-    vi.mocked(createAppointment).mockResolvedValue({
+    vi.mocked(AppointmentService.createAppointment).mockResolvedValue({
       appointmentId: 'appointment-default-customizations',
       status: 'pending',
       professionalId: 'ana',
@@ -1104,7 +1114,7 @@ describe('BookingPage professional selection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar agendamento' }));
 
     await waitFor(() =>
-      expect(createAppointment).toHaveBeenCalledWith(
+      expect(AppointmentService.createAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           customizationSelections: [
             { attributeId: 'color', optionId: 'natural' },
@@ -1116,7 +1126,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('scrolls the customer details into view once after selecting a time without focusing it', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -1153,7 +1163,7 @@ describe('BookingPage professional selection', () => {
 
   it('uses immediate scrolling when reduced motion is preferred', async () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -1180,7 +1190,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('shows a customer-friendly message when the booking request fails internally', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T14:00:00.000Z',
@@ -1188,7 +1198,7 @@ describe('BookingPage professional selection', () => {
         professionalName: 'Ana Souza',
       },
     ]);
-    vi.mocked(createAppointment).mockRejectedValue(
+    vi.mocked(AppointmentService.createAppointment).mockRejectedValue(
       Object.assign(new Error('INTERNAL'), { code: 'functions/internal' }),
     );
 
@@ -1220,7 +1230,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('offers only eligible choices if multiple professionals can perform the service', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([
       {
         startsAt: '2030-02-04T12:00:00.000Z',
         endsAt: '2030-02-04T13:00:00.000Z',
@@ -1248,7 +1258,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('shows an empty eligibility state when no professional can serve the selected service', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([]);
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([]);
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
         <Routes>
@@ -1263,7 +1273,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('shows the availability error after removing loading skeletons', async () => {
-    vi.mocked(listAvailability).mockRejectedValue(new Error('network error'));
+    vi.mocked(AvailabilityService.listAvailability).mockRejectedValue(new Error('network error'));
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -1284,7 +1294,7 @@ describe('BookingPage professional selection', () => {
       professionalId: 'ana',
       professionalName: 'Ana Souza',
     };
-    vi.mocked(searchAvailability)
+    vi.mocked(AvailabilityService.searchAvailability)
       .mockResolvedValueOnce({ date: DateUtil.getNextBookableDate(), slots: [staleSlot] })
       .mockRejectedValueOnce(new Error('network error'));
 
@@ -1308,7 +1318,7 @@ describe('BookingPage professional selection', () => {
 
   it('automatically selects the nearest date with available hours when the selected date is empty', async () => {
     const nextAvailableDate = DateUtil.addDaysToDate(DateUtil.getNextBookableDate(), 3);
-    vi.mocked(searchAvailability).mockResolvedValue({
+    vi.mocked(AvailabilityService.searchAvailability).mockResolvedValue({
       date: nextAvailableDate,
       slots: [
         {
@@ -1332,12 +1342,12 @@ describe('BookingPage professional selection', () => {
       expect(screen.getByLabelText('Data do atendimento')).toHaveValue(nextAvailableDate),
     );
     expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
-    expect(searchAvailability).toHaveBeenCalledTimes(1);
-    expect(listAvailability).not.toHaveBeenCalled();
+    expect(AvailabilityService.searchAvailability).toHaveBeenCalledTimes(1);
+    expect(AvailabilityService.listAvailability).not.toHaveBeenCalled();
   });
 
   it('shows clear guidance when no times are available in the 30-day search range', async () => {
-    vi.mocked(searchAvailability).mockResolvedValue({ date: null, slots: [] });
+    vi.mocked(AvailabilityService.searchAvailability).mockResolvedValue({ date: null, slots: [] });
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -1357,9 +1367,9 @@ describe('BookingPage professional selection', () => {
     const selectedDate = DateUtil.addDaysToDate(DateUtil.getNextBookableDate(), 2);
     const results = new Map<
       string,
-      (value: Awaited<ReturnType<typeof searchAvailability>>) => void
+      (value: Awaited<ReturnType<typeof AvailabilityService.searchAvailability>>) => void
     >();
-    vi.mocked(searchAvailability).mockImplementation(
+    vi.mocked(AvailabilityService.searchAvailability).mockImplementation(
       ({ date }) =>
         new Promise((resolve) => {
           results.set(date ?? '', resolve);
@@ -1377,7 +1387,9 @@ describe('BookingPage professional selection', () => {
     await screen.findByLabelText('Data do atendimento');
     const oldDate = DateUtil.getNextBookableDate();
     await waitFor(() =>
-      expect(searchAvailability).toHaveBeenCalledWith(expect.objectContaining({ date: oldDate })),
+      expect(AvailabilityService.searchAvailability).toHaveBeenCalledWith(
+        expect.objectContaining({ date: oldDate }),
+      ),
     );
     const dateInput = screen.getByLabelText('Data do atendimento');
     fireEvent.change(dateInput, { target: { value: selectedDate } });
@@ -1408,13 +1420,13 @@ describe('BookingPage professional selection', () => {
 
     expect(await screen.findByRole('radio', { name: '09:00 - 11:00' })).toBeInTheDocument();
     expect(dateInput).toHaveValue(selectedDate);
-    expect(searchAvailability).toHaveBeenCalledWith(
+    expect(AvailabilityService.searchAvailability).toHaveBeenCalledWith(
       expect.objectContaining({ date: selectedDate }),
     );
   });
 
   it('links back to the matching catalog', async () => {
-    vi.mocked(listAvailability).mockResolvedValue([]);
+    vi.mocked(AvailabilityService.listAvailability).mockResolvedValue([]);
 
     renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -1433,7 +1445,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('does not show time-slot skeletons while an estimated checkout verifies professionals', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -1453,7 +1465,9 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(searchAvailabilityForEstimation).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(AvailabilityService.searchAvailabilityForEstimation).mockReturnValue(
+      new Promise(() => undefined),
+    );
 
     const { container } = renderWithQueryClient(
       <MemoryRouter initialEntries={['/empresa/studio-aurora/agendar/service-corte']}>
@@ -1463,15 +1477,13 @@ describe('BookingPage professional selection', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      await screen.findByText('Buscando profissionais, aguarde...'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Buscando profissionais, aguarde...')).toBeInTheDocument();
     expect(container.querySelectorAll('.skeleton-card--time')).toHaveLength(0);
     expect(screen.queryByLabelText('Carregando horários disponíveis')).not.toBeInTheDocument();
   });
 
   it('submits estimated checkouts without a customer-selected slot and shows the official result', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -1491,7 +1503,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(searchAvailabilityForEstimation).mockResolvedValue({
+    vi.mocked(AvailabilityService.searchAvailabilityForEstimation).mockResolvedValue({
       date: '2026-11-04',
       slots: [
         {
@@ -1503,7 +1515,7 @@ describe('BookingPage professional selection', () => {
       ],
       eligibleProfessionals: [{ id: 'ana', name: 'Ana Souza' }],
     });
-    vi.mocked(createAppointment).mockResolvedValue({
+    vi.mocked(AppointmentService.createAppointment).mockResolvedValue({
       appointmentId: 'appointment-estimated',
       status: 'pending',
       professionalId: 'ana',
@@ -1571,7 +1583,7 @@ describe('BookingPage professional selection', () => {
     expect(receipt).toHaveTextContent('Crédito em 5x sem juros');
     expect(receipt).toHaveTextContent('nenhum pagamento foi processado ou recebido');
     await waitFor(() =>
-      expect(createAppointment).toHaveBeenCalledWith(
+      expect(AppointmentService.createAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           professionalId: 'ana',
           paymentMethod: 'credit',
@@ -1579,11 +1591,13 @@ describe('BookingPage professional selection', () => {
         }),
       ),
     );
-    expect(vi.mocked(createAppointment).mock.calls[0]?.[0]).not.toHaveProperty('startsAt');
+    expect(vi.mocked(AppointmentService.createAppointment).mock.calls[0]?.[0]).not.toHaveProperty(
+      'startsAt',
+    );
   });
 
   it('requires a customer choice when multiple professionals have estimated availability', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -1603,7 +1617,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(searchAvailabilityForEstimation).mockResolvedValue({
+    vi.mocked(AvailabilityService.searchAvailabilityForEstimation).mockResolvedValue({
       date: '2026-11-04',
       slots: [
         {
@@ -1636,7 +1650,7 @@ describe('BookingPage professional selection', () => {
   });
 
   it('does not calculate an estimated date using the device timezone when the business timezone is missing', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -1655,7 +1669,7 @@ describe('BookingPage professional selection', () => {
         },
       ],
     });
-    vi.mocked(searchAvailabilityForEstimation).mockResolvedValue({
+    vi.mocked(AvailabilityService.searchAvailabilityForEstimation).mockResolvedValue({
       date: '2026-11-04',
       slots: [],
       eligibleProfessionals: [],

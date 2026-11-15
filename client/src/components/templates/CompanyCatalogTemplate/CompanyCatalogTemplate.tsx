@@ -6,17 +6,17 @@ import {
   hasValidActivePromotion,
   resolveProductPricing,
 } from '../../../../../shared/domain/product-price.js';
-import { bookingPath } from '../../../app/routes.js';
 import type {
   CompanyCatalog,
   PublicProductSummary,
 } from '../../../interfaces/company.interface.js';
 import { resolvePageMeta, updatePageMeta } from '../../../app/page-meta.js';
-import { createCompanyPwaManifest } from '../../../services/pwa-manifest.service.js';
+import { CatalogUtil } from '../../../utils/catalog.util.js';
+import { RouteUtil } from '../../../utils/route.util.js';
 import Skeleton from '../../atoms/Skeleton/Skeleton.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
 import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.js';
-import { CatalogUtil } from '../../../utils/catalog.util.js';
+import { PwaManifestService } from '../../../services/pwa-manifest.service.js';
 
 type CompanyCatalogTemplateProps = {
   catalog: CompanyCatalog | null;
@@ -68,7 +68,10 @@ export default function CompanyCatalogTemplate({
       document.head.append(manifestLink);
     }
 
-    const manifest = createCompanyPwaManifest(catalog.business, window.location.origin);
+    const manifest = PwaManifestService.createCompanyPwaManifest(
+      catalog.business,
+      window.location.origin,
+    );
     const manifestUrl = URL.createObjectURL(
       new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }),
     );
@@ -188,7 +191,7 @@ export default function CompanyCatalogTemplate({
                       whileTap={{ scale: 0.98 }}
                     >
                       <Link
-                        to={bookingPath(businessSlug, product.id)}
+                        to={RouteUtil.bookingPath(businessSlug, product.id)}
                         className="promotion-card-link"
                       >
                         <div className="promotion-image">
@@ -315,7 +318,7 @@ export default function CompanyCatalogTemplate({
                       <motion.div whileTap={{ scale: 0.97 }}>
                         <Link
                           className="product-card catalog-service-card"
-                          to={bookingPath(catalog.business.slug, product.id)}
+                          to={RouteUtil.bookingPath(catalog.business.slug, product.id)}
                         >
                           <div className="media">
                             <img

@@ -183,7 +183,9 @@ npm run format:check
 npm run build
 ```
 
-Emulator-based Functions tests are available with `npm run test:emulator`.
+Firestore-dependent tests, including the AI compatibility smoke test, are skipped by
+`npm run test` unless `FIRESTORE_EMULATOR_HOST` is set. Emulator-based Functions tests
+are available with `npm run test:emulator`.
 
 ### Deployment
 
@@ -389,6 +391,8 @@ npm run format:check
 npm run build
 ```
 
+Os testes que dependem do Firestore, incluindo o smoke test de compatibilidade de IA,
+são ignorados pelo `npm run test` quando `FIRESTORE_EMULATOR_HOST` não está definido.
 Os testes das Functions com emuladores estão disponíveis em `npm run test:emulator`.
 
 ### Publicação

@@ -1,26 +1,11 @@
-﻿import type { CompanySummary, PublicProductSummary } from '../interfaces/company.interface';
-import type { PublicCatalogStatus } from '../interfaces/catalog.interface';
+﻿import type { AppRoute } from '../interfaces/route.interface';
 import type { StorefrontInitialData } from '../interfaces/storefront-render.interface';
-import type { AppRoute } from './routes';
+import type { StoreFrontPageData } from '../interfaces/storeFront.interface';
 
-export type PageData =
-  | { name: 'home' | 'not-found' }
-  | {
-      name: 'catalog';
-      slug: string;
-      business?: CompanySummary | null;
-      status?: PublicCatalogStatus;
-    }
-  | {
-      name: 'booking';
-      slug: string;
-      productId: string;
-      business?: CompanySummary | null;
-      product?: PublicProductSummary | null;
-      status?: PublicCatalogStatus;
-    };
-
-export function resolvePageData(route: AppRoute, initial: StorefrontInitialData): PageData {
+export function resolvePageData(
+  route: AppRoute,
+  initial: StorefrontInitialData,
+): StoreFrontPageData {
   const { initialBusiness, initialProduct, initialCatalogStatus } = initial;
   const hasInitialData = initialBusiness !== undefined || initialCatalogStatus !== undefined;
 

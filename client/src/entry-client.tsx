@@ -4,10 +4,10 @@ import StorefrontApp, { createPageElement } from './app/StorefrontApp';
 import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
 import type { PageComponents } from './interfaces/page.interface';
-import { matchRoute } from './app/routes';
 import { createQueryClient } from './config/query-client.config';
 import './styles/index.css';
 import './styles/theme.css';
+import { RouteUtil } from './utils/route.util';
 
 const stateElementId = '__STOREFRONT_STATE__';
 
@@ -27,7 +27,9 @@ async function loadPageComponents(name: string): Promise<Partial<PageComponents>
 
 function readInitialData(): StorefrontInitialData {
   const element = document.getElementById(stateElementId);
-  return element?.textContent ? (JSON.parse(element.textContent) as StorefrontInitialData) : {};
+  return element && element.textContent
+    ? (JSON.parse(element.textContent) as StorefrontInitialData)
+    : {};
 }
 
 async function bootstrap(): Promise<void> {
@@ -35,7 +37,7 @@ async function bootstrap(): Promise<void> {
   if (!container) return;
 
   const { pathname } = window.location;
-  const page = resolvePageData(matchRoute(pathname), readInitialData());
+  const page = resolvePageData(RouteUtil.matchRoute(pathname), readInitialData());
   const components = await loadPageComponents(page.name);
 
   const app: JSX.Element = (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCompanyPwaManifest } from './pwa-manifest.service';
+import { PwaManifestService } from './pwa-manifest.service';
 
 describe('createCompanyPwaManifest', () => {
   const business = {
@@ -10,7 +10,7 @@ describe('createCompanyPwaManifest', () => {
 
   it('uses the business identity and limits the PWA to its catalog path segment', () => {
     const origin = 'https://tamarcado.example';
-    const manifest = createCompanyPwaManifest(business, origin);
+    const manifest = PwaManifestService.createCompanyPwaManifest(business, origin);
 
     expect(manifest.name).toBe('Studio Aurora | Tá Marcado');
     expect(manifest.short_name).toBe('Studio Aurora');
@@ -25,7 +25,10 @@ describe('createCompanyPwaManifest', () => {
 
   it.each(['', ' ', 'studio/aurora', 'Studio-Aurora'])('rejects invalid slug %j', (slug) => {
     expect(() =>
-      createCompanyPwaManifest({ ...business, slug }, 'https://tamarcado.example'),
+      PwaManifestService.createCompanyPwaManifest(
+        { ...business, slug },
+        'https://tamarcado.example',
+      ),
     ).toThrow('A valid company slug is required');
   });
 });

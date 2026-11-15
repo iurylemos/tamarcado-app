@@ -21,7 +21,9 @@ vi.mock('@mastra/core/agent', () => ({
   },
 }));
 
-vi.mock('../config/analysis.secrets', () => ({ getOpenRouterApiKey }));
+vi.mock('../config/analysis.secrets', () => ({
+  openRouterApiKey: { value: getOpenRouterApiKey },
+}));
 
 const report = {
   schemaVersion: 1,
@@ -115,6 +117,7 @@ describe('LLM provider', () => {
         period: { start: '2030-02-01', endExclusive: '2030-03-01' },
       }),
     ).rejects.toThrow();
+    expect(generate).toHaveBeenCalledOnce();
   });
 
   it('keeps unavailable token usage as null instead of reporting zero', async () => {

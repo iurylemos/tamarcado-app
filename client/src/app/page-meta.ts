@@ -1,12 +1,5 @@
-import type { PageData } from './page-data';
+import type { StoreFrontPageData, StoreFrontPageMeta } from '../interfaces/storeFront.interface';
 import { SiteUtil } from '../utils/site.util';
-
-export type PageMeta = {
-  title: string;
-  description: string;
-  canonicalUrl?: string;
-  imageUrl?: string;
-};
 
 function getPublicSiteUrl(): URL {
   const configuredUrl = import.meta.env.VITE_PUBLIC_SITE_URL?.trim();
@@ -41,7 +34,7 @@ function safeImageUrl(value: string | undefined): string | undefined {
   }
 }
 
-export function resolvePageMeta(page: PageData): PageMeta {
+export function resolvePageMeta(page: StoreFrontPageData): StoreFrontPageMeta {
   if (page.name === 'home') {
     return {
       title: `${SiteUtil.brand} | Catálogos e agendamentos`,
@@ -129,7 +122,7 @@ export function renderPageMetaTags({
   title,
   canonicalUrl: canonical,
   imageUrl,
-}: PageMeta): string {
+}: StoreFrontPageMeta): string {
   return [
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<meta property="og:title" content="${escapeHtml(title)}" />`,
@@ -198,7 +191,7 @@ function updateCanonicalLink(url: string | undefined): () => void {
   };
 }
 
-export function updatePageMeta(meta: PageMeta): () => void {
+export function updatePageMeta(meta: StoreFrontPageMeta): () => void {
   const previousTitle = document.title;
   const restoreMeta = [
     updateMetaTag('name', 'description', meta.description),

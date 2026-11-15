@@ -35,19 +35,14 @@ export async function generateInsights(
     abortSignal: signal,
   });
 
-  const {
-    object,
-    usage: { inputTokens, outputTokens, totalTokens },
-  } = result;
-
-  const report = reportSchema.parse(object);
+  const report = reportSchema.parse(result.object);
 
   return {
     report,
     usage: {
-      inputTokens: inputTokens ?? null,
-      outputTokens: outputTokens ?? null,
-      totalTokens: totalTokens ?? null,
+      inputTokens: result.usage?.inputTokens ?? null,
+      outputTokens: result.usage?.outputTokens ?? null,
+      totalTokens: result.usage?.totalTokens ?? null,
     },
   };
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDocsFromServer } from 'firebase/firestore';
-import { getCompanyCatalog } from './catalog.service';
+import { CatalogService } from './catalog.service';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_, name: string) => name),
@@ -40,7 +40,7 @@ describe('getCompanyCatalog', () => {
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
-    const catalog = await getCompanyCatalog('one');
+    const catalog = await CatalogService.getCompanyCatalog('one');
     expect(catalog?.business).toMatchObject({
       primaryColor: '#123abc',
       secondaryColor: '#fedcba',
@@ -59,7 +59,7 @@ describe('getCompanyCatalog', () => {
         ],
       } as never)
       .mockResolvedValue({ docs: [] } as never);
-    await expect(getCompanyCatalog('one')).rejects.toThrow(/primaryColor/);
+    await expect(CatalogService.getCompanyCatalog('one')).rejects.toThrow(/primaryColor/);
   });
 
   it('lists products without fetching galleries', async () => {
@@ -69,7 +69,7 @@ describe('getCompanyCatalog', () => {
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
-    const catalog = await getCompanyCatalog('studio-aurora', { pageSize: 10 });
+    const catalog = await CatalogService.getCompanyCatalog('studio-aurora', { pageSize: 10 });
 
     expect(getDocsFromServer).toHaveBeenCalledTimes(3);
     expect(getDocsFromServer).toHaveBeenNthCalledWith(
@@ -98,7 +98,7 @@ describe('getCompanyCatalog', () => {
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
-    await getCompanyCatalog('studio-aurora', { productId: 'service-aurora' });
+    await CatalogService.getCompanyCatalog('studio-aurora', { productId: 'service-aurora' });
 
     expect(getDocsFromServer).toHaveBeenCalledTimes(3);
     expect(getDocsFromServer).toHaveBeenNthCalledWith(
@@ -121,7 +121,7 @@ describe('getCompanyCatalog', () => {
       } as never)
       .mockResolvedValue({ docs: [] } as never);
 
-    const catalog = await getCompanyCatalog('studio-aurora', {
+    const catalog = await CatalogService.getCompanyCatalog('studio-aurora', {
       productId: 'service-aurora',
       includeGalleries: false,
     });
@@ -176,7 +176,7 @@ describe('getCompanyCatalog', () => {
       } as never)
       .mockResolvedValueOnce({ docs: [] } as never);
 
-    const catalog = await getCompanyCatalog('studio-aurora');
+    const catalog = await CatalogService.getCompanyCatalog('studio-aurora');
 
     expect(catalog?.business.slug).toBe('studio-aurora');
     expect(catalog?.products.map((product) => product.id)).toEqual(['service-aurora']);
@@ -299,7 +299,7 @@ describe('getCompanyCatalog', () => {
         ],
       } as never);
 
-    const catalog = await getCompanyCatalog('studio-aurora', { pageSize: 10 });
+    const catalog = await CatalogService.getCompanyCatalog('studio-aurora', { pageSize: 10 });
 
     expect(catalog?.products.map((product) => product.id)).toEqual(['regular-service']);
     expect(catalog?.promotions?.map((product) => product.id)).toEqual(['valid-offer']);
@@ -357,7 +357,7 @@ describe('getCompanyCatalog', () => {
         ],
       } as never);
 
-    const catalog = await getCompanyCatalog('studio-aurora');
+    const catalog = await CatalogService.getCompanyCatalog('studio-aurora');
 
     expect(catalog?.business.timezone).toBe('America/Sao_Paulo');
     expect(catalog?.products[0]).toMatchObject({
@@ -375,11 +375,11 @@ describe('getCompanyCatalog', () => {
   it('does not return catalog data when no published business matches the slug', async () => {
     vi.mocked(getDocsFromServer).mockResolvedValue({ docs: [] } as never);
 
-    await expect(getCompanyCatalog('unknown-business')).resolves.toBeNull();
+    await expect(CatalogService.getCompanyCatalog('unknown-business')).resolves.toBeNull();
   });
 
   it('rejects malformed slugs before querying public catalog data', async () => {
-    await expect(getCompanyCatalog('studio/aurora')).resolves.toBeNull();
+    await expect(CatalogService.getCompanyCatalog('studio/aurora')).resolves.toBeNull();
     expect(getDocsFromServer).not.toHaveBeenCalled();
   });
 });

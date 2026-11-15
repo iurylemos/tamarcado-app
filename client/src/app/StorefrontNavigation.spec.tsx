@@ -8,10 +8,15 @@ import { createQueryClient } from '../config/query-client.config';
 import { ReactQueryConfig } from '../config/react-query.config';
 import type { PageComponents } from '../interfaces/page.interface';
 import CompanyCatalogPage from '../pages/CompanyCatalogPage';
-import { getCompanyCatalog } from '../services/catalog.service';
 import StorefrontNavigation from './StorefrontNavigation';
+import { CatalogService } from '../services/catalog.service';
 
-vi.mock('../services/catalog.service', () => ({ getCompanyCatalog: vi.fn() }));
+vi.mock('../services/catalog.service', () => ({
+  CatalogService: {
+    getCompanyCatalog: vi.fn(),
+  },
+}));
+
 vi.mock('../config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
 
 function CatalogStart(): JSX.Element {
@@ -115,7 +120,7 @@ describe('StorefrontNavigation', () => {
       },
       default: { id: 'default', name: 'Default', slug: 'default', segment: 'beauty' as const },
     };
-    vi.mocked(getCompanyCatalog).mockImplementation(async (slug) => {
+    vi.mocked(CatalogService.getCompanyCatalog).mockImplementation(async (slug) => {
       const business = businesses[slug as keyof typeof businesses];
       return business ? { business, products: [] } : null;
     });

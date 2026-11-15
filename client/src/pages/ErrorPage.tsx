@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
+import { RouteUtil } from '../utils/route.util';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { homePath } from '../app/routes';
 
 export default function ErrorPage(): JSX.Element {
   const msg = 'Esta página não existe.';
@@ -84,7 +84,7 @@ export default function ErrorPage(): JSX.Element {
           </button>
 
           <Link
-            to={homePath}
+            to={RouteUtil.homePath}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 focus:outline-none focus:ring-4 focus:ring-emerald-100"
           >
             Voltar ao início

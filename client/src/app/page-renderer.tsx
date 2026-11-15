@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
-import type { PageData } from './page-data';
 import type { PageComponents } from '../interfaces/page.interface';
+import type { StoreFrontPageData } from '../interfaces/storeFront.interface';
 
 export function createPageElement(
-  page: PageData,
+  page: StoreFrontPageData,
   components: Partial<PageComponents>,
 ): JSX.Element {
   if (page.name === 'home' && components.home) return <components.home />;

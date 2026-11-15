@@ -6,11 +6,13 @@ import { createQueryClient } from '../config/query-client.config';
 import CatalogRoutePage from '../pages/CatalogRoutePage';
 import StorefrontApp, { createPageElement } from './StorefrontApp';
 import { resolvePageData } from './page-data';
-import { matchRoute } from './routes';
+import { RouteUtil } from '../utils/route.util';
 
 vi.mock('../config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
 vi.mock('../services/catalog.service', () => ({
-  getCompanyCatalog: vi.fn(() => new Promise(() => {})),
+  CatalogService: {
+    getCompanyCatalog: vi.fn(() => new Promise(() => {})),
+  },
 }));
 
 afterEach(() => {
@@ -37,7 +39,7 @@ describe('business theme hydration', () => {
     const serverStyle = container.querySelector('[data-custom-primary]')?.getAttribute('style');
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const queryClient = createQueryClient();
-    const page = resolvePageData(matchRoute(pathname), initial);
+    const page = resolvePageData(RouteUtil.matchRoute(pathname), initial);
     const app = (
       <StorefrontApp
         pathname={pathname}
