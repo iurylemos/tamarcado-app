@@ -1,12 +1,14 @@
 import { cleanup, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCompanyCatalog } from '../services/catalog.service';
+import { CatalogService } from '../services/catalog.service';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import { renderWithQueryClient } from '../test/render';
 
 vi.mock('../services/catalog.service', () => ({
-  getCompanyCatalog: vi.fn(),
+  CatalogService: {
+    getCompanyCatalog: vi.fn(),
+  },
 }));
 
 afterEach(() => {
@@ -36,7 +38,7 @@ describe('CompanyCatalogPage', () => {
   }
 
   it('shows service card skeletons while the catalog request is pending', () => {
-    vi.mocked(getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(CatalogService.getCompanyCatalog).mockReturnValue(new Promise(() => undefined));
 
     const { container } = renderCatalogPage('studio-aurora');
 
@@ -56,7 +58,7 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('shows the catalog error without leaving loading skeletons', async () => {
-    vi.mocked(getCompanyCatalog).mockRejectedValue(new Error('network error'));
+    vi.mocked(CatalogService.getCompanyCatalog).mockRejectedValue(new Error('network error'));
 
     const { container } = renderCatalogPage('studio-aurora');
 
@@ -67,7 +69,7 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('shows a distinct unavailable state when the catalog service is unavailable', async () => {
-    vi.mocked(getCompanyCatalog).mockRejectedValue(
+    vi.mocked(CatalogService.getCompanyCatalog).mockRejectedValue(
       Object.assign(new Error('service unavailable'), { code: 'unavailable' }),
     );
 
@@ -79,7 +81,7 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('shows an explicit not-found state when no published catalog matches the slug', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue(null);
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue(null);
 
     renderCatalogPage('slug-inexistente');
 
@@ -87,19 +89,19 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('rejects a malformed slug without rendering another business catalog', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue(null);
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue(null);
 
     renderCatalogPage('Slug/malformado');
 
     expect(await screen.findByText('Empresa não encontrada.')).toBeInTheDocument();
-    expect(getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado', {
+    expect(CatalogService.getCompanyCatalog).toHaveBeenCalledWith('Slug/malformado', {
       pageSize: 10,
       after: undefined,
     });
   });
 
   it('shows a distinct empty catalog state after a successful empty response', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -118,7 +120,7 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('renders only the active products returned by the public catalog', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -172,7 +174,7 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('shows active promotions ahead of the regular catalog with prices per variant', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -292,7 +294,7 @@ describe('CompanyCatalogPage', () => {
         },
       ],
     };
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -320,7 +322,7 @@ describe('CompanyCatalogPage', () => {
       maxTouchPoints: 1,
       standalone: false,
     });
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',
@@ -338,7 +340,7 @@ describe('CompanyCatalogPage', () => {
   });
 
   it('removes the generated manifest and restores document metadata when leaving the catalog', async () => {
-    vi.mocked(getCompanyCatalog).mockResolvedValue({
+    vi.mocked(CatalogService.getCompanyCatalog).mockResolvedValue({
       business: {
         id: 'tenant-aurora',
         name: 'Studio Aurora',

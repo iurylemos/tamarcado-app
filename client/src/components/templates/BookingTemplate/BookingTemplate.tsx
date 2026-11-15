@@ -1,14 +1,16 @@
 import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
+import { RouteUtil } from '../../../utils/route.util';
 import MarketBackground from '../../atoms/MarketBackground';
 import Skeleton from '../../atoms/Skeleton/Skeleton';
 import BookingHero from '../../atoms/BookingHero';
 import BookingReady from '../../organisms/BookingReady';
-import { companyCatalogPath } from '../../../app/routes';
 
 type Props = BookingTemplateProps &
-  ({ status: 'ready'; allowContactScroll: boolean } | { status: 'loading' | 'error' | 'not-found' });
+  (
+    { status: 'ready'; allowContactScroll: boolean } | { status: 'loading' | 'error' | 'not-found' }
+  );
 
 export default function BookingTemplate(props: Readonly<Props>): JSX.Element {
   if (props.status === 'loading') {
@@ -16,7 +18,7 @@ export default function BookingTemplate(props: Readonly<Props>): JSX.Element {
       <>
         <MarketBackground />
         <main className="page stack market-page booking-page">
-          <Link className="market-back-link" to={companyCatalogPath(props.slug)}>
+          <Link className="market-back-link" to={RouteUtil.companyCatalogPath(props.slug)}>
             ← Voltar ao catálogo
           </Link>
 
@@ -66,7 +68,7 @@ export default function BookingTemplate(props: Readonly<Props>): JSX.Element {
           <p role="alert" className="error state-card">
             {props.error}
           </p>
-          <Link className="market-back-link" to={companyCatalogPath(props.slug)}>
+          <Link className="market-back-link" to={RouteUtil.companyCatalogPath(props.slug)}>
             Voltar ao catálogo
           </Link>
         </main>
@@ -80,7 +82,7 @@ export default function BookingTemplate(props: Readonly<Props>): JSX.Element {
         <MarketBackground />
         <main className="page market-page state-card">
           <p role="status">Serviço não encontrado.</p>
-          <Link to={companyCatalogPath(props.slug)}>Voltar ao catálogo</Link>
+          <Link to={RouteUtil.companyCatalogPath(props.slug)}>Voltar ao catálogo</Link>
         </main>
       </>
     );

@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback, type JSX } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { CompanyCatalog, CompanySummary } from '../interfaces/company.interface';
-import { ReactQueryConfig } from '../config/react-query.config';
 import type { PageComponents } from '../interfaces/page.interface';
+import { ReactQueryConfig } from '../config/react-query.config';
+import { RouteUtil } from '../utils/route.util';
 import { resolvePageData } from './page-data';
-import { matchRoute } from './routes';
 import { createPageElement } from './page-renderer';
 import FallbackLoading from '../components/atoms/FallbackLoading';
 
@@ -30,7 +30,7 @@ export default function StorefrontNavigation({
 
   const cachedBusiness = useCallback(
     (target: string): CompanySummary | null => {
-      const route = matchRoute(target);
+      const route = RouteUtil.matchRoute(target);
 
       if (route.name !== 'catalog' && route.name !== 'booking') return null;
 
@@ -61,7 +61,7 @@ export default function StorefrontNavigation({
     if (pathname === activePage.pathname) return;
 
     let active = true;
-    const route = matchRoute(pathname);
+    const route = RouteUtil.matchRoute(pathname);
 
     setLoadError(undefined);
 

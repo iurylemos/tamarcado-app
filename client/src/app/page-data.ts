@@ -1,5 +1,5 @@
-﻿import type { StorefrontInitialData } from '../interfaces/storefront-render.interface';
-import type { AppRoute } from './routes';
+﻿import type { AppRoute } from '../interfaces/route.interface';
+import type { StorefrontInitialData } from '../interfaces/storefront-render.interface';
 import type { StoreFrontPageData } from '../interfaces/storeFront.interface';
 
 export function resolvePageData(

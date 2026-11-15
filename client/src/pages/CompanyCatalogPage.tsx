@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { CompanyCatalog, CompanySummary } from '../interfaces/company.interface';
 import type { CatalogCursor, PublicCatalogStatus } from '../interfaces/catalog.interface';
 import { ReactQueryConfig } from '../config/react-query.config';
-import { getCompanyCatalog } from '../services/catalog.service';
+import { CatalogService } from '../services/catalog.service';
 import { CatalogUtil } from '../utils/catalog.util';
 import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 import BusinessTheme from '../app/BusinessTheme';
@@ -30,7 +30,7 @@ export default function CompanyCatalogPage({
   } = useInfiniteQuery({
     queryKey: [...ReactQueryConfig.companyCatalogQueryKey(slug), 'pages'],
     queryFn: async ({ pageParam }): Promise<CompanyCatalog | null> => {
-      return await getCompanyCatalog(slug, {
+      return await CatalogService.getCompanyCatalog(slug, {
         pageSize: CatalogUtil.defaultLimitPageSize,
         after: pageParam,
       });

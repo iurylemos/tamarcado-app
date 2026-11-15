@@ -17,17 +17,7 @@ import type {
   ProductImageGallery,
 } from '@shared/interfaces/product.interface';
 import type { PublicCatalogStatus } from '../interfaces/catalog.interface';
-import {
-  listAvailability,
-  searchAvailability,
-  searchAvailabilityForEstimation,
-} from '../services/availability.service';
-import { createAppointment } from '../services/appointment.service';
-import { getCompanyCatalog, getProductImageGalleries } from '../services/catalog.service';
-import {
-  eligibleProfessionals,
-  eligibleProfessionalsWithinHorizon,
-} from '../services/professional.service';
+import { ProfessionalService } from '../services/professional.service';
 import { estimateDateFromInstant, isValidIanaTimezone } from '@shared/timezone';
 import { DateUtil } from '../utils/date.util';
 import { isValidBusinessSlug } from '../utils/business-slug.util';
@@ -38,6 +28,9 @@ import { BookingUtil } from '../utils/booking.util';
 import CompanyCatalogPage from './CompanyCatalogPage';
 import BookingTemplate from '../components/templates/BookingTemplate/BookingTemplate';
 import BusinessTheme from '../app/BusinessTheme';
+import { CatalogService } from '../services/catalog.service';
+import { AvailabilityService } from '../services/availability.service';
+import { AppointmentService } from '../services/appointment.service';
 
 type BookingPageProps = {
   slug: string;
@@ -149,7 +142,7 @@ export default function BookingPage({
 
   const galleryQuery = useQuery({
     queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
-    queryFn: async () => await getProductImageGalleries(slug, productId),
+    queryFn: async () => await CatalogService.getProductImageGalleries(slug, productId),
     enabled:
       isValidBusinessSlug(slug) &&
       Boolean(productId) &&
@@ -329,7 +322,11 @@ export default function BookingPage({
         queryKey: detailKey,
         staleTime: refresh ? 0 : ReactQueryConfig.queryStaleTime,
         queryFn: async () => {
-          if (refresh) return await getCompanyCatalog(slug, { productId, includeGalleries: false });
+          if (refresh)
+            return await CatalogService.getCompanyCatalog(slug, {
+              productId,
+              includeGalleries: false,
+            });
 
           const cachedCatalog = currentQueryClient.getQueryData<CompanyCatalog>(
             ReactQueryConfig.companyCatalogQueryKey(slug),
@@ -341,7 +338,10 @@ export default function BookingPage({
               : undefined;
 
           if (!cachedCatalog || !cachedProduct) {
-            return await getCompanyCatalog(slug, { productId, includeGalleries: false });
+            return await CatalogService.getCompanyCatalog(slug, {
+              productId,
+              includeGalleries: false,
+            });
           }
 
           return cachedCatalog;
@@ -374,7 +374,7 @@ export default function BookingPage({
           isValidIanaTimezone(currentCatalog.business.timezone)
             ? DateUtil.getDateInBusinessTimezone(new Date(), currentCatalog.business.timezone)
             : undefined;
-        result = await searchAvailabilityForEstimation({
+        result = await AvailabilityService.searchAvailabilityForEstimation({
           businessSlug: slug,
           productId,
           ...(searchDate ? { date: searchDate } : {}),
@@ -383,7 +383,7 @@ export default function BookingPage({
         const searchInput = { businessSlug: slug, productId, date };
         result = await queryClient.query({
           queryKey: ReactQueryConfig.availabilitySearchQueryKey(slug, productId, date),
-          queryFn: () => searchAvailability(searchInput),
+          queryFn: () => AvailabilityService.searchAvailability(searchInput),
           staleTime: 15000,
         });
       }
@@ -393,8 +393,8 @@ export default function BookingPage({
         setSelectedStartsAt('');
         const choices =
           currentProduct.estimatedDeliveryEnabled === true
-            ? eligibleProfessionalsWithinHorizon(result)
-            : eligibleProfessionals(result.slots);
+            ? ProfessionalService.eligibleProfessionalsWithinHorizon(result)
+            : ProfessionalService.eligibleProfessionals(result.slots);
         setEstimatedProfessionals(currentProduct.estimatedDeliveryEnabled === true ? choices : []);
         setSelectedProfessionalId(
           currentProduct.estimatedDeliveryEnabled === true
@@ -503,7 +503,8 @@ export default function BookingPage({
   }, [date]);
 
   const professionals = useMemo<AvailableProfessional[]>(
-    () => (estimatedCheckout ? estimatedProfessionals : eligibleProfessionals(slots)),
+    () =>
+      estimatedCheckout ? estimatedProfessionals : ProfessionalService.eligibleProfessionals(slots),
     [estimatedCheckout, estimatedProfessionals, slots],
   );
 
@@ -525,7 +526,7 @@ export default function BookingPage({
       const refreshedSlots = await queryClient.query({
         queryKey,
         queryFn: async () =>
-          await listAvailability({
+          await AvailabilityService.listAvailability({
             businessSlug: slug,
             productId,
             date: bookedDate,
@@ -542,7 +543,7 @@ export default function BookingPage({
 
       setSlots(currentSlots);
 
-      const availableProfessionals = eligibleProfessionals(currentSlots);
+      const availableProfessionals = ProfessionalService.eligibleProfessionals(currentSlots);
 
       setSelectedProfessionalId((current) =>
         availableProfessionals.some((professional) => professional.id === current)
@@ -579,7 +580,7 @@ export default function BookingPage({
         getBookingCatalog(queryClient, slug, productId, true),
         queryClient.query({
           queryKey: ReactQueryConfig.productGalleriesQueryKey(slug, productId),
-          queryFn: () => getProductImageGalleries(slug, productId),
+          queryFn: () => CatalogService.getProductImageGalleries(slug, productId),
           staleTime: ReactQueryConfig.queryStaleTime,
         }),
       ]);
@@ -611,7 +612,7 @@ export default function BookingPage({
             : (currentGalleryImages[0]?.id ?? '')
           : effectiveSelectedImageId;
 
-      const result = await createAppointment({
+      const result = await AppointmentService.createAppointment({
         businessSlug: slug,
         productId,
         professionalId: selectedProfessionalId,

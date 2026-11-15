@@ -7,18 +7,20 @@ import type {
   CreatePublicAppointmentResult,
 } from '@shared/interfaces/appointment.interface';
 
-export async function createAppointment(
-  input: CreatePublicAppointmentInput,
-): Promise<CreatePublicAppointmentResult> {
-  return await trackClientRequest(
-    SentryClientRequestOperation.APPOINTMENT_REGISTRATION,
-    async (): Promise<CreatePublicAppointmentResult> => {
-      const call = httpsCallable<CreatePublicAppointmentInput, CreatePublicAppointmentResult>(
-        functions,
-        'createPublicAppointment',
-      );
-      const response = await call(input);
-      return response.data;
-    },
-  );
+export class AppointmentService {
+  public static async createAppointment(
+    input: CreatePublicAppointmentInput,
+  ): Promise<CreatePublicAppointmentResult> {
+    return await trackClientRequest(
+      SentryClientRequestOperation.APPOINTMENT_REGISTRATION,
+      async (): Promise<CreatePublicAppointmentResult> => {
+        const call = httpsCallable<CreatePublicAppointmentInput, CreatePublicAppointmentResult>(
+          functions,
+          'createPublicAppointment',
+        );
+        const response = await call(input);
+        return response.data;
+      },
+    );
+  }
 }

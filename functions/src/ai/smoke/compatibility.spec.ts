@@ -261,7 +261,9 @@ async function readExecution(executionId: string): Promise<SmokeExecution> {
   return snapshot.data() as SmokeExecution;
 }
 
-describe('Node 24 / TypeScript 6 / NodeNext AI compatibility smoke', () => {
+const emulatorOnly = describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST);
+
+emulatorOnly('Node 24 / TypeScript 6 / NodeNext AI compatibility smoke', () => {
   beforeEach(() => {
     mockSearchCount = 0;
     clockMs = Date.now();

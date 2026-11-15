@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LoginPage from './LoginPage';
 import ProtectedRoute from '../router/ProtectedRoute';
-import { WorkspaceLayout } from '../router';
+import WorkspaceLayout from '../components/templates/WorkspaceLayout';
 
 const auth = vi.hoisted(() => ({
   user: null as object | null,

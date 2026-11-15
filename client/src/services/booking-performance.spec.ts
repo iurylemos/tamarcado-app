@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAppointment } from './appointment.service';
-import { searchAvailability } from './availability.service';
+import { AppointmentService } from './appointment.service';
+import { AvailabilityService } from './availability.service';
 
 const httpsCallable = vi.hoisted(() => vi.fn());
 const sentryMocks = vi.hoisted(() => ({
@@ -31,7 +31,7 @@ describe('booking service timing', () => {
     httpsCallable.mockReturnValue(async () => ({ data: result }));
 
     await expect(
-      searchAvailability({
+      AvailabilityService.searchAvailability({
         businessSlug: 'studio-aurora',
         productId: 'service-corte',
         date: '2030-02-04',
@@ -68,7 +68,7 @@ describe('booking service timing', () => {
     }));
 
     await expect(
-      createAppointment({
+      AppointmentService.createAppointment({
         businessSlug: 'studio-aurora',
         productId: 'service-corte',
         professionalId: 'professional-ana',
@@ -76,6 +76,7 @@ describe('booking service timing', () => {
         customerName: 'Maria Silva',
         customerPhone: '11999990000',
         whatsappOptIn: true,
+        paymentMethod: 'debit',
       }),
     ).resolves.toMatchObject({ appointmentId: 'appointment-1', status: 'pending' });
 
@@ -110,7 +111,7 @@ describe('booking service timing', () => {
     });
 
     await expect(
-      searchAvailability({
+      AvailabilityService.searchAvailability({
         businessSlug: 'studio-aurora',
         productId: 'service-corte',
         date: '2030-02-04',

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { WorkspaceLayout } from './index';
+import WorkspaceLayout from '../components/templates/WorkspaceLayout';
 
 vi.mock('../contexts/auth/auth.context', () => ({
   useAuth: () => ({ logout: vi.fn() }),

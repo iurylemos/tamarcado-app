@@ -2,13 +2,13 @@ import type { JSX } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import type { BookingTemplateProps } from '../../../interfaces/booking.interface';
+import { RouteUtil } from '../../../utils/route.util';
 import MarketBackground from '../../atoms/MarketBackground';
 import BookingHero from '../../atoms/BookingHero';
 import BookingServiceSummary from '../BookingServiceSummary/BookingServiceSummary';
 import BookingAvailability from '../BookingAvailability/BookingAvailability';
 import BookingCustomerDetails from '../BookingCustomerDetails/BookingCustomerDetails';
 import BookingReceiptDialog from '../BookingReceiptDialog/BookingReceiptDialog';
-import { companyCatalogPath } from '../../../app/routes';
 
 type BookingReadyProps = Extract<BookingTemplateProps, { status: 'ready' }> & {
   allowContactScroll: boolean;
@@ -59,7 +59,7 @@ export default function BookingReady({
         <Link
           aria-label="Voltar ao catálogo"
           className="market-back-link"
-          to={companyCatalogPath(slug)}
+          to={RouteUtil.companyCatalogPath(slug)}
         >
           ← Voltar ao catálogo
         </Link>
