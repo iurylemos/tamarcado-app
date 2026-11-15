@@ -251,17 +251,21 @@ export default function BookingServiceSummary({
           productName={product.name}
         />
         {product.description && <p>{product.description}</p>}
+
         {customizationSelections.length > 0 && (
           <ul className="booking-summary-customizations">
             {customizationSelections.map((selection) => {
               const attribute = product.customizationAttributes?.find(
                 (item) => item.id === selection.attributeId,
               );
+
               const option = attribute?.options.find((item) => item.id === selection.optionId);
+
               if (!attribute || !option) return null;
+
               return (
                 <li key={selection.attributeId}>
-                  {attribute.label} <strong>{option.label}:</strong>
+                  {attribute.label}: <strong>{option.label}</strong>
                 </li>
               );
             })}
