@@ -68,38 +68,43 @@ export class SentryUtil {
   }
 
   public static sanitizeBreadcrumb(breadcrumb: SentryBreadcrumb | null): SentryBreadcrumb | null {
-    if (!breadcrumb) return null;
+    try {
+      if (!breadcrumb) return null;
 
-    if (breadcrumb.category === 'navigation') {
-      const route =
-        typeof breadcrumb.data?.route === 'string'
-          ? this.routeTemplate(breadcrumb.data.route)
+      if (breadcrumb.category === 'navigation') {
+        const route =
+          typeof breadcrumb.data?.route === 'string'
+            ? this.routeTemplate(breadcrumb.data.route)
+            : null;
+
+        return route
+          ? {
+              category: 'navigation',
+              data: { route },
+              level: 'info',
+              type: 'navigation',
+            }
           : null;
+      }
 
-      return route
-        ? {
-            category: 'navigation',
-            data: { route },
-            level: 'info',
-            type: 'navigation',
-          }
-        : null;
+      if (breadcrumb.category === 'app.operation') {
+        const operation = breadcrumb.data?.operation;
+
+        if (typeof operation !== 'string' || !/^[a-z_]{1,50}$/.test(operation)) return null;
+
+        return {
+          category: 'app.operation',
+          data: { operation },
+          level: breadcrumb.level,
+          type: 'default',
+        };
+      }
+
+      return null;
+    } catch (error: unknown) {
+      console.error('Error sanitizing breadcrumb:', error);
+      return null;
     }
-
-    if (breadcrumb.category === 'app.operation') {
-      const operation = breadcrumb.data?.operation;
-
-      if (typeof operation !== 'string' || !/^[a-z_]{1,50}$/.test(operation)) return null;
-
-      return {
-        category: 'app.operation',
-        data: { operation },
-        level: breadcrumb.level,
-        type: 'default',
-      };
-    }
-
-    return null;
   }
 
   private static safeExceptionType(type: string | undefined): string {
@@ -126,52 +131,57 @@ export class SentryUtil {
     return match ? `assets/${match[1]}` : 'app.bundle.js';
   }
 
-  public static sanitizeEvent(event: ErrorEvent): ErrorEvent {
-    event.message = undefined;
-    event.fingerprint = undefined;
-    event.user = undefined;
-    event.request = undefined;
-    event.extra = undefined;
-    event.contexts = undefined;
-    event.logentry = undefined;
-    event.tags = { app: 'client' };
+  public static sanitizeEvent(event: ErrorEvent): ErrorEvent | null {
+    try {
+      event.message = undefined;
+      event.fingerprint = undefined;
+      event.user = undefined;
+      event.request = undefined;
+      event.extra = undefined;
+      event.contexts = undefined;
+      event.logentry = undefined;
+      event.tags = { app: 'client' };
 
-    event.transaction =
-      typeof window === 'undefined'
-        ? 'unknown'
-        : (this.routeTemplate(window.location.pathname) ?? 'unknown');
+      event.transaction =
+        typeof window === 'undefined'
+          ? 'unknown'
+          : (this.routeTemplate(window.location.pathname) ?? 'unknown');
 
-    if (event.exception?.values) {
-      event.exception = {
-        values: event.exception.values.map((exception) => {
-          const safeStacktrace = exception.stacktrace
-            ? {
-                frames: exception.stacktrace.frames?.map((frame) => ({
-                  filename: this.safeFrameFilename(frame.filename),
-                  ...(frame.lineno !== undefined ? { lineno: frame.lineno } : {}),
-                  ...(frame.colno !== undefined ? { colno: frame.colno } : {}),
-                  ...(frame.in_app !== undefined ? { in_app: frame.in_app } : {}),
-                })),
-              }
-            : undefined;
+      if (event.exception?.values) {
+        event.exception = {
+          values: event.exception.values.map((exception) => {
+            const safeStacktrace = exception.stacktrace
+              ? {
+                  frames: exception.stacktrace.frames?.map((frame) => ({
+                    filename: this.safeFrameFilename(frame.filename),
+                    ...(frame.lineno !== undefined ? { lineno: frame.lineno } : {}),
+                    ...(frame.colno !== undefined ? { colno: frame.colno } : {}),
+                    ...(frame.in_app !== undefined ? { in_app: frame.in_app } : {}),
+                  })),
+                }
+              : undefined;
 
-          return {
-            type: this.safeExceptionType(exception.type),
-            value: 'Unexpected client error',
-            ...(typeof exception.mechanism?.handled === 'boolean'
-              ? { mechanism: { type: 'generic', handled: exception.mechanism.handled } }
-              : {}),
-            ...(safeStacktrace ? { stacktrace: safeStacktrace } : {}),
-          };
-        }),
-      };
+            return {
+              type: this.safeExceptionType(exception.type),
+              value: 'Unexpected client error',
+              ...(typeof exception.mechanism?.handled === 'boolean'
+                ? { mechanism: { type: 'generic', handled: exception.mechanism.handled } }
+                : {}),
+              ...(safeStacktrace ? { stacktrace: safeStacktrace } : {}),
+            };
+          }),
+        };
+      }
+
+      event.breadcrumbs = (event.breadcrumbs ?? [])
+        .map((breadcrumb) => this.sanitizeBreadcrumb(breadcrumb))
+        .filter((breadcrumb: SentryBreadcrumb | null) => breadcrumb !== null);
+
+      return event;
+    } catch (error: unknown) {
+      console.error('Error sanitizing event:', error);
+      return null;
     }
-
-    event.breadcrumbs = (event.breadcrumbs ?? [])
-      .map((breadcrumb) => this.sanitizeBreadcrumb(breadcrumb))
-      .filter((breadcrumb: SentryBreadcrumb | null) => breadcrumb !== null);
-
-    return event;
   }
 
   public static createDeduplicationProcessor(): SentryDeduplications {
