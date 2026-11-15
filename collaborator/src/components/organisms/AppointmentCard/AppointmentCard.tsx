@@ -141,7 +141,7 @@ export default function AppointmentCard({
           <ul className="appointment-card__customizations">
             {appointment.customizationSnapshot.map((selection) => (
               <li key={selection.attributeId}>
-                <strong>{selection.attributeLabel}:</strong> {selection.optionLabel}
+                {selection.attributeLabel}: <strong>{selection.optionLabel}</strong>
               </li>
             ))}
           </ul>

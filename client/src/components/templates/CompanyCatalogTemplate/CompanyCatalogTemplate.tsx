@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type JSX } from 'react';
+import { Fragment, useEffect, useMemo, useRef, type JSX } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { formatBrl } from '../../../../../shared/domain/money.js';
@@ -210,31 +210,37 @@ export default function CompanyCatalogTemplate({
                                 product,
                                 variant?.selections ?? [],
                               );
+
                               if (!pricing?.promotionApplied) return null;
-                              const variantLabel = variant?.selections
-                                .map((selection) => {
-                                  const attribute = product.customizationAttributes?.find(
-                                    (item) => item.id === selection.attributeId,
-                                  );
-                                  const option = attribute?.options.find(
-                                    (item) => item.id === selection.optionId,
-                                  );
-                                  return `${attribute?.label ?? 'Opção'}: ${option?.label ?? 'Indisponível'}`;
-                                })
-                                .join(' / ');
+
+                              const variantLabel = variant?.selections.map((selection, index) => {
+                                const attribute = product.customizationAttributes?.find(
+                                  (item) => item.id === selection.attributeId,
+                                );
+
+                                const option = attribute?.options.find(
+                                  (item) => item.id === selection.optionId,
+                                );
+
+                                return (
+                                  <Fragment key={`${selection.attributeId}:${selection.optionId}`}>
+                                    {index > 0 && ' / '}
+                                    {attribute?.label ?? 'Opção'}:{' '}
+                                    <b>{option?.label ?? 'Indisponível'}</b>
+                                  </Fragment>
+                                );
+                              });
+
+                              const variantKey =
+                                variant?.selections
+                                  .map(
+                                    (selection) => `${selection.attributeId}:${selection.optionId}`,
+                                  )
+                                  .join('|') ?? 'product-price';
+
                               return (
-                                <div
-                                  className="promotion-price-row"
-                                  key={
-                                    variant?.selections
-                                      .map(
-                                        (selection) =>
-                                          `${selection.attributeId}:${selection.optionId}`,
-                                      )
-                                      .join('|') ?? 'product-price'
-                                  }
-                                >
-                                  {variantLabel && (
+                                <div className="promotion-price-row" key={variantKey}>
+                                  {variantLabel && variantLabel.length > 0 && (
                                     <span className="promotion-variant-label">{variantLabel}</span>
                                   )}
                                   <span className="promotion-price-values">
@@ -249,7 +255,9 @@ export default function CompanyCatalogTemplate({
                               );
                             })}
                           </div>
-                          <span className="store">{CatalogUtil.serviceScheduleLabel(product)}</span>
+                          <span className="store font-bold">
+                            {CatalogUtil.serviceScheduleLabel(product)}
+                          </span>
                         </div>
                       </Link>
                     </motion.article>

@@ -17,7 +17,11 @@ export default function ProfessionalSelector({
   }
 
   if (professionals.length === 1) {
-    return <p aria-label="Profissional selecionado">Atendimento com {professionals[0]!.name}</p>;
+    return (
+      <p aria-label="Profissional selecionado">
+        Atendimento com <strong>{professionals[0]!.name}</strong>
+      </p>
+    );
   }
 
   return (
