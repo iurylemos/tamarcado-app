@@ -1,31 +1,15 @@
-import { rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { defineConfig, loadEnv, type Plugin, type ResolvedConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import type { ViteUserConfig } from 'vitest/config';
 import { verifySentryArtifactsPlugin } from '../shared/plugins/verify-sentry-artifacts.plugin.ts';
+import { storefrontTemplatePlugin } from './plugins/storefront.plugin.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-
-// Firebase Hosting serves static files before rewrites, so the HTML shell must not be named index.html.
-function storefrontTemplatePlugin(): Plugin {
-  let outDir = '';
-
-  return {
-    name: 'storefront-template',
-    apply: 'build',
-    configResolved(resolved: ResolvedConfig): void {
-      outDir = path.resolve(resolved.root, resolved.build.outDir);
-    },
-    async writeBundle(): Promise<void> {
-      await rename(path.join(outDir, 'index.html'), path.join(outDir, 'storefront-template.html'));
-    },
-  };
-}
 
 export default defineConfig(({ mode, isSsrBuild }): ViteUserConfig => {
   const env = loadEnv(mode, root, '');
@@ -62,7 +46,7 @@ export default defineConfig(({ mode, isSsrBuild }): ViteUserConfig => {
       ...(isSsrBuild
         ? []
         : [
-            storefrontTemplatePlugin(),
+            storefrontTemplatePlugin(path),
             VitePWA({
               registerType: 'autoUpdate',
               injectRegister: false,

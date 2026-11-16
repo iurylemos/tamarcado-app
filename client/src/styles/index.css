@@ -183,11 +183,18 @@ select {
 }
 .skeleton {
   display: block;
+  position: relative;
   overflow: hidden;
   border-radius: 0.5rem;
-  background: linear-gradient(90deg, #f1f5f9 20%, #e2e8f0 38%, #f1f5f9 56%);
-  background-size: 220% 100%;
+  background: #f1f5f9;
+}
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 20%, #e2e8f0 50%, transparent 80%);
   animation: skeleton-shimmer 1.35s ease-in-out infinite;
+  content: '';
 }
 .skeleton-card {
   min-width: 0;
@@ -266,11 +273,11 @@ select {
 }
 @keyframes skeleton-shimmer {
   to {
-    background-position-x: -220%;
+    transform: translateX(100%);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .skeleton {
+  .skeleton::after {
     animation: none;
   }
 }
