@@ -69,28 +69,39 @@ export class SentryUtil {
 
   public static sanitizeBreadcrumb(breadcrumb: SentryBreadcrumb | null): SentryBreadcrumb | null {
     try {
-      if (!breadcrumb) return null;
-
-      if (breadcrumb.category === 'navigation') {
-        const route =
-          typeof breadcrumb.data?.route === 'string'
-            ? this.routeTemplate(breadcrumb.data.route)
-            : null;
-
-        return route
-          ? {
-              category: 'navigation',
-              data: { route },
-              level: 'info',
-              type: 'navigation',
-            }
-          : null;
+      if (!breadcrumb || typeof breadcrumb !== 'object') {
+        return null;
       }
 
-      if (breadcrumb.category === 'app.operation') {
+      const category = breadcrumb.category;
+
+      if (category === 'navigation') {
+        const routeValue = breadcrumb.data?.route;
+
+        if (typeof routeValue !== 'string') {
+          return null;
+        }
+
+        const route = this.routeTemplate(routeValue);
+
+        if (!route) {
+          return null;
+        }
+
+        return {
+          category: 'navigation',
+          data: { route },
+          level: 'info',
+          type: 'navigation',
+        };
+      }
+
+      if (category === 'app.operation') {
         const operation = breadcrumb.data?.operation;
 
-        if (typeof operation !== 'string' || !/^[a-z_]{1,50}$/.test(operation)) return null;
+        if (typeof operation !== 'string' || !/^[a-z_]{1,50}$/.test(operation)) {
+          return null;
+        }
 
         return {
           category: 'app.operation',
@@ -101,8 +112,7 @@ export class SentryUtil {
       }
 
       return null;
-    } catch (error: unknown) {
-      console.error('Error sanitizing breadcrumb:', error);
+    } catch {
       return null;
     }
   }

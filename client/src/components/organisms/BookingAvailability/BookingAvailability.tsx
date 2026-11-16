@@ -69,7 +69,7 @@ export default function BookingAvailability({
       {estimatedCheckout ? (
         <div className="state-card state-card-compact flex-col">
           {estimatedDeliveryDays !== undefined ? (
-            <p>
+            <p className="w-full">
               <b>Prazo estimado:</b> até {estimatedDeliveryDays} dias corridos.
             </p>
           ) : (
