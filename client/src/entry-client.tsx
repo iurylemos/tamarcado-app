@@ -1,5 +1,5 @@
 ﻿import type { JSX } from 'react';
-import { createRoot, hydrateRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot, type RootOptions } from 'react-dom/client';
 import StorefrontApp, { createPageElement } from './app/StorefrontApp';
 import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
@@ -8,8 +8,23 @@ import { createQueryClient } from './config/query-client.config';
 import { RouteUtil } from './utils/route.util';
 import './styles/index.css';
 import './styles/theme.css';
+import {
+  ensureMonitoringInitialized,
+  initializeMonitoringOnFirstInteraction,
+} from './config/sentry-loader';
 
 const stateElementId = '__STOREFRONT_STATE__';
+
+const handleReactError: NonNullable<RootOptions['onUncaughtError']> = (error, errorInfo) => {
+  void ensureMonitoringInitialized()
+    .then(() => import('@sentry/react'))
+    .then(({ reactErrorHandler }) => {
+      reactErrorHandler()(error, errorInfo);
+    })
+    .catch((monitoringError: unknown) => {
+      console.error('Failed to report a React error to Sentry.', monitoringError);
+    });
+};
 
 // Each route ships only its own page code; the server HTML stays interactive-ready once it loads.
 async function loadPageComponents(name: string): Promise<Partial<PageComponents>> {
@@ -50,8 +65,16 @@ async function bootstrap(): Promise<void> {
     />
   );
 
-  if (container.firstElementChild) hydrateRoot(container, app);
-  else createRoot(container).render(app);
+  const rootOptions: RootOptions = {
+    onUncaughtError: handleReactError,
+    onCaughtError: handleReactError,
+    onRecoverableError: handleReactError,
+  };
+
+  if (container.firstElementChild) hydrateRoot(container, app, rootOptions);
+  else createRoot(container, rootOptions).render(app);
+
+  initializeMonitoringOnFirstInteraction();
 }
 
 void bootstrap();

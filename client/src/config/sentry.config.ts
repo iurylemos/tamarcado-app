@@ -48,6 +48,12 @@ export function initializeMonitoring(): void {
   getCurrentScope().addEventProcessor(SentryUtil.createDeduplicationProcessor());
 }
 
+export function addRouteBreadcrumb(pathname: string): void {
+  const breadcrumb = SentryUtil.createSafeRouteBreadcrumb(pathname);
+
+  if (breadcrumb) addBreadcrumb(breadcrumb);
+}
+
 export async function trackClientRequest<T>(
   operation: SentryClientRequestOperation,
   request: () => Promise<T>,
