@@ -919,7 +919,7 @@ select {
 .slot-fieldset legend {
   padding: 0 0.5rem 0 0;
   color: #334155;
-  font-weight: 750;
+  font-weight: 800;
 }
 .slot-grid {
   display: grid;
@@ -939,7 +939,7 @@ select {
   background: white;
   color: #7c2d12;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 800;
   cursor: pointer;
   transition:
     border-color 160ms ease,
@@ -1010,7 +1010,7 @@ select {
   background: #fff1e8;
   color: #9a3412;
   font: inherit;
-  font-weight: 750;
+  font-weight: 800;
   cursor: pointer;
 }
 .whatsapp-consent {
@@ -1034,7 +1034,7 @@ select {
 .booking-submit {
   min-height: 3rem;
   border-radius: 0.75rem;
-  font-weight: 750;
+  font-weight: 800;
   transition:
     opacity 150ms ease,
     transform 150ms ease;
@@ -1167,7 +1167,7 @@ select {
   color: #9a3412;
   font: inherit;
   font-size: 0.85rem;
-  font-weight: 750;
+  font-weight: 800;
   text-decoration: none;
   cursor: pointer;
 }
@@ -1296,7 +1296,7 @@ select {
     color: white;
     font: inherit;
     font-size: 0.78rem;
-    font-weight: 750;
+    font-weight: 800;
   }
   .pwa-install-prompt .pwa-install-dismiss {
     width: 2rem;

@@ -77,8 +77,19 @@ validação.
 - A verificação de formatação apontou seis arquivos existentes não formatados;
   os mesmos seis também falharam na revisão correspondente ao `HEAD`. O
   ESLint direcionado passou, sem reformatar arquivos inteiros não relacionados.
-- CSS e Google Fonts continuam no caminho inicial: as alternativas avaliadas
-  não foram alteradas sem evidência de ganho e segurança visual. O iframe de
-  autenticação e Sentry em tempo de execução não tiveram seu comportamento
-  interno alterado. O maior chunk de catálogo continua acima de 500 kB
-  minificados; ganhos adicionais requerem investigação.
+- Plus Jakarta Sans agora é servida pelo cliente como WOFF2 Latin local
+  (27.348 bytes), pré-carregada no HTML, e Latin-Extended (21.728 bytes) sob
+  demanda. Ambas declaram pesos 400–800 e `font-display: swap`. A folha externa
+  do Google Fonts (621 bytes transferidos na consulta com user-agent Chrome)
+  foi removida. No preview de produção, o navegador carregou a fonte local,
+  confirmou os pesos 400 e 800 e não solicitou recursos de
+  `fonts.googleapis.com` ou `fonts.gstatic.com`.
+- O CSS global continua como stylesheet do Vite no `<head>` para evitar FOUC.
+  Não foi adiado nem duplicado inline, pois não houve evidência de CSS removível
+  com   segurança. O asset final tem 71.320 bytes, 668 bytes acima dos 70.652
+  bytes do asset prévio; o Vite reportou 14,38 kB gzip, não comparável
+  diretamente aos 12,7 KiB transferidos pelo PageSpeed. A inspeção visual
+  local da página inicial não mostrou regressão perceptível.
+- O iframe de autenticação e Sentry em tempo de execução não tiveram seu
+  comportamento interno alterado. O maior chunk de catálogo continua acima de
+  500 kB minificados; ganhos adicionais requerem investigação.
