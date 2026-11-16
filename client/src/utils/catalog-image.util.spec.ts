@@ -16,7 +16,7 @@ describe('CatalogImageUtil', () => {
       const url = new URL(source);
       expect(url.searchParams.get('w')).toBe(String(width));
       expect(url.searchParams.get('auto')).toBe('format');
-      expect(url.searchParams.get('q')).toBe('85');
+      expect(url.searchParams.get('q')).toBe('75');
       expect(url.searchParams.get('ixid')).toBe('example');
       expect(descriptor).toBe(`${width}w`);
     }

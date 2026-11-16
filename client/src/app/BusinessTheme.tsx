@@ -1,6 +1,6 @@
 import type { CSSProperties, JSX, ReactNode } from 'react';
-import { ColorUtil } from '../utils/color.util';
 import type { CompanySummary } from '../interfaces/company.interface';
+import { ColorUtil } from '../utils/color.util';
 
 type ThemeStyle = CSSProperties & Record<`--${string}`, string>;
 

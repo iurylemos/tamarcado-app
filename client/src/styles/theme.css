@@ -307,13 +307,15 @@ html[data-navigating] main {
   background: rgb(255 255 255 / 0.25);
 }
 .company-hero .skeleton {
+  background: rgb(255 255 255 / 0.16);
+}
+.company-hero .skeleton::after {
   background: linear-gradient(
     90deg,
-    rgb(255 255 255 / 0.16) 20%,
-    rgb(255 255 255 / 0.32) 38%,
-    rgb(255 255 255 / 0.16) 56%
+    transparent 20%,
+    rgb(255 255 255 / 0.32) 50%,
+    transparent 80%
   );
-  background-size: 220% 100%;
 }
 @media (max-width: 639px) {
   .catalog-page {
@@ -627,8 +629,7 @@ html[data-navigating] main {
 
 /* Skeleton mirrors the full-bleed card */
 .skeleton {
-  background: linear-gradient(90deg, #e9eff4 20%, #d9e3eb 38%, #e9eff4 56%);
-  background-size: 220% 100%;
+  background: #e9eff4;
 }
 .skeleton-card {
   border-color: transparent;
@@ -652,6 +653,9 @@ html[data-navigating] main {
 }
 .skeleton-card--service .skeleton-card__body .skeleton {
   background: rgb(255 255 255 / 0.55);
+}
+.skeleton-card--service .skeleton-card__body .skeleton::after {
+  background: linear-gradient(90deg, transparent 20%, rgb(255 255 255 / 0.9) 50%, transparent 80%);
 }
 .skeleton-card--service .skeleton-card__price {
   top: 0.55rem;

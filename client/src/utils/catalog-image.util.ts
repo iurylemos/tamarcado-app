@@ -22,6 +22,8 @@ export class CatalogImageUtil {
       url.searchParams.set('auto', 'format');
     }
 
+    url.searchParams.set('q', '75');
+
     const srcSet = this.widths
       .map((width) => {
         url.searchParams.set('w', String(width));
