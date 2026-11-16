@@ -112,8 +112,13 @@ provedores, incluindo Firebase Storage, mantêm a URL cadastrada.
 A Plus Jakarta Sans é servida localmente em WOFF2 nos subconjuntos Latin e
 Latin-Extended, com pesos 400–800 e `font-display: swap`. O subconjunto Latin é
 pré-carregado; Latin-Extended só é baixado quando necessário. O CSS global
-continua sendo emitido pelo Vite como stylesheet para evitar FOUC; não é adiado
-nem duplicado em CSS inline sem evidência segura de ganho.
+de base e catálogo continua sendo emitido pelo Vite como stylesheet para evitar
+FOUC no HTML SSR. Os estilos exclusivos de agendamento ficam em
+`src/styles/booking.css` e são carregados pelo chunk lazy de `BookingPage`; o
+shell de agendamento não contém HTML SSR, e a importação da rota só termina
+depois da folha correspondente carregar. A hidratação com `hydrateRoot` não é
+alterada. CSS crítico não é duplicado inline, pois não houve benefício adicional
+medido.
 
 Durante a busca do catálogo, os esqueletos ocupam o espaço inicial de conteúdo.
 Os títulos e o rodapé aparecem depois da resposta, evitando que a inclusão de

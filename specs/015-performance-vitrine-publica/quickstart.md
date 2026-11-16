@@ -93,3 +93,35 @@ validação.
 - O iframe de autenticação e Sentry em tempo de execução não tiveram seu
   comportamento interno alterado. O maior chunk de catálogo continua acima de
   500 kB minificados; ganhos adicionais requerem investigação.
+
+## CSS inicial por rota — 2026-11-16
+
+- Antes, o build emitia um CSS inicial de 71.324 bytes (71,32 kB; 14,38 kB
+  gzip pelo relatório do Vite). Depois da separação, o HTML inicial referencia
+  somente `index-BkuAhWKP.css`, com 48.750 bytes (48,75 kB; 10,75 kB gzip):
+  redução de 22.574 bytes (31,6%) e 3,63 kB gzip (25,2%). Uma compressão local
+  Brotli com Node mediu 12.598 bytes antes e 9.495 bytes depois; isso não
+  substitui uma medição de transferência no Hosting.
+- O build também emite `BookingPage-CGb4goib.css` (22.859 bytes; 4,64 kB gzip),
+  associado ao import dinâmico da página de agendamento. O HTML inicial continua
+  com uma folha CSS render-blocking; o CSS de booking só é baixado nessa rota.
+  A quantidade de CSS inicial não mudou, mas seu tamanho diminuiu. Não há CSS
+  duplicado no HTML inicial, e não foi usado CSS crítico inline.
+- O CSS comum, catálogo, tokens e tema permanecem globais para estilizar o HTML
+  SSR inicial. Regras exclusivas de agendamento foram movidas sem alterar suas
+  declarações para `client/src/styles/booking.css`. O shell de agendamento não
+  contém HTML SSR; o import dinâmico resolve após o carregamento dessa folha.
+  `hydrateRoot` e a geração de HTML não foram alterados.
+- No preview local, sem throttling de rede ou CPU e em uma amostra por variante,
+  a home SSR registrou FCP/LCP de 52/52 ms antes e 88/88 ms depois, com CLS 0
+  em ambas. A rota de booking de teste registrou FCP 120 ms, LCP 204 ms e CLS
+  0. A variação da home não demonstra regressão nem ganho: as amostras não têm
+  condições controladas e não representam a vitrine publicada; LCP/FCP e metas
+  de campo permanecem não verificados.
+- Validação desta rodada: `tsc --noEmit`, build Vite do cliente, build SSR do
+  cliente e `npm run test --workspace client` passaram (22 arquivos, 135 testes).
+  ESLint passou para `client/src/pages/BookingPage.tsx`; Prettier passou para
+  `client/src/styles/booking.css`. O build foi executado sem a etapa final de
+  geração do storefront, pois `generate-storefront.mts` consulta a coleção
+  `public_businesses` quando não há emulador configurado; dados de produção não
+  foram lidos nem importados.
