@@ -1,5 +1,4 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
 import { FirebaseUtil } from '../utils/firebase.util';
 
@@ -27,7 +26,6 @@ export const firebaseApp = getApps().length
   ? getApp()
   : initializeApp({
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY || FirebaseUtil.defaultKeyEmulator,
-      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
       projectId,
       appId: import.meta.env.VITE_FIREBASE_APP_ID || FirebaseUtil.defaultIdEmulator,
     });
@@ -38,9 +36,6 @@ export const db = initializeFirestore(
   FirebaseUtil.defaultFirestore,
 );
 
-export const auth = getAuth(firebaseApp);
-
 if (useEmulators) {
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
 }

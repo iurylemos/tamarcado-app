@@ -17,7 +17,7 @@ vi.mock('../services/catalog.service', () => ({
   },
 }));
 
-vi.mock('../config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
+vi.mock('../config/firebase.config', () => ({ db: {}, functions: {} }));
 
 function CatalogStart(): JSX.Element {
   return (
