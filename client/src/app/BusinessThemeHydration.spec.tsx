@@ -9,6 +9,7 @@ import { resolvePageData } from './page-data';
 import { RouteUtil } from '../utils/route.util';
 
 vi.mock('../config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
+vi.mock('../config/firebase-functions.config', () => ({ functions: {} }));
 vi.mock('../services/catalog.service', () => ({
   CatalogService: {
     getCompanyCatalog: vi.fn(() => new Promise(() => {})),

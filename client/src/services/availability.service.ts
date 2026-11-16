@@ -5,7 +5,7 @@ import type {
   SearchAvailabilityInput,
   SearchAvailabilityResult,
 } from '@shared/interfaces/availability.interface';
-import { functions } from '../config/firebase.config';
+import { functions } from '../config/firebase-functions.config';
 import { trackClientRequest } from '../config/sentry.config';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
 

@@ -4,7 +4,7 @@
 
 **Criada**: 2026-11-15
 
-**Status**: Rascunho para revisão
+**Status**: Aprovada em conversa
 
 **Input**: otimização local da vitrine pública orientada pelos diagnósticos de
 performance, sem mudanças funcionais, visuais desnecessárias ou deploy.
