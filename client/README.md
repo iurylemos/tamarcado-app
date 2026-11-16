@@ -102,6 +102,24 @@ exigem o ciclo existente de build e publicação do cliente.
 Os comandos de desenvolvimento e build de cada workspace são definidos no
 `package.json` da raiz e nos manifests de cada aplicação.
 
+## Performance da vitrine
+
+O catálogo prioriza a primeira imagem de oferta ativa ou, quando não há ofertas,
+a primeira imagem de serviço. As demais imagens mantêm carregamento preguiçoso.
+URLs compatíveis do Unsplash usam variantes responsivas; imagens de outros
+provedores, incluindo Firebase Storage, mantêm a URL cadastrada.
+
+Durante a busca do catálogo, os esqueletos ocupam o espaço inicial de conteúdo.
+Os títulos e o rodapé aparecem depois da resposta, evitando que a inclusão de
+ofertas desloque conteúdo já exibido. Os arquivos versionados em `assets/` têm
+cache imutável; as rotas HTML da vitrine são revalidadas.
+
+O build de produção pode enviar source maps ao Sentry quando estiver configurado.
+Para um build local sem esse envio, use
+`$env:TAMARCADO_SKIP_SENTRY_UPLOAD='true'; npm run build --workspace client`
+no PowerShell. A geração do storefront continua precisando da configuração
+Firebase e de acesso à fonte de empresas públicas.
+
 ## Sentry no cliente
 
 O cliente envia erros e traces de navegação/requisições ao Sentry somente quando

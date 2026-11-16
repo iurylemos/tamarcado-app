@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, type JSX } from 'react';
-import { MotionConfig, motion } from 'framer-motion';
+import { LazyMotion, MotionConfig, domAnimation, m } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { formatBrl } from '../../../../../shared/domain/money.js';
 import {
@@ -12,6 +12,7 @@ import type {
 } from '../../../interfaces/company.interface.js';
 import { resolvePageMeta, updatePageMeta } from '../../../app/page-meta.js';
 import { CatalogUtil } from '../../../utils/catalog.util.js';
+import { CatalogImageUtil } from '../../../utils/catalog-image.util.js';
 import { RouteUtil } from '../../../utils/route.util.js';
 import Skeleton from '../../atoms/Skeleton/Skeleton.js';
 import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
@@ -39,6 +40,7 @@ export default function CompanyCatalogTemplate({
   const isBusinessLoading = isLoading && catalog === null;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const promotionalProducts = promotions ?? catalog?.promotions ?? [];
+  const activePromotions = promotionalProducts.filter(hasValidActivePromotion);
   const businessSlug = catalog?.business.slug;
 
   useEffect(() => {
@@ -105,259 +107,291 @@ export default function CompanyCatalogTemplate({
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="market-bg" aria-hidden="true" />
-      {status === 'error' && (
-        <main className="page market-page">
-          <p role="alert" className="error state-card">
-            Não foi possível carregar este catálogo.
-          </p>
-        </main>
-      )}
-      {status === 'unavailable' && (
-        <main className="page market-page">
-          <p role="status" className="state-card">
-            Este catálogo está temporariamente indisponível. Tente novamente.
-          </p>
-        </main>
-      )}
-      {status === 'not-found' && (
-        <main className="page market-page">
-          <p role="status" className="state-card">
-            Empresa não encontrada.
-          </p>
-        </main>
-      )}
-      {(isLoading || (status === 'ready' && catalog !== null)) && (
-        <main className="page stack market-page catalog-page">
-          {isLoading && (
-            <p className="skeleton-status" role="status">
-              Carregando catálogo...
+      <LazyMotion features={domAnimation}>
+        <div className="market-bg" aria-hidden="true" />
+        {status === 'error' && (
+          <main className="page market-page">
+            <p role="alert" className="error state-card">
+              Não foi possível carregar este catálogo.
             </p>
-          )}
-          <header className="company-hero">
-            <div className="company-identity" aria-busy={isLoading}>
-              {isBusinessLoading ? (
-                <span className="company-logo catalog-loading-logo" aria-hidden="true" />
-              ) : catalog?.business.logoUrl ? (
-                <img
-                  className="company-logo"
-                  src={catalog.business.logoUrl}
-                  alt={catalog.business.name}
-                />
-              ) : (
-                <span className="company-logo company-logo-placeholder" aria-hidden="true">
-                  ✦
-                </span>
-              )}
-              <div>
-                <p className="eyebrow">CATÁLOGO DA EMPRESA</p>
+          </main>
+        )}
+        {status === 'unavailable' && (
+          <main className="page market-page">
+            <p role="status" className="state-card">
+              Este catálogo está temporariamente indisponível. Tente novamente.
+            </p>
+          </main>
+        )}
+        {status === 'not-found' && (
+          <main className="page market-page">
+            <p role="status" className="state-card">
+              Empresa não encontrada.
+            </p>
+          </main>
+        )}
+        {(isLoading || (status === 'ready' && catalog !== null)) && (
+          <main className="page stack market-page catalog-page">
+            {isLoading && (
+              <p className="skeleton-status" role="status">
+                Carregando catálogo...
+              </p>
+            )}
+            <header className="company-hero">
+              <div className="company-identity" aria-busy={isLoading}>
                 {isBusinessLoading ? (
-                  <Skeleton className="catalog-loading-title" />
+                  <span className="company-logo catalog-loading-logo" aria-hidden="true" />
+                ) : catalog?.business.logoUrl ? (
+                  <img
+                    className="company-logo"
+                    src={catalog.business.logoUrl}
+                    alt={catalog.business.name}
+                  />
                 ) : (
-                  catalog && <h1>{catalog.business.name}</h1>
+                  <span className="company-logo company-logo-placeholder" aria-hidden="true">
+                    ✦
+                  </span>
                 )}
-                {isBusinessLoading ? (
-                  <Skeleton className="catalog-loading-description" />
-                ) : (
-                  catalog?.business.description && <p>{catalog.business.description}</p>
-                )}
-              </div>
-            </div>
-            <span className="company-hero-note">Encontre seu próximo horário</span>
-          </header>
-          {businessSlug && promotionalProducts.some(hasValidActivePromotion) && (
-            <section
-              className="catalog-section promotions-section"
-              aria-labelledby="promotions-heading"
-            >
-              <div className="section-heading">
                 <div>
-                  <h2 id="promotions-heading">Ofertas</h2>
-                  <p className="promotions-description">
-                    Preços especiais em serviços selecionados.
-                  </p>
+                  <p className="eyebrow">CATÁLOGO DA EMPRESA</p>
+                  {isBusinessLoading ? (
+                    <Skeleton className="catalog-loading-title" />
+                  ) : (
+                    catalog && <h1>{catalog.business.name}</h1>
+                  )}
+                  {isBusinessLoading ? (
+                    <Skeleton className="catalog-loading-description" />
+                  ) : (
+                    catalog?.business.description && <p>{catalog.business.description}</p>
+                  )}
                 </div>
               </div>
-              <section className="promotion-grid" aria-label="Produtos em promoção">
-                {promotionalProducts.filter(hasValidActivePromotion).map((product) => {
-                  const variants = product.variantPrices?.length
-                    ? product.variantPrices
-                    : [undefined];
-
-                  return (
-                    <motion.article
-                      className="promotion-card"
-                      key={product.id}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Link
-                        to={RouteUtil.bookingPath(businessSlug, product.id)}
-                        className="promotion-card-link"
-                      >
-                        <div className="promotion-image">
-                          <img
-                            src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
-                            alt={product.name}
-                            loading="lazy"
-                          />
-                          <span className="promotion-badge">Em promoção</span>
-                        </div>
-                        <div className="promotion-body">
-                          <h3>{product.name}</h3>
-                          {product.description && (
-                            <p className="service-description">{product.description}</p>
-                          )}
-                          <div className="promotion-prices">
-                            {variants.map((variant) => {
-                              const pricing = resolveProductPricing(
-                                product,
-                                variant?.selections ?? [],
-                              );
-
-                              if (!pricing?.promotionApplied) return null;
-
-                              const variantLabel = variant?.selections.map((selection, index) => {
-                                const attribute = product.customizationAttributes?.find(
-                                  (item) => item.id === selection.attributeId,
-                                );
-
-                                const option = attribute?.options.find(
-                                  (item) => item.id === selection.optionId,
-                                );
-
-                                return (
-                                  <Fragment key={`${selection.attributeId}:${selection.optionId}`}>
-                                    {index > 0 && ' / '}
-                                    {attribute?.label ?? 'Opção'}:{' '}
-                                    <b>{option?.label ?? 'Indisponível'}</b>
-                                  </Fragment>
-                                );
-                              });
-
-                              const variantKey =
-                                variant?.selections
-                                  .map(
-                                    (selection) => `${selection.attributeId}:${selection.optionId}`,
-                                  )
-                                  .join('|') ?? 'product-price';
-
-                              return (
-                                <div className="promotion-price-row" key={variantKey}>
-                                  {variantLabel && variantLabel.length > 0 && (
-                                    <span className="promotion-variant-label">{variantLabel}</span>
-                                  )}
-                                  <span className="promotion-price-values">
-                                    <s className="promotion-original-price">
-                                      {formatBrl(pricing.originalPriceCents)}
-                                    </s>
-                                    <strong className="promotion-current-price">
-                                      {formatBrl(pricing.effectivePriceCents)}
-                                    </strong>
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <span className="store font-bold">
-                            {CatalogUtil.serviceScheduleLabel(product)}
-                          </span>
-                        </div>
-                      </Link>
-                    </motion.article>
-                  );
-                })}
-              </section>
-            </section>
-          )}
-          <section
-            className="catalog-section"
-            aria-labelledby="catalog-heading"
-            aria-busy={isLoading}
-          >
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">ESCOLHA O QUE COMBINA COM VOCÊ</p>
-                <h2 id="catalog-heading">Serviços disponíveis</h2>
-              </div>
-              {isLoading ? (
-                <Skeleton className="catalog-loading-count" />
-              ) : (
-                catalog && (
-                  <span className="catalog-count">
-                    {catalog.products.length}
-                    {hasMore ? '+' : ''} serviços
-                  </span>
-                )
-              )}
-            </div>
-            {isLoading ? (
+              <span className="company-hero-note">Encontre seu próximo horário</span>
+            </header>
+            {!isLoading && businessSlug && activePromotions.length > 0 && (
               <section
-                className="showcase-grid catalog-grid"
-                aria-label="Carregando serviços"
-                aria-busy="true"
+                className="catalog-section promotions-section"
+                aria-labelledby="promotions-heading"
               >
-                {Array.from({ length: 4 }, (_, index) => (
-                  <div key={`catalog-skeleton-${index}`}>
-                    <SkeletonCard variant="service" imagePlaceholder />
+                <div className="section-heading">
+                  <div>
+                    <h2 id="promotions-heading">Ofertas</h2>
+                    <p className="promotions-description">
+                      Preços especiais em serviços selecionados.
+                    </p>
                   </div>
-                ))}
-              </section>
-            ) : catalog ? (
-              catalog.products.length === 0 ? (
-                <p role="status" className="state-card">
-                  Esta empresa ainda não publicou serviços.
-                </p>
-              ) : (
-                <section className="showcase-grid catalog-grid" aria-label="Serviços">
-                  {catalog.products.map((product, index) => (
-                    <div
-                      key={product.id}
-                      className="rise-in"
-                      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-                    >
-                      <motion.div whileTap={{ scale: 0.97 }}>
+                </div>
+                <section className="promotion-grid" aria-label="Produtos em promoção">
+                  {activePromotions.map((product, index) => {
+                    const variants = product.variantPrices?.length
+                      ? product.variantPrices
+                      : [undefined];
+                    const image = product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl;
+
+                    return (
+                      <m.article
+                        className="promotion-card"
+                        key={product.id}
+                        whileTap={{ scale: 0.98 }}
+                      >
                         <Link
-                          className="product-card catalog-service-card"
-                          to={RouteUtil.bookingPath(catalog.business.slug, product.id)}
+                          to={RouteUtil.bookingPath(businessSlug, product.id)}
+                          className="promotion-card-link"
                         >
-                          <div className="media">
+                          <div className="promotion-image">
                             <img
-                              src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
+                              src={image}
+                              {...CatalogImageUtil.responsive(
+                                image,
+                                '(min-width: 70rem) 25rem, (min-width: 640px) 36vw, calc(100vw - 3rem)',
+                              )}
                               alt={product.name}
-                              loading="lazy"
+                              width="1600"
+                              height="1100"
+                              loading={index === 0 ? 'eager' : 'lazy'}
+                              fetchPriority={index === 0 ? 'high' : undefined}
                             />
-                            <span className="price">{formatBrl(product.priceCents)}</span>
+                            <span className="promotion-badge">Em promoção</span>
                           </div>
-                          <div className="body">
+                          <div className="promotion-body">
                             <h3>{product.name}</h3>
                             {product.description && (
                               <p className="service-description">{product.description}</p>
                             )}
-                            <span className="store">
+                            <div className="promotion-prices">
+                              {variants.map((variant) => {
+                                const pricing = resolveProductPricing(
+                                  product,
+                                  variant?.selections ?? [],
+                                );
+
+                                if (!pricing?.promotionApplied) return null;
+
+                                const variantLabel = variant?.selections.map((selection, index) => {
+                                  const attribute = product.customizationAttributes?.find(
+                                    (item) => item.id === selection.attributeId,
+                                  );
+
+                                  const option = attribute?.options.find(
+                                    (item) => item.id === selection.optionId,
+                                  );
+
+                                  return (
+                                    <Fragment
+                                      key={`${selection.attributeId}:${selection.optionId}`}
+                                    >
+                                      {index > 0 && ' / '}
+                                      {attribute?.label ?? 'Opção'}:{' '}
+                                      <b>{option?.label ?? 'Indisponível'}</b>
+                                    </Fragment>
+                                  );
+                                });
+
+                                const variantKey =
+                                  variant?.selections
+                                    .map(
+                                      (selection) =>
+                                        `${selection.attributeId}:${selection.optionId}`,
+                                    )
+                                    .join('|') ?? 'product-price';
+
+                                return (
+                                  <div className="promotion-price-row" key={variantKey}>
+                                    {variantLabel && variantLabel.length > 0 && (
+                                      <span className="promotion-variant-label">
+                                        {variantLabel}
+                                      </span>
+                                    )}
+                                    <span className="promotion-price-values">
+                                      <s className="promotion-original-price">
+                                        {formatBrl(pricing.originalPriceCents)}
+                                      </s>
+                                      <strong className="promotion-current-price">
+                                        {formatBrl(pricing.effectivePriceCents)}
+                                      </strong>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <span className="store font-bold">
                               {CatalogUtil.serviceScheduleLabel(product)}
-                              {product.estimatedDeliveryEnabled ? ' · Solicitar serviço →' : ' →'}
                             </span>
                           </div>
                         </Link>
-                      </motion.div>
+                      </m.article>
+                    );
+                  })}
+                </section>
+              </section>
+            )}
+            {isLoading ? (
+              <section
+                key="catalog-loading"
+                className="catalog-section"
+                aria-label="Carregando serviços"
+                aria-busy="true"
+              >
+                <div className="showcase-grid catalog-grid">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <div key={`catalog-skeleton-${index}`}>
+                      <SkeletonCard variant="service" imagePlaceholder />
                     </div>
                   ))}
-                  {hasMore && (
-                    <div ref={sentinelRef} aria-hidden="true">
-                      {loadingMore && <SkeletonCard variant="service" imagePlaceholder />}
-                    </div>
+                </div>
+              </section>
+            ) : (
+              <section
+                key="catalog-ready"
+                className="catalog-section"
+                aria-labelledby="catalog-heading"
+              >
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">ESCOLHA O QUE COMBINA COM VOCÊ</p>
+                    <h2 id="catalog-heading">Serviços disponíveis</h2>
+                  </div>
+                  {catalog && (
+                    <span className="catalog-count">
+                      {catalog.products.length}
+                      {hasMore ? '+' : ''} serviços
+                    </span>
                   )}
-                </section>
-              )
-            ) : null}
-          </section>
-          <footer className="tamarcado-brand">
-            <img src="/pwa-icon.svg" alt="" width="24" height="24" loading="lazy" />
-            <span>Agendamentos online com Tá Marcado</span>
-          </footer>
-          {catalog && <PwaInstallPrompt businessName={catalog.business.name} />}
-        </main>
-      )}
+                </div>
+                {catalog &&
+                  (catalog.products.length === 0 ? (
+                    <p role="status" className="state-card">
+                      Esta empresa ainda não publicou serviços.
+                    </p>
+                  ) : (
+                    <section className="showcase-grid catalog-grid" aria-label="Serviços">
+                      {catalog.products.map((product, index) => (
+                        <div
+                          key={product.id}
+                          className="rise-in"
+                          style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                        >
+                          <m.div whileTap={{ scale: 0.97 }}>
+                            <Link
+                              className="product-card catalog-service-card"
+                              to={RouteUtil.bookingPath(catalog.business.slug, product.id)}
+                            >
+                              <div className="media">
+                                <img
+                                  src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
+                                  {...CatalogImageUtil.responsive(
+                                    product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl,
+                                    '(min-width: 70rem) 260px, (min-width: 960px) 25vw, (min-width: 640px) 33vw, 50vw',
+                                  )}
+                                  alt={product.name}
+                                  width="400"
+                                  height="500"
+                                  loading={
+                                    index === 0 && activePromotions.length === 0 ? 'eager' : 'lazy'
+                                  }
+                                  fetchPriority={
+                                    index === 0 && activePromotions.length === 0
+                                      ? 'high'
+                                      : undefined
+                                  }
+                                />
+                                <span className="price">{formatBrl(product.priceCents)}</span>
+                              </div>
+                              <div className="body">
+                                <h3>{product.name}</h3>
+                                {product.description && (
+                                  <p className="service-description">{product.description}</p>
+                                )}
+                                <span className="store">
+                                  {CatalogUtil.serviceScheduleLabel(product)}
+                                  {product.estimatedDeliveryEnabled
+                                    ? ' · Solicitar serviço →'
+                                    : ' →'}
+                                </span>
+                              </div>
+                            </Link>
+                          </m.div>
+                        </div>
+                      ))}
+                      {hasMore && (
+                        <div ref={sentinelRef} aria-hidden="true">
+                          {loadingMore && <SkeletonCard variant="service" imagePlaceholder />}
+                        </div>
+                      )}
+                    </section>
+                  ))}
+              </section>
+            )}
+            {!isLoading && (
+              <footer className="tamarcado-brand">
+                <img src="/pwa-icon.svg" alt="" width="24" height="24" loading="lazy" />
+                <span>Agendamentos online com Tá Marcado</span>
+              </footer>
+            )}
+            {catalog && <PwaInstallPrompt businessName={catalog.business.name} />}
+          </main>
+        )}
+      </LazyMotion>
     </MotionConfig>
   );
 }

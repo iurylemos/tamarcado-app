@@ -9,6 +9,7 @@ import type { CompanySummary } from './interfaces/company.interface';
 import { calculateContrastRatio } from '../../shared/domain/color';
 
 vi.mock('./config/firebase.config', () => ({ db: {}, functions: {}, auth: {} }));
+vi.mock('./config/firebase-functions.config', () => ({ functions: {} }));
 
 const template = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 

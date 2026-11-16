@@ -44,7 +44,8 @@ describe('CompanyCatalogPage', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Carregando catálogo');
     expect(screen.getByRole('status')).toHaveClass('skeleton-status');
-    expect(screen.getByRole('heading', { name: 'Serviços disponíveis' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Serviços disponíveis' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Agendamentos online com Tá Marcado')).not.toBeInTheDocument();
     expect(screen.getByText('Encontre seu próximo horário')).toBeInTheDocument();
     expect(container.querySelector('.company-identity')).toHaveAttribute('aria-busy', 'true');
     expect(container.querySelector('.catalog-section')).toHaveAttribute('aria-busy', 'true');
@@ -143,6 +144,7 @@ describe('CompanyCatalogPage', () => {
     document.head.append(openGraphTitle);
 
     const { unmount } = renderCatalogPage('studio-aurora');
+    const loadingSection = document.querySelector('.catalog-section');
 
     expect(await screen.findByRole('heading', { name: 'Studio Aurora' })).toBeInTheDocument();
     expect(document.querySelector('.skeleton-card')).not.toBeInTheDocument();
@@ -157,6 +159,18 @@ describe('CompanyCatalogPage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Corte e finalização' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Serviços disponíveis' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Serviços disponíveis' }).closest('section'),
+    ).not.toBe(loadingSection);
+    expect(screen.getByRole('img', { name: 'Corte e finalização' })).toHaveAttribute(
+      'fetchpriority',
+      'high',
+    );
+    expect(screen.getByRole('img', { name: 'Corte e finalização' })).not.toHaveAttribute(
+      'loading',
+      'lazy',
+    );
 
     expect(screen.getByText(/120,00/)).toBeInTheDocument();
     expect(screen.getByText(/60 min/)).toBeInTheDocument();
@@ -242,6 +256,12 @@ describe('CompanyCatalogPage', () => {
     expect(offers).toHaveTextContent('Cor: Vermelho');
     expect(offers.querySelectorAll('.promotion-original-price')).toHaveLength(2);
     expect(offers.querySelectorAll('.promotion-card')).toHaveLength(1);
+    const offerImage = offers.querySelector('img');
+    const regularImage = regularCatalog.querySelector('img');
+    expect(offerImage).toHaveAttribute('fetchpriority', 'high');
+    expect(offerImage).not.toHaveAttribute('loading', 'lazy');
+    expect(regularImage).toHaveAttribute('loading', 'lazy');
+    expect(regularImage).not.toHaveAttribute('fetchpriority', 'high');
     expect(offers).toHaveTextContent(/R\$\s*150,00/);
     expect(offers).toHaveTextContent(/R\$\s*120,00/);
     expect(offers).toHaveTextContent(/R\$\s*110,00/);

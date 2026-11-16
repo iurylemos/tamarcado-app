@@ -1,5 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../config/firebase.config';
+import { functions } from '../config/firebase-functions.config';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
 import { trackClientRequest } from '../config/sentry.config';
 import type {
