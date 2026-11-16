@@ -77,8 +77,51 @@ validação.
 - A verificação de formatação apontou seis arquivos existentes não formatados;
   os mesmos seis também falharam na revisão correspondente ao `HEAD`. O
   ESLint direcionado passou, sem reformatar arquivos inteiros não relacionados.
-- CSS e Google Fonts continuam no caminho inicial: as alternativas avaliadas
-  não foram alteradas sem evidência de ganho e segurança visual. O iframe de
-  autenticação e Sentry em tempo de execução não tiveram seu comportamento
-  interno alterado. O maior chunk de catálogo continua acima de 500 kB
-  minificados; ganhos adicionais requerem investigação.
+- Plus Jakarta Sans agora é servida pelo cliente como WOFF2 Latin local
+  (27.348 bytes), pré-carregada no HTML, e Latin-Extended (21.728 bytes) sob
+  demanda. Ambas declaram pesos 400–800 e `font-display: swap`. A folha externa
+  do Google Fonts (621 bytes transferidos na consulta com user-agent Chrome)
+  foi removida. No preview de produção, o navegador carregou a fonte local,
+  confirmou os pesos 400 e 800 e não solicitou recursos de
+  `fonts.googleapis.com` ou `fonts.gstatic.com`.
+- O CSS global continua como stylesheet do Vite no `<head>` para evitar FOUC.
+  Não foi adiado nem duplicado inline, pois não houve evidência de CSS removível
+  com   segurança. O asset final tem 71.320 bytes, 668 bytes acima dos 70.652
+  bytes do asset prévio; o Vite reportou 14,38 kB gzip, não comparável
+  diretamente aos 12,7 KiB transferidos pelo PageSpeed. A inspeção visual
+  local da página inicial não mostrou regressão perceptível.
+- O iframe de autenticação e Sentry em tempo de execução não tiveram seu
+  comportamento interno alterado. O maior chunk de catálogo continua acima de
+  500 kB minificados; ganhos adicionais requerem investigação.
+
+## CSS inicial por rota — 2026-11-16
+
+- Antes, o build emitia um CSS inicial de 71.324 bytes (71,32 kB; 14,38 kB
+  gzip pelo relatório do Vite). Depois da separação, o HTML inicial referencia
+  somente `index-BkuAhWKP.css`, com 48.750 bytes (48,75 kB; 10,75 kB gzip):
+  redução de 22.574 bytes (31,6%) e 3,63 kB gzip (25,2%). Uma compressão local
+  Brotli com Node mediu 12.598 bytes antes e 9.495 bytes depois; isso não
+  substitui uma medição de transferência no Hosting.
+- O build também emite `BookingPage-CGb4goib.css` (22.859 bytes; 4,64 kB gzip),
+  associado ao import dinâmico da página de agendamento. O HTML inicial continua
+  com uma folha CSS render-blocking; o CSS de booking só é baixado nessa rota.
+  A quantidade de CSS inicial não mudou, mas seu tamanho diminuiu. Não há CSS
+  duplicado no HTML inicial, e não foi usado CSS crítico inline.
+- O CSS comum, catálogo, tokens e tema permanecem globais para estilizar o HTML
+  SSR inicial. Regras exclusivas de agendamento foram movidas sem alterar suas
+  declarações para `client/src/styles/booking.css`. O shell de agendamento não
+  contém HTML SSR; o import dinâmico resolve após o carregamento dessa folha.
+  `hydrateRoot` e a geração de HTML não foram alterados.
+- No preview local, sem throttling de rede ou CPU e em uma amostra por variante,
+  a home SSR registrou FCP/LCP de 52/52 ms antes e 88/88 ms depois, com CLS 0
+  em ambas. A rota de booking de teste registrou FCP 120 ms, LCP 204 ms e CLS
+  0. A variação da home não demonstra regressão nem ganho: as amostras não têm
+  condições controladas e não representam a vitrine publicada; LCP/FCP e metas
+  de campo permanecem não verificados.
+- Validação desta rodada: `tsc --noEmit`, build Vite do cliente, build SSR do
+  cliente e `npm run test --workspace client` passaram (22 arquivos, 135 testes).
+  ESLint passou para `client/src/pages/BookingPage.tsx`; Prettier passou para
+  `client/src/styles/booking.css`. O build foi executado sem a etapa final de
+  geração do storefront, pois `generate-storefront.mts` consulta a coleção
+  `public_businesses` quando não há emulador configurado; dados de produção não
+  foram lidos nem importados.

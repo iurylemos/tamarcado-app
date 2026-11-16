@@ -5,9 +5,9 @@ import { resolvePageData } from './app/page-data';
 import type { StorefrontInitialData } from './interfaces/storefront-render.interface';
 import type { PageComponents } from './interfaces/page.interface';
 import { createQueryClient } from './config/query-client.config';
+import { RouteUtil } from './utils/route.util';
 import './styles/index.css';
 import './styles/theme.css';
-import { RouteUtil } from './utils/route.util';
 
 const stateElementId = '__STOREFRONT_STATE__';
 

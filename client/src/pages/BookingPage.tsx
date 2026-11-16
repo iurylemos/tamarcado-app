@@ -31,6 +31,7 @@ import BusinessTheme from '../app/BusinessTheme';
 import { CatalogService } from '../services/catalog.service';
 import { AvailabilityService } from '../services/availability.service';
 import { AppointmentService } from '../services/appointment.service';
+import '../styles/booking.css';
 
 type BookingPageProps = {
   slug: string;
