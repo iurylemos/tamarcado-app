@@ -1,25 +1,23 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { addBreadcrumb, reactErrorHandler, withErrorBoundary } from '@sentry/react';
-import { initializeMonitoring } from '../config/sentry.config';
-import { SentryUtil } from '../utils/sentry.util';
-import FallbackError from '../components/atoms/FallbackError';
+import { ensureMonitoringInitialized } from '../config/sentry-loader';
 import { resolvePageMeta, updatePageMeta } from './page-meta';
 import { RouteUtil } from '../utils/route.util';
 
 type LayoutProps = { children: ReactNode };
 
-function Layout({ children }: Readonly<LayoutProps>): ReactNode {
+export default function Layout({ children }: Readonly<LayoutProps>): ReactNode {
   const { pathname } = useLocation();
   const initialPathname = useRef(pathname);
 
   useEffect(() => {
-    initializeMonitoring();
-
-    const breadcrumb = SentryUtil.createSafeRouteBreadcrumb(pathname);
-    if (breadcrumb) addBreadcrumb(breadcrumb);
-
     if (initialPathname.current === pathname) return;
+
+    void ensureMonitoringInitialized()
+      .then(({ addRouteBreadcrumb }) => addRouteBreadcrumb(pathname))
+      .catch((error: unknown) => {
+        console.error('Failed to add Sentry route breadcrumb.', error);
+      });
 
     const route = RouteUtil.matchRoute(pathname);
 
@@ -30,9 +28,3 @@ function Layout({ children }: Readonly<LayoutProps>): ReactNode {
 
   return children;
 }
-
-export default withErrorBoundary(Layout, {
-  fallback: <FallbackError />,
-  onError: (error: unknown, componentStack: string) =>
-    reactErrorHandler()(error, { componentStack }),
-});
