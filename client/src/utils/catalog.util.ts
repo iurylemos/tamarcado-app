@@ -1,5 +1,11 @@
+import type { InfiniteData } from '@tanstack/react-query';
 import { resolveProductPricing } from '../../../shared/domain/product-price.js';
-import type { PublicProductSummary } from '../interfaces/company.interface';
+import type {
+  CompanyCatalog,
+  CompanySummary,
+  PublicProductSummary,
+} from '../interfaces/company.interface';
+import type { PublicCatalogStatus } from '../interfaces/catalog.interface.js';
 
 type ProductVariantSelections = NonNullable<
   PublicProductSummary['variantPrices']
@@ -62,5 +68,44 @@ export class CatalogUtil {
     return product.estimatedDeliveryEnabled
       ? this.estimatedDeliveryLabel(product)
       : `${product.durationMinutes} min · Escolher horário`;
+  }
+
+  public static getCatalogByPage(
+    data: InfiniteData<CompanyCatalog | null, unknown>,
+  ): CompanyCatalog | null {
+    const pages = data?.pages ?? [];
+    const [first] = pages;
+
+    if (!first) return null;
+
+    return { ...first, products: pages.flatMap((page) => page?.products ?? []) };
+  }
+
+  public static checkCatalogAvailability(error: Error | null): boolean {
+    return (
+      error !== null &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'unavailable' || error.code === 'firestore/unavailable')
+    );
+  }
+
+  public static checkCatalogStatus(
+    isPending: boolean,
+    isError: boolean,
+    isUnavailable: boolean,
+    catalog: CompanyCatalog | null,
+    isFetched: boolean,
+    initialBusiness?: CompanySummary | null,
+  ): PublicCatalogStatus | 'loading' {
+    return isPending || (initialBusiness != null && !isFetched)
+      ? 'loading'
+      : isError
+        ? isUnavailable
+          ? 'unavailable'
+          : 'error'
+        : catalog
+          ? 'ready'
+          : 'not-found';
   }
 }

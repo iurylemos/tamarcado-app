@@ -19,6 +19,13 @@ import SkeletonCard from '../../molecules/SkeletonCard/SkeletonCard.js';
 import PwaInstallPrompt from '../../organisms/PwaInstallPrompt/PwaInstallPrompt.js';
 import { PwaManifestService } from '../../../services/pwa-manifest.service.js';
 
+type CatalogTemplateData = {
+  isBusinessLoading: boolean;
+  businessSlug: string | undefined;
+  activePromotions: PublicProductSummary[];
+  isLoading: boolean;
+};
+
 type CompanyCatalogTemplateProps = {
   catalog: CompanyCatalog | null;
   promotions?: PublicProductSummary[];
@@ -36,12 +43,18 @@ export default function CompanyCatalogTemplate({
   loadingMore = false,
   onLoadMore,
 }: Readonly<CompanyCatalogTemplateProps>): JSX.Element {
-  const isLoading = useMemo<boolean>(() => status === 'loading', [status]);
-  const isBusinessLoading = isLoading && catalog === null;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const promotionalProducts = promotions ?? catalog?.promotions ?? [];
-  const activePromotions = promotionalProducts.filter(hasValidActivePromotion);
-  const businessSlug = catalog?.business.slug;
+
+  const { isBusinessLoading, businessSlug, activePromotions, isLoading } =
+    useMemo<CatalogTemplateData>(
+      () => ({
+        isLoading: status === 'loading',
+        isBusinessLoading: status === 'loading' && catalog === null,
+        businessSlug: catalog?.business.slug,
+        activePromotions: (promotions ?? catalog?.promotions ?? []).filter(hasValidActivePromotion),
+      }),
+      [catalog, status, promotions],
+    );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -57,7 +70,7 @@ export default function CompanyCatalogTemplate({
     observer.observe(sentinel);
 
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, onLoadMore, catalog?.products.length]);
+  }, [hasMore, loadingMore, onLoadMore, catalog]);
 
   useEffect(() => {
     if (status !== 'ready' || !catalog) return;
@@ -210,6 +223,7 @@ export default function CompanyCatalogTemplate({
                               height="1100"
                               loading={index === 0 ? 'eager' : 'lazy'}
                               fetchPriority={index === 0 ? 'high' : 'auto'}
+                              decoding="async"
                             />
                             <span className="promotion-badge">Em promoção</span>
                           </div>
@@ -328,6 +342,9 @@ export default function CompanyCatalogTemplate({
                       {catalog.products.map((product, index) => {
                         const isPriorityImage = index === 0 && activePromotions.length === 0;
 
+                        const srcCurrentImage =
+                          product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl;
+
                         return (
                           <div
                             key={product.id}
@@ -341,11 +358,9 @@ export default function CompanyCatalogTemplate({
                               >
                                 <div className="media">
                                   <img
-                                    src={
-                                      product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl
-                                    }
+                                    src={srcCurrentImage}
                                     {...CatalogImageUtil.responsive(
-                                      product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl,
+                                      srcCurrentImage,
                                       '(min-width: 70rem) 260px, (min-width: 960px) 25vw, (min-width: 640px) 33vw, 50vw',
                                     )}
                                     alt={product.name}
@@ -353,6 +368,7 @@ export default function CompanyCatalogTemplate({
                                     height="500"
                                     loading={isPriorityImage ? 'eager' : 'lazy'}
                                     fetchPriority={isPriorityImage ? 'high' : 'auto'}
+                                    decoding="async"
                                   />
                                   <span className="price">{formatBrl(product.priceCents)}</span>
                                 </div>
