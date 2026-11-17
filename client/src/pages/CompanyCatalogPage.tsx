@@ -8,6 +8,11 @@ import { CatalogUtil } from '../utils/catalog.util';
 import CompanyCatalogTemplate from '../components/templates/CompanyCatalogTemplate/CompanyCatalogTemplate';
 import BusinessTheme from '../app/BusinessTheme';
 
+type CompanyCatalogData = {
+  catalog: CompanyCatalog | null;
+  status: PublicCatalogStatus | 'loading';
+};
+
 type CompanyCatalogPageProps = {
   slug: string;
   initialBusiness?: CompanySummary | null;
@@ -30,7 +35,7 @@ export default function CompanyCatalogPage({
   } = useInfiniteQuery({
     queryKey: [...ReactQueryConfig.companyCatalogQueryKey(slug), 'pages'],
     queryFn: async ({ pageParam }): Promise<CompanyCatalog | null> => {
-      return await CatalogService.getCompanyCatalog(slug, {
+      return CatalogService.getCompanyCatalog(slug, {
         pageSize: CatalogUtil.defaultLimitPageSize,
         after: pageParam,
       });
@@ -54,37 +59,23 @@ export default function CompanyCatalogPage({
     initialDataUpdatedAt: 0,
   });
 
-  const catalog = useMemo<CompanyCatalog | null>(() => {
-    const pages = data?.pages ?? [];
-    const [first] = pages;
+  const { catalog, status } = useMemo<CompanyCatalogData>(() => {
+    const catalog = CatalogUtil.getCatalogByPage(data);
+    const isUnavailable = CatalogUtil.checkCatalogAvailability(error);
+    const status = CatalogUtil.checkCatalogStatus(
+      isPending,
+      isError,
+      isUnavailable,
+      catalog,
+      isFetched,
+      initialBusiness,
+    );
 
-    if (!first) return null;
-
-    return { ...first, products: pages.flatMap((page) => page?.products ?? []) };
-  }, [data]);
-
-  const isUnavailable = useMemo<boolean>(
-    () =>
-      error !== null &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error.code === 'unavailable' || error.code === 'firestore/unavailable'),
-    [error],
-  );
-
-  const status = useMemo<PublicCatalogStatus | 'loading'>(
-    () =>
-      isPending || (initialBusiness != null && !isFetched)
-        ? 'loading'
-        : isError
-          ? isUnavailable
-            ? 'unavailable'
-            : 'error'
-          : catalog
-            ? 'ready'
-            : 'not-found',
-    [isPending, isFetched, isError, isUnavailable, catalog, initialBusiness],
-  );
+    return {
+      catalog,
+      status,
+    };
+  }, [data, error, initialBusiness, isError, isPending, isFetched]);
 
   useEffect(() => {
     if (catalog) {

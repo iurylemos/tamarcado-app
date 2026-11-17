@@ -1,9 +1,18 @@
-import type {
-  ErrorEvent,
-  Breadcrumb as SentryBreadcrumb,
-  Event as SentryEvent,
+import {
+  addBreadcrumb,
+  captureException,
+  metrics,
+  startSpan,
+  type ErrorEvent,
+  type Breadcrumb as SentryBreadcrumb,
+  type Event as SentryEvent,
+  type Span,
 } from '@sentry/react';
-import type { SentryDeduplications, SentryDataCollection } from '../interfaces/sentry.interface';
+import type {
+  SentryDeduplications,
+  SentryDataCollection,
+  SentryClientRequestOperation,
+} from '../interfaces/sentry.interface';
 
 export class SentryUtil {
   public static readonly safeRouteTemplates = new Set([
@@ -53,7 +62,7 @@ export class SentryUtil {
   }
 
   public static createSafeRouteBreadcrumb(path: string): SentryBreadcrumb | null {
-    const route = this.routeTemplate(path);
+    const route = SentryUtil.routeTemplate(path);
 
     if (route === null) {
       return null;
@@ -82,7 +91,7 @@ export class SentryUtil {
           return null;
         }
 
-        const route = this.routeTemplate(routeValue);
+        const route = SentryUtil.routeTemplate(routeValue);
 
         if (!route) {
           return null;
@@ -155,7 +164,7 @@ export class SentryUtil {
       event.transaction =
         typeof window === 'undefined'
           ? 'unknown'
-          : (this.routeTemplate(window.location.pathname) ?? 'unknown');
+          : (SentryUtil.routeTemplate(window.location.pathname) ?? 'unknown');
 
       if (event.exception?.values) {
         event.exception = {
@@ -163,7 +172,7 @@ export class SentryUtil {
             const safeStacktrace = exception.stacktrace
               ? {
                   frames: exception.stacktrace.frames?.map((frame) => ({
-                    filename: this.safeFrameFilename(frame.filename),
+                    filename: SentryUtil.safeFrameFilename(frame.filename),
                     ...(frame.lineno !== undefined ? { lineno: frame.lineno } : {}),
                     ...(frame.colno !== undefined ? { colno: frame.colno } : {}),
                     ...(frame.in_app !== undefined ? { in_app: frame.in_app } : {}),
@@ -172,7 +181,7 @@ export class SentryUtil {
               : undefined;
 
             return {
-              type: this.safeExceptionType(exception.type),
+              type: SentryUtil.safeExceptionType(exception.type),
               value: 'Unexpected client error',
               ...(typeof exception.mechanism?.handled === 'boolean'
                 ? { mechanism: { type: 'generic', handled: exception.mechanism.handled } }
@@ -184,7 +193,7 @@ export class SentryUtil {
       }
 
       event.breadcrumbs = (event.breadcrumbs ?? [])
-        .map((breadcrumb) => this.sanitizeBreadcrumb(breadcrumb))
+        .map((breadcrumb) => SentryUtil.sanitizeBreadcrumb(breadcrumb))
         .filter((breadcrumb: SentryBreadcrumb | null) => breadcrumb !== null);
 
       return event;
@@ -225,5 +234,64 @@ export class SentryUtil {
 
       return event;
     };
+  }
+
+  public static async trackClientRequest<T>(
+    operation: SentryClientRequestOperation,
+    request: () => Promise<T>,
+  ): Promise<T> {
+    return await startSpan(
+      {
+        name: `client.${operation}`,
+        op: 'app.request',
+        attributes: { 'app.operation': operation },
+      },
+      async (span: Span): Promise<T> => {
+        const startedAt = performance.now();
+
+        addBreadcrumb({
+          category: 'app.operation',
+          message: 'Request started',
+          level: 'info',
+          data: { operation },
+        });
+
+        try {
+          return await request();
+        } catch (error: unknown) {
+          span.setAttribute('app.stage', 'client_request_failed');
+
+          addBreadcrumb({
+            category: 'app.operation',
+            message: 'Request failed',
+            level: 'error',
+            data: { operation },
+          });
+
+          if (this.isUnexpectedError(error)) {
+            captureException(error, {
+              tags: {
+                app: 'client',
+                operation,
+              },
+            });
+          }
+
+          throw error;
+        } finally {
+          const durationMs = Math.round(performance.now() - startedAt);
+
+          span.setAttribute('app.duration_ms', durationMs);
+
+          metrics.distribution('client.request.duration', durationMs, {
+            unit: 'millisecond',
+            attributes: {
+              operation,
+              stage: 'client_request',
+            },
+          });
+        }
+      },
+    );
   }
 }
