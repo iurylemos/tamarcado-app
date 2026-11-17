@@ -209,7 +209,7 @@ export default function CompanyCatalogTemplate({
                               width="1600"
                               height="1100"
                               loading={index === 0 ? 'eager' : 'lazy'}
-                              fetchPriority={index === 0 ? 'high' : undefined}
+                              fetchPriority={index === 0 ? 'high' : 'auto'}
                             />
                             <span className="promotion-badge">Em promoção</span>
                           </div>
@@ -325,54 +325,54 @@ export default function CompanyCatalogTemplate({
                     </p>
                   ) : (
                     <section className="showcase-grid catalog-grid" aria-label="Serviços">
-                      {catalog.products.map((product, index) => (
-                        <div
-                          key={product.id}
-                          className="rise-in"
-                          style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-                        >
-                          <m.div whileTap={{ scale: 0.97 }}>
-                            <Link
-                              className="product-card catalog-service-card"
-                              to={RouteUtil.bookingPath(catalog.business.slug, product.id)}
-                            >
-                              <div className="media">
-                                <img
-                                  src={product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl}
-                                  {...CatalogImageUtil.responsive(
-                                    product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl,
-                                    '(min-width: 70rem) 260px, (min-width: 960px) 25vw, (min-width: 640px) 33vw, 50vw',
+                      {catalog.products.map((product, index) => {
+                        const isPriorityImage = index === 0 && activePromotions.length === 0;
+
+                        return (
+                          <div
+                            key={product.id}
+                            className="rise-in"
+                            style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                          >
+                            <m.div whileTap={{ scale: 0.97 }}>
+                              <Link
+                                className="product-card catalog-service-card"
+                                to={RouteUtil.bookingPath(catalog.business.slug, product.id)}
+                              >
+                                <div className="media">
+                                  <img
+                                    src={
+                                      product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl
+                                    }
+                                    {...CatalogImageUtil.responsive(
+                                      product.defaultImages?.[0]?.downloadUrl ?? product.imageUrl,
+                                      '(min-width: 70rem) 260px, (min-width: 960px) 25vw, (min-width: 640px) 33vw, 50vw',
+                                    )}
+                                    alt={product.name}
+                                    width="400"
+                                    height="500"
+                                    loading={isPriorityImage ? 'eager' : 'lazy'}
+                                    fetchPriority={isPriorityImage ? 'high' : 'auto'}
+                                  />
+                                  <span className="price">{formatBrl(product.priceCents)}</span>
+                                </div>
+                                <div className="body">
+                                  <h3>{product.name}</h3>
+                                  {product.description && (
+                                    <p className="service-description">{product.description}</p>
                                   )}
-                                  alt={product.name}
-                                  width="400"
-                                  height="500"
-                                  loading={
-                                    index === 0 && activePromotions.length === 0 ? 'eager' : 'lazy'
-                                  }
-                                  fetchPriority={
-                                    index === 0 && activePromotions.length === 0
-                                      ? 'high'
-                                      : undefined
-                                  }
-                                />
-                                <span className="price">{formatBrl(product.priceCents)}</span>
-                              </div>
-                              <div className="body">
-                                <h3>{product.name}</h3>
-                                {product.description && (
-                                  <p className="service-description">{product.description}</p>
-                                )}
-                                <span className="store">
-                                  {CatalogUtil.serviceScheduleLabel(product)}
-                                  {product.estimatedDeliveryEnabled
-                                    ? ' · Solicitar serviço →'
-                                    : ' →'}
-                                </span>
-                              </div>
-                            </Link>
-                          </m.div>
-                        </div>
-                      ))}
+                                  <span className="store">
+                                    {CatalogUtil.serviceScheduleLabel(product)}
+                                    {product.estimatedDeliveryEnabled
+                                      ? ' · Solicitar serviço →'
+                                      : ' →'}
+                                  </span>
+                                </div>
+                              </Link>
+                            </m.div>
+                          </div>
+                        );
+                      })}
                       {hasMore && (
                         <div ref={sentinelRef} aria-hidden="true">
                           {loadingMore && <SkeletonCard variant="service" imagePlaceholder />}

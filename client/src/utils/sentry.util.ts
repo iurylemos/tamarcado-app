@@ -1,9 +1,18 @@
-import type {
-  ErrorEvent,
-  Breadcrumb as SentryBreadcrumb,
-  Event as SentryEvent,
+import {
+  addBreadcrumb,
+  captureException,
+  metrics,
+  startSpan,
+  type ErrorEvent,
+  type Breadcrumb as SentryBreadcrumb,
+  type Event as SentryEvent,
+  type Span,
 } from '@sentry/react';
-import type { SentryDeduplications, SentryDataCollection } from '../interfaces/sentry.interface';
+import type {
+  SentryDeduplications,
+  SentryDataCollection,
+  SentryClientRequestOperation,
+} from '../interfaces/sentry.interface';
 
 export class SentryUtil {
   public static readonly safeRouteTemplates = new Set([
@@ -225,5 +234,64 @@ export class SentryUtil {
 
       return event;
     };
+  }
+
+  public static async trackClientRequest<T>(
+    operation: SentryClientRequestOperation,
+    request: () => Promise<T>,
+  ): Promise<T> {
+    return await startSpan(
+      {
+        name: `client.${operation}`,
+        op: 'app.request',
+        attributes: { 'app.operation': operation },
+      },
+      async (span: Span): Promise<T> => {
+        const startedAt = performance.now();
+
+        addBreadcrumb({
+          category: 'app.operation',
+          message: 'Request started',
+          level: 'info',
+          data: { operation },
+        });
+
+        try {
+          return await request();
+        } catch (error: unknown) {
+          span.setAttribute('app.stage', 'client_request_failed');
+
+          addBreadcrumb({
+            category: 'app.operation',
+            message: 'Request failed',
+            level: 'error',
+            data: { operation },
+          });
+
+          if (this.isUnexpectedError(error)) {
+            captureException(error, {
+              tags: {
+                app: 'client',
+                operation,
+              },
+            });
+          }
+
+          throw error;
+        } finally {
+          const durationMs = Math.round(performance.now() - startedAt);
+
+          span.setAttribute('app.duration_ms', durationMs);
+
+          metrics.distribution('client.request.duration', durationMs, {
+            unit: 'millisecond',
+            attributes: {
+              operation,
+              stage: 'client_request',
+            },
+          });
+        }
+      },
+    );
   }
 }

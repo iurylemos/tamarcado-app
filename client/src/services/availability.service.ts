@@ -6,8 +6,8 @@ import type {
   SearchAvailabilityResult,
 } from '@shared/interfaces/availability.interface';
 import { functions } from '../config/firebase-functions.config';
-import { trackClientRequest } from '../config/sentry.config';
 import { SentryClientRequestOperation } from '../interfaces/sentry.interface';
+import { SentryUtil } from '../utils/sentry.util';
 
 export class AvailabilityService {
   public static async listAvailability(input: ListAvailabilityInput): Promise<AvailableSlot[]> {
@@ -22,7 +22,7 @@ export class AvailabilityService {
   public static async searchAvailability(
     input: SearchAvailabilityInput,
   ): Promise<SearchAvailabilityResult> {
-    return await trackClientRequest(
+    return await SentryUtil.trackClientRequest(
       SentryClientRequestOperation.AVAILABILITY_SEARCH,
       async (): Promise<SearchAvailabilityResult> => {
         const call = httpsCallable<SearchAvailabilityInput, SearchAvailabilityResult>(

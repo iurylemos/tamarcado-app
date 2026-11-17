@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { FirebaseUtil } from '../utils/firebase.util';
 
 export const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true';
@@ -30,11 +30,7 @@ export const firebaseApp = getApps().length
       appId: import.meta.env.VITE_FIREBASE_APP_ID || FirebaseUtil.defaultIdEmulator,
     });
 
-export const db = initializeFirestore(
-  firebaseApp,
-  FirebaseUtil.firestoreSettings,
-  FirebaseUtil.defaultFirestore,
-);
+export const db = getFirestore(firebaseApp);
 
 if (useEmulators) {
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
